@@ -63,6 +63,64 @@ function start(config, business) {
     });
   });
 
+  // ── POST /slack/events — recibir mensajes y comandos desde Slack ─────────
+  app.post('/slack/events', async (req, res) => {
+    const body = req.body;
+
+    // Verificación de URL (Slack envía challenge al configurar)
+    if (body.type === 'url_verification') {
+      return res.json({ challenge: body.challenge });
+    }
+
+    res.sendStatus(200); // Responder rápido a Slack
+
+    const event = body.event;
+    if (!event) return;
+
+    // Solo procesar mensajes de texto en canales (no del propio bot)
+    if (event.type !== 'message' || event.bot_id || event.subtype) return;
+
+    const text       = (event.text || '').trim().toLowerCase();
+    const thread_ts  = event.thread_ts;
+    const channel    = event.channel;
+
+    if (!thread_ts) return; // Solo mensajes en threads
+
+    // ── Comando: tomar ───────────────────────────────────────────────────
+    if (text === 'tomar') {
+      const phone = slack.handleSlackCommand('tomar', thread_ts);
+      if (phone) {
+        logger.log(`👤 Humano tomó control de ${phone}`);
+        await postSlackMessage(channel, thread_ts, '👤 Control tomado. El bot está pausado para este cliente. Escribe `soltar` para devolver al bot.');
+      }
+      return;
+    }
+
+    // ── Comando: soltar ──────────────────────────────────────────────────
+    if (text === 'soltar') {
+      const phone = slack.handleSlackCommand('soltar', thread_ts);
+      if (phone) {
+        logger.log(`🤖 Bot retoma control de ${phone}`);
+        await postSlackMessage(channel, thread_ts, '🤖 Bot reactivado. Volviendo a respuesta automática.');
+      }
+      return;
+    }
+
+    // ── Respuesta humana en thread activo → enviar al cliente ────────────
+    // Buscar si este thread tiene un cliente asociado
+    for (const [phone, info] of slack.phoneToThread) {
+      if (info.thread_ts === thread_ts) {
+        const activeThread = slack.getActiveConversation(phone);
+        if (activeThread) {
+          // Hay humano activo → enviar mensaje al cliente
+          await meta.sendMessage(phone, event.text, config);
+          logger.log(`📤 Humano respondió a ${phone}: ${event.text}`);
+        }
+        break;
+      }
+    }
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(`✅ Servidor escuchando en 0.0.0.0:${PORT}`);
   });
@@ -173,6 +231,16 @@ async function sendReply(from, userText, config, business) {
 function humanDelay(len) {
   const ms = Math.min(len * 40, 2500) + Math.random() * 400;
   return new Promise(r => setTimeout(r, ms));
+}
+
+async function postSlackMessage(channel, thread_ts, text) {
+  const axios = require('axios');
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) return;
+  await axios.post('https://slack.com/api/chat.postMessage',
+    { channel, thread_ts, text },
+    { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+  ).catch(e => logger.log(`⚠️ Slack post error: ${e.message}`));
 }
 
 module.exports = { start };
