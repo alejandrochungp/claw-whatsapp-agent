@@ -1,0 +1,252 @@
+[
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-21",
+    "dialogue": "Cliente: ¡Hola! Quiero más información\nAgente: ¡Buen día Marta! ¿cómo estás?😊\ncomo puedo ayudarte?"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-21",
+    "dialogue": "Cliente: Hola buenas tardes, tiene productos y materiales para hacer liffting de pestañas coreanos?\nAgente: ¡Buen día Cristian! ¿cómo estás?😊\npor ahora no"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-21",
+    "dialogue": "Agente: ¿Problemas para ingresar a tu cuenta? 😟Déjanos tu email y en 1 día hábil te enviaremos un mensaje para activarla. ¡Gracias por tu comprensión!\nCliente: ftroncosop@miucsh.cl\nAgente: ¡Buen día ! ¿cómo estás?😊\nTe hemos enviado el correo electrónico para reactivar tu cuenta. Deberías recibirlo durante el día. No olvides revisar tu bandeja de spam o correo no deseado, ¡por las dudas!\nSi tienes otra duda, estamos pendiente!"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-21",
+    "dialogue": "Cliente: me gustaría agendar hora para una revisión cosmetológica\nAgente: ¡Buen día Arianna! ¿cómo estás?😊\nPara agendar una hora de asesoría, debes ingresar al siguiente link [link] , llenar el formulario que allí aparece y seleccionar una hora según tu disponibilidad y la de la agenda de asesorías."
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-21",
+    "dialogue": "Cliente: busco protector solar para la piel con  granos y que suelen obstruir los poros\nAgente: ¡Buen día ! ¿cómo estás?😊\nme indicas tu tipo de piel ?"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-21",
+    "dialogue": "Cliente: Hola buenas noches\nAgente: ¡Buen día paola! ¿cómo estás?😊\ncomo puedo servirte?"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-22",
+    "dialogue": "Cliente: quisiera hacer una segunda asesoria\nAgente: Para agendar una hora de asesoría, debes ingresar al siguiente link [link] , llenar el formulario que allí aparece y seleccionar una hora según tu disponibilidad y la de la agenda de asesorías."
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-22",
+    "dialogue": "Cliente: Hola busco algo para evitar el rostro cansado y con flacidez\nAgente: Hola , antes de recomendarte productos, me gustaría conocer un poco más sobre tu situación:\n\n🌸¿Has tenido problemas como acné, sensibilidad, rosácea o eczema?\n\n🌸¿Qué productos utilizas actualmente para tu piel?\n\n🌸¿Tienes alguna preocupación específica que te gustaría mejorar?\n\n🌸Describe tu tipo de piel (grasa, seca, mixta, sensible, etc.)"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-22",
+    "dialogue": "Cliente: ¡Hola! Quiero más información\n---\n _${color}[#c7c7c7](Message referral source ID: `52529067681813`)_\nAgente: ¡Buen día Estefanía! ¿cómo estás?😊\ndime como puedo ayudarte?"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-22",
+    "dialogue": "Cliente: Hola buenas tardes\nAgente: ¡Buenas tardes Kathy! ¿cómo estás?😊\nAgente: como puedo ayudarte?"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-11",
+    "dialogue": "Agente: ¿Problemas para ingresar a tu cuenta? 😟Déjanos tu email y en 1 día hábil te enviaremos un mensaje para activarla. ¡Gracias por tu comprensión!\nCliente: no me llega el correo para activar la cuenta\nAgente: ¡Hola visitor3020632! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nCliente: claraahumadagon@gmail.com\nAgente: ¡Buen día Clara! ¿cómo estás?😊\nAgente: ese correo que me indica no sale registrado\nCliente: que debo hacer para que quede registrado\nAgente: ¡Buen día Clara! ¿cómo estás?😊\nAgente: tu cuenta ya esta registrada"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: hola\nAgente: Buen día! En qué te puedo ayudar?"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: precio solo en internet?\nAgente: Buen día! Nuestros precios se mantienen tanto en tiendas físicas como en la web :D"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: hola, cuanto demora el envio?\nAgente: Buen día! Si eres de la RM y pides con FAZT antes de las 10:30 am llega el mismo día, o al día siguiente :D"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "unknown",
+    "date": "2024-02-29",
+    "dialogue": "Cliente: Hola\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Hola\nAgente: ¡Buen día Fernanda! ¿cómo estás?😊\ncomo puedo ayudarte?\nCliente: Hola\nAgente: hola\nCliente: Hola\nCliente: Hola\nAgente: ¡Hola Fernanda! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nCliente: Hola\nAgente: ¡Hola Fernanda! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos el lunes. ¡Que tengas un lindo finde! 🌟\nCliente: Hola\nCliente: Hola\nAgente: buen día, en qué te puedo ayudar?\nCliente: Hola\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Tienencatya?\nAgente: [link]\nAgente: Productos sujetos a disponibilidad :D\nCliente: Hola\nAgente: ¡Hola Fernanda! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos el lunes. ¡Que tengas un lindo finde! 🌟\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Hola\nAgente: ¡Hola Fernanda! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nCliente: Hola\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Hola\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Holq\nAgente: ¡Hola Fernanda! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nCliente: Hola\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Hola\nAgente: Buen día! En qué te puedo ayudar? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito?"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito? <3"
+  },
+  {
+    "channel": "urn:crisp.im:instagram:0",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: Hola muy buenos dias, quisiera obtener información para poder trabajar con ustedes\nCliente: Soy titulada en cosmetología y estética integral\nAgente: Hola Fernanda! \n¡Nos alegra tu interés por formar parte de nuestro equipo!☺️ \nPuedes ver info sobre las posiciones abiertas y aplicar aquí abajo:\n[link]\nAgente: también puedes enviar tu cv a hola@yeppo.cl\nCliente: Muchas gracias :$\nAgente: De nada! Que tengas lindo día :D"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola!\nAgente: ¡Buen día Constanza! ¿cómo estás?😊\nAgente: como puedo ayudarte?\nCliente: Hola! Bien y tu? \nQuisiera saber una recomendación de tónico, crema y bloqueador para rostro con acné leve\nAgente: entiendo! tu piel produce sebo durante el día o es mas bien sequita?\nCliente: Es durante el día, especialmente en la zona T. Las mejillas son más bien secas\nAgente: super, le gustaría tratar el acné leve que tiene entonces?\nCliente: Sii\nAgente: te dejaré mis recomendaciones!\nAgente: este tónico calmante ayuda a prevenir la aparición de acné, así como calmar en caso de brotes y rojeces por acné\nAgente: [link]\nAgente: puede usarlo todos los días, día y noche\nAgente: [link]\nAgente: esta cremita es especial para tratar el acné, la textura de la piel e hidrata sin dejar sensación pesada\nAgente: también puede usarla todos los días, día y noche, en conjunto con el tónico\nAgente: [link]\nAgente: y este bloqueador es super ligero, se absorbe muy rápido en la piel y no deja rastros"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Agente: Hola! Necesitas ayuda con algún producto de tu carrito?"
+  },
+  {
+    "channel": "urn:crisp.im:instagram:0",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: Hola buenos días\nCliente: Consulta en la tienda de providencia para hacer una prueba a mi cara ??\nAgente: Buen día! Sí está disponible, si deseas la asesoría completa puedes pedir la horita en nuestra página web <3\nAgente: Para agendar una hora de asesoría, debes ingresar al siguiente link [link] seleccionar una hora según tu disponibilidad y la de la agenda de asesorías\nCliente: Y tiene algún valor !\nCliente: <3<3<3\nAgente: es gratuita!\nCliente: Mucha gracias"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: Necesito asesoría para tratamiento del acné en adolescentes\nAgente: Hola , antes de recomendarte productos, me gustaría conocer un poco más sobre tu situación:\n\n🌸¿Has tenido problemas como acné, sensibilidad, rosácea o eczema?\n\n🌸¿Qué productos utilizas actualmente para tu piel?\n\n🌸¿Tienes alguna preocupación específica que te gustaría mejorar?\n\n🌸Describe tu tipo de piel (grasa, seca, mixta, sensible, etc.)\nCliente: Acne\nCliente: Controlar los granos\nCliente: Y puntos negros\nAgente: tipo de piel?\nCliente: Mixta\nAgente: ok,te paso mi recomendacion\nAgente: limpieza\n[__[link]\nEl **Heartleaf** (Houttuynia Cordata) es el ingrediente coreano número uno para el acné. Limpia profundamente los poros de la zona T sin destruir la barrera de las zonas sensibles. Ayuda a desinflamar los granitos rojos desde el primer paso.\nAgente: tonico:\n[__[link]\nDespués de la limpieza, necesitas calmar la sensibilidad. Este tónico con **Cica** reduce la inflamación del acné y el **PDRN** ayuda a que la piel empiece a regenerarse para que el granito no deje marca o \"acento\" en la piel.\nAgente: esencia: (opcional)\n[__[link]\nEste es el paso que \"quita el acento\" (las marcas y la textura irregular).\n**Por qué:** La **mucina de caracol** es famosa por regenerar la piel dañada por el acné. Al ser al 97%, rellena las pequeñas marcas y ayuda a que los granitos cicatricen rápido. El **arroz** ilumina para que no quede la mancha oscura después.\nAgente: serum:\n[__[link]\nSi el acné está activo, este sérum actúa como un antiinflamatorio potente. El PDRN vegetal es increíble para mejorar la textura de la piel y \"cerrar\" visualmente los poros que se dilatan en la piel mixta.\nAgente: hidratacion:\n[__[link]\nUna piel mixta con acné necesita hidratación, pero odia las cremas pesadas. Esta crema tiene una textura de \"gel elástico\" que se absorbe por completo. No tapa los poros y mantiene la piel mate pero hidratada.\nAgente: protector solar\n[__[link]\nEl sol oscurece las marcas de acné. Este protector es muy ligero, no es grasoso y contiene ingredientes que calman la sensibilidad durante el día.\nCliente: Ok gracias.\nCliente: Por otra parte quiero asesoría para tratamiento de eliminar marcas de la frente y entrecejo de persona adulta 57 años\nCliente: De piel sensible\nCliente: Y arrugas profundas\nAgente: que tipo de piel seria?\nCliente: Sensible\nCliente: Mixta\nAgente: ok, te paso mi recomendación\nAgente: 1 limpiador \n[link]\nAgente: 2. tonico \n[link]\nAgente: 3 serum \n[link]\nAgente: 4 hidratacion [link]\nAgente: 5 protector solar\n[link]"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-19",
+    "dialogue": "Agente: ¿Problemas para ingresar a tu cuenta? 😟Déjanos tu email y en 1 día hábil te enviaremos un mensaje para activarla. ¡Gracias por tu comprensión!\nCliente: hola, soy Anais Toledo, creadora de contenido y tengo mi código ANAISTOLEDOC, pero no sé cómo ingresar a mi sesión\nAgente: ¡Hola visitor3036268! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nAgente: Buen día! Debes hablar directo con el área de @/comercialyeppo, ellos son los encargados de ver esas cositas :d"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-16",
+    "dialogue": "Cliente: Las ofertas son solo por web?\nAgente: ¡Buen día ! ¿cómo estás?😊\nla ofertas tambien son presenciales\nAgente: ¿Problemas para ingresar a tu cuenta? 😟Déjanos tu email y en 1 día hábil te enviaremos un mensaje para activarla. ¡Gracias por tu comprensión!\nCliente: Hola que significa 75.000 puntos\nAgente: ¡Hola visitor3029902! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nAgente: Buen día! Son los puntos que tiene acumulados por recompensas o compras hechas, al ir acumulandolos después puede canjear otros beneficios :D"
+  },
+  {
+    "channel": "urn:crisp.im:instagram:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola! Cómo estás? Me contacto con ustedes porque me gustaría poder ser creadora de contenido para la marca, estoy iniciando en la creación de contenido para marcas, tengo una pequeña comunidad y me gusta mostrar productos que utilizo a diario. \nSoy de la ciudad de Puerto Montt.\nAgente: ¡Hola Javiera! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nAgente: Hola! Porfi envíanos tu info a marketing@yeppo.cl para revisarla y darte más detalles"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-20",
+    "dialogue": "Cliente: cuantos ml contiene el Clean it Zero Cleansing Balm Calming\nAgente: ¡Hola visitor3036555! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nAgente: ¡Buen día ! ¿cómo estás?😊\n100ml tiene"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola\nAgente: Buen día! En qué te puedo ayudar?\nCliente: Necesito una asesoría\nCliente: Por favor\nAgente: Cuénteme! Qué dudas tiene?\nCliente: Nunca me he cuidado la piel y quiero comenzar a hacerlo, mi piel es media grasa y tengo bastante comedones y también últimamente acné en poca cantidad\nAgente: entiendo, si nunca ha tenido una rutina lo recomendable es empezar de a poquito con una rutina de base y si desea luego empezar a sumar productos!\nAgente: un rutina de base sería limpieza, hidratación y protección solar!\nAgente: te dejaré mis recomendaciones\nAgente: [link]\nAgente: ese limpiador puede usarlo todos los días, día y noche! ayudará a controlar la cantidad de sebo que produce el rostro\nAgente: [link]\nAgente: esta crema ayudará a mejorar la textura, a disminuir el sebo e hidratar sin dejar pesada la piel\nAgente: [link]\nAgente: bloqueador solar ultra ligero, no deja rastro en la piel, se absorbe muy rapido, este es el paso más importante de la rutina"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: hola\nCliente: reactive mi cuenta, pero no están mis puntos\nCliente: como los puedo canjear?\nAgente: Buen día! No están sus puntos para canjear o desea canjearlos ahora?\nCliente: las 2\nCliente: no los veo\nCliente: y quiero canjearlos también\nAgente: indicame el correo que tienes inscrito porfi!\nCliente: made2breakurheart@gmail.com\nAgente: qué es lo que le aparece en la parte de puntos? revisé su cuenta y están registrados :d\nCliente: chuta no los encuentro y como los puedo canjear ?\nCliente: para que me alcanza ?\nAgente: Debes ingresar a la pestaña que está en la parte inferior izquierda en pantalla, hay un botón que dice \"recompensas\", ahí podrás ver qué puedes canjear con los puntos que tienes!\nCliente: ya lo vi\nCliente: gracias\nCliente: me alcanzan 5 Lukas de descuento"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: hola!\nAgente: Buen día! En qué te puedo ayudar?"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola yeppo de providencia tiene asesoría para cabello\nCliente: Es que ví muchas reseñas y estoy súper interesada en ir hoy día\nCliente: Y comprar shampoo, ya ví uno pero no estoy segura.\nAgente: Buen día! En todas nuestras sucursales siempre hay asesoras que te pueden ayudar, así que puede hacer sus consultas cuando desee <3\nCliente: Gracias ❤️"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: en yeppo providencia te orientan con respecto al shampoo que uno necesita.\nCliente: es que quiero ir ahora, e leído muchas reseñas y estoy muy interesada.\nAgente: Buen día! En todas nuestras sucursales siempre hay asesoras que te pueden ayudar, así que puede hacer sus consultas cuando desee <3"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola me gustaría una asesoría online\nAgente: Buen día! Cómo te puedo ayudar?\nCliente: Hola me gustaría una asesoría online\nAgente: buscas algún producto en específico?\nCliente: No, solo productos que le ayuden a mi tipo de piel\nAgente: su piel es más seca o tiende a presentar sebo durante el día?\nCliente: Tengo dermatitis seborreica y rosácea por lo que tiendo a generar más oleosidad en la zona t\nAgente: ha podido ver a su especialista para esa condición? usa algún producto?\nCliente: Si, utilizo Kelual ds en crema y shampoo\nCliente: Día por medio la crema\nAgente: entiendo, solo eso?\nCliente: Si. Solo eso\nAgente: le recomendaría complementar con una buena limpieza, pero siempre suave!\nAgente: [link]\nAgente: este limpiador es suave y puede usarlo día y noche, no resecará en exceso"
+  },
+  {
+    "channel": "urn:crisp.im:instagram:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola buenas tardes , mi nombre es Lyssette Diparodi , postule para colaboración y fui aceptada , quisisera saber como se hace ... \n\ndebo comprar algunas cosas para poder hacer la promoción o uds me envian algo ? \n\nquedo atenta , muchisimas gracias por la oportunidad\nAgente: Buen día! Debes comunicarte directamente con el área de @/comercialyeppo\nAgente: ellos te darán toda la info :D\nCliente: super , muchisimas gracias"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: hola buen dia\nCliente: necesito ayuda\nAgente: Buen día! En qué te puedo ayudar?\nCliente: necesito recuperar mi clave\nAgente: indicame el correo con el que estás inscrita para ayudarte porfi\nCliente: loft510@gmail.com\nCliente: tengo dos cuentas me gustaría q las unieran\nAgente: cuál es la otra?\nCliente: pero el de loft510 se me olvido la clave y tengo puntos ahí q están por vencer\nAgente: y cuál quieres que quede?\nAgente: te envié un mail de activación al correo que me enviaste\nCliente: reviso\nCliente: Gracias ya la active\nCliente: el otro correo es iclink@gmail.com\nAgente: cuál quedaría como la principal?}\nCliente: loft510\nCliente: la q active recién por q compraré hoy pa usar los puntos desde loft510\nCliente: q se vencen\nAgente: listo!\nAgente: hice la fusión, ahora sólo está registrado el correo loft510@gmail.com\nCliente: gracias\nCliente: y buen finde ☺️\nAgente: De nada! Buen finde igualmente :p"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola, buenas tardes. Me gustaría información en relación a productos al por mayor. Me encuentro en busca de un proveedor de confianza para ello. Saludos\nAgente: ¡Hola! Contamos con un catálogo de cosméticos coreanos para que puedas comercializarlos en tu propio negocio.\nPuedes ver el catálogo en este link 👇\n[[link]\n\nSi tienes alguna pregunta sobre precios u otros detalles, no dudes en escribirle a **Juan Choe** (juan@yeppo.cl), quien está a cargo del área.\nAgente: ¡Hola! Nuestra tienda Yeppo ofrece un catálogo de cosméticos coreanos a precios mayoristas para tu negocio.\r\nRequisitos para registrarse:\r\n- Tener una tienda física o virtual relacionada con belleza y cosmética.\r\n- Realizar pedidos mínimos de $300.000.\r\n- Evitar compras personales o agrupadas.\r\n- Si no tienes una empresa registrada, puedes usar tu nombre completo como razón social y proporcionar un plan comercial o enlaces a tus redes sociales de venta.\r\n¿Cómo registrarte? 📝\r\n- Visita [link] y solicita tu registro.\r\n- Revisaremos tu solicitud en 24-48 horas hábiles.\r\n- Una vez aprobada, podrás ver precios y hacer pedidos en el portal B2B. Los precios son, en promedio, un 70% del precio de venta en nuestras tiendas físicas.\r\n\r\nEnvíos y muestras 🚚\r\n- Envíos mayoristas a regiones con Starken, envío por pagar.\r\n- Muestras sujetas a disponibilidad.\r\n¡Esperamos verte pronto!"
+  },
+  {
+    "channel": "urn:crisp.im:instagram:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola cual es el horario de atención en la Sucursal cerca del Metro los Leones?\nAgente: ¡Hola Shandira!\n 🕒  A continuación, encontrarás los horarios y ubicación de atención para nuestras sucursales:  \n**Coyancura 2261:;** Lunes a viernes de 10:00 a 19:00, sábados de 10:00 a 18:00, domingos cerrados.  \n**Patronato 461:** Lunes a viernes de 10:00 a 18:30, sábados de 10:00 a 17:00, domingos cerrados.  \n**Alcántara (Las Torcazas 50);** Lunes a viernes de 10:00 a 20:00 , sábados de 10:00 a 16:00, domingos cerrados.  \nAv. **Recolecta 35**: Lunes a viernes 10:00 a 19:00 , sábados de 10:00 a 18:00, domingos cerrados."
+  },
+  {
+    "channel": "unknown",
+    "date": "2024-06-13",
+    "dialogue": "Cliente: Hola! Hice una compra recién y quisiera cambiar la dirección de despacho, cómo lo puedo hacer?\nAgente: ¡Hola Mary! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟\nCliente: Pedido n°73588\nAgente: Hola Mary! buenos días\n\nPuedo hacer el cambio de dirección manualmente, indicame la dirección correcta para avisar a logistica <3\nCliente: Hola!\nCliente: La dirección correcta es: Av. Vicuña Mackenna 8840, depto 1009 La Florida\nAgente: muchas gracias por avisarnos! ya pude hacer la modificación, quedó la siguiente \nAvenida Vicuña Mackenna 8840, 1009, La Florida, Chile\nCliente: Muchas gracias!\nAgente: no hay de qué! <3\nCliente: Hola, hice una compra ayer por internet y quisiera que me entregaran la compra el lunes, puede ser?\nAgente: Buen día! Las compras salen todas al día siguiente hábil, ya que se arman dentro de los plazos establecidos ya que se arman los pedidos de forma masiva :c\nCliente: Es que hoy no estaré en mi casa para recibirlo\nCliente: Hasta el domingo\nAgente: cuál es el número de su pedido?\nCliente: Pedido n233493\nAgente: estoy consultando para ver qué podemos hacer!\nCliente: Ok!\nCliente: Si estaré hoy! Si puede quedar todo tal cual mejor\nCliente: Si no para el dia que me digan\nAgente: finalmente sí tuvo que salir hoy! así que repartirían durante la tarde-noche\nCliente: Ahh perfecto! Super!"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola\nCliente: Hacen limpieza facial?\nAgente: Buen día! No ofrecemos ese servicio"
+  },
+  {
+    "channel": "chat",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: hola\nCliente: creo que no puse el número de casa para el envío de mi compra\nAgente: Buen día! Me indicaría el número de su pedido por favor\nCliente: n233767\nAgente: sí, está incompleta la info de envío!\nAgente: me indicaría la correcta por favor\nCliente: Chicahue 99, Maipú es la dirección\nAgente: quedó listo!\nCliente: ¡muchas gracias!\nAgente: De nada! Que tenga buen día <3\nCliente: igualmente!"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-14",
+    "dialogue": "Cliente: Hola buenas tardes\nAgente: ¡Hola 🐶🐶! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos el lunes. ¡Que tengas un lindo finde! 🌟\nAgente: ¡Buen día! ¿cómo estás?😊\ncomo puedo ayudarte?\nCliente: Hola buenos dias, quisiera saber si estan en busca de personal\nAgente: Hola 🐶🐶! \n¡Nos alegra tu interés por formar parte de nuestro equipo!☺️ \nPuedes ver info sobre las posiciones abiertas y aplicar aquí abajo:\n[link]"
+  },
+  {
+    "channel": "urn:crisp.im:whatsapp:0",
+    "date": "2026-03-19",
+    "dialogue": "Cliente: Hola buenas a que hora abren la sucursal de alcantara?\nAgente: ¡Hola Camila!\n 🕒  A continuación, encontrarás los horarios y ubicación de atención para nuestras sucursales:  \n**Coyancura 2261:;** Lunes a viernes de 10:00 a 19:00, sábados de 10:00 a 18:00, domingos cerrados.  \n**Patronato 461:** Lunes a viernes de 10:00 a 18:30, sábados de 10:00 a 17:00, domingos cerrados.  \n**Alcántara (Las Torcazas 50);** Lunes a viernes de 10:00 a 20:00 , sábados de 10:00 a 16:00, domingos cerrados.  \nAv. **Recolecta 35**: Lunes a viernes 10:00 a 19:00 , sábados de 10:00 a 18:00, domingos cerrados."
+  }
+]

@@ -11,8 +11,12 @@
 const fs   = require('fs');
 const path = require('path');
 
-// Cargar prompt base desde archivo .md
+// Cargar prompt base + base de conocimiento
 const PROMPT_BASE = fs.readFileSync(path.join(__dirname, 'prompt.md'), 'utf8');
+const KNOWLEDGE_DOC_PATH = path.join(__dirname, 'knowledge', 'knowledge_doc.md');
+const KNOWLEDGE_DOC = fs.existsSync(KNOWLEDGE_DOC_PATH)
+  ? fs.readFileSync(KNOWLEDGE_DOC_PATH, 'utf8')
+  : '';
 
 /**
  * Reglas rápidas sin LLM.
@@ -66,13 +70,16 @@ async function quickReply(userText, context, history) {
 function buildSystemPrompt(context) {
   let prompt = PROMPT_BASE;
 
-  // Personalizar si tenemos datos del cliente
-  if (context?.name) {
-    prompt += `\n\n## Cliente actual\nNombre: ${context.name}`;
+  // Agregar base de conocimiento si está disponible
+  if (KNOWLEDGE_DOC) {
+    prompt += `\n\n---\n\n${KNOWLEDGE_DOC}`;
   }
 
-  if (context?.orderNumber) {
-    prompt += `\nPedido en seguimiento: #${context.orderNumber}`;
+  // Personalizar con datos del cliente si los tenemos
+  if (context && Object.keys(context).length > 0) {
+    prompt += '\n\n---\n\n## Contexto del cliente actual\n';
+    if (context.name)        prompt += `Nombre: ${context.name}\n`;
+    if (context.orderNumber) prompt += `Pedido en seguimiento: #${context.orderNumber}\n`;
   }
 
   return prompt;
