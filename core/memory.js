@@ -1,55 +1,131 @@
 /**
- * core/memory.js — Memoria de conversaciones (en proceso)
+ * core/memory.js — Memoria de conversaciones con Redis persistente
  *
- * Guarda historial y contexto por número de teléfono.
- * Simple y sin dependencias externas.
+ * Si REDIS_URL está disponible → usa Redis (datos sobreviven reinicios)
+ * Si no → fallback a RAM (comportamiento anterior)
  */
 
-const conversations = new Map(); // phone → { history: [], context: {}, updatedAt }
-const MAX_HISTORY   = 20;
-const TTL_MS        = 30 * 60 * 1000; // 30 minutos
+const MAX_HISTORY = 20;
+const TTL_SECS    = 24 * 60 * 60; // 24 horas en Redis
+const TTL_MS      = 30 * 60 * 1000; // 30 min en RAM
 
-function getOrCreate(phone) {
-  if (!conversations.has(phone)) {
-    conversations.set(phone, { history: [], context: {}, updatedAt: Date.now() });
+// ─── Intento de conexión a Redis ────────────────────────────────────────────
+let redisClient = null;
+let useRedis    = false;
+
+async function initRedis() {
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    console.log('[memory] REDIS_URL no configurado, usando memoria RAM');
+    return;
   }
-  const conv = conversations.get(phone);
+  try {
+    const { createClient } = require('redis');
+    redisClient = createClient({ url });
+    redisClient.on('error', (err) => console.error('[memory] Redis error:', err));
+    await redisClient.connect();
+    useRedis = true;
+    console.log('[memory] Redis conectado ✅');
+  } catch (err) {
+    console.error('[memory] No se pudo conectar a Redis, usando RAM:', err.message);
+    redisClient = null;
+    useRedis = false;
+  }
+}
+
+// Inicializar al cargar el módulo
+initRedis().catch(() => {});
+
+// ─── Helpers Redis ───────────────────────────────────────────────────────────
+const key = (phone) => `conv:${phone}`;
+
+async function redisGet(phone) {
+  try {
+    const raw = await redisClient.get(key(phone));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+async function redisSet(phone, data) {
+  try {
+    await redisClient.setEx(key(phone), TTL_SECS, JSON.stringify(data));
+  } catch { /* silencioso */ }
+}
+
+// ─── Fallback RAM ────────────────────────────────────────────────────────────
+const ramStore = new Map();
+
+function ramGetOrCreate(phone) {
+  if (!ramStore.has(phone)) {
+    ramStore.set(phone, { history: [], context: {}, updatedAt: Date.now() });
+  }
+  const conv = ramStore.get(phone);
   conv.updatedAt = Date.now();
   return conv;
 }
 
-function addMessage(phone, text, role) {
-  const conv = getOrCreate(phone);
-  conv.history.push({ role, text, ts: Date.now() });
-  if (conv.history.length > MAX_HISTORY) conv.history.shift();
-}
-
-function getHistory(phone, limit = 10) {
-  const conv = conversations.get(phone);
-  if (!conv) return [];
-  return conv.history.slice(-limit);
-}
-
-function getContext(phone) {
-  return conversations.get(phone)?.context || {};
-}
-
-function updateContext(phone, data) {
-  const conv = getOrCreate(phone);
-  conv.context = { ...conv.context, ...data };
-}
-
-function isReturning(phone) {
-  const conv = conversations.get(phone);
-  return conv && conv.history.length > 1;
-}
-
-// Limpiar conversaciones antiguas cada 10 min
 setInterval(() => {
   const cutoff = Date.now() - TTL_MS;
-  for (const [phone, conv] of conversations) {
-    if (conv.updatedAt < cutoff) conversations.delete(phone);
+  for (const [phone, conv] of ramStore) {
+    if (conv.updatedAt < cutoff) ramStore.delete(phone);
   }
 }, 10 * 60 * 1000);
+
+// ─── API pública ─────────────────────────────────────────────────────────────
+
+async function addMessage(phone, text, role) {
+  if (useRedis) {
+    const conv = (await redisGet(phone)) || { history: [], context: {} };
+    conv.history.push({ role, text, ts: Date.now() });
+    if (conv.history.length > MAX_HISTORY) conv.history.shift();
+    await redisSet(phone, conv);
+  } else {
+    const conv = ramGetOrCreate(phone);
+    conv.history.push({ role, text, ts: Date.now() });
+    if (conv.history.length > MAX_HISTORY) conv.history.shift();
+  }
+}
+
+async function getHistory(phone, limit = 10) {
+  if (useRedis) {
+    const conv = await redisGet(phone);
+    if (!conv) return [];
+    return conv.history.slice(-limit);
+  } else {
+    const conv = ramStore.get(phone);
+    if (!conv) return [];
+    return conv.history.slice(-limit);
+  }
+}
+
+async function getContext(phone) {
+  if (useRedis) {
+    const conv = await redisGet(phone);
+    return conv?.context || {};
+  } else {
+    return ramStore.get(phone)?.context || {};
+  }
+}
+
+async function updateContext(phone, data) {
+  if (useRedis) {
+    const conv = (await redisGet(phone)) || { history: [], context: {} };
+    conv.context = { ...conv.context, ...data };
+    await redisSet(phone, conv);
+  } else {
+    const conv = ramGetOrCreate(phone);
+    conv.context = { ...conv.context, ...data };
+  }
+}
+
+async function isReturning(phone) {
+  if (useRedis) {
+    const conv = await redisGet(phone);
+    return conv && conv.history.length > 1;
+  } else {
+    const conv = ramStore.get(phone);
+    return conv && conv.history.length > 1;
+  }
+}
 
 module.exports = { addMessage, getHistory, getContext, updateContext, isReturning };

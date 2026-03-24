@@ -170,7 +170,7 @@ async function handleMessage(message, value, config, business) {
   }
 
   logger.log(`📨 [${from}] ${userText}`);
-  memory.addMessage(from, userText, 'user');
+  await memory.addMessage(from, userText, 'user');
 
   // ¿Hay agente humano activo para este número?
   const activeThread = slack.getActiveConversation(from);
@@ -185,8 +185,8 @@ async function handleMessage(message, value, config, business) {
 
 // ── Generar y enviar respuesta ──────────────────────────────────────────────
 async function sendReply(from, userText, config, business) {
-  const history = memory.getHistory(from, 6);
-  const context = memory.getContext(from) || {};
+  const history = await memory.getHistory(from, 6);
+  const context = await memory.getContext(from) || {};
 
   let replyText = '';
   let notifySlack = false;
@@ -212,7 +212,7 @@ async function sendReply(from, userText, config, business) {
   }
 
   // 3. Guardar en memoria
-  memory.addMessage(from, replyText, 'bot');
+  await memory.addMessage(from, replyText, 'bot');
 
   // 4. Delay humano
   await humanDelay(replyText.length);
