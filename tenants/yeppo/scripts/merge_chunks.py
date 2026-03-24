@@ -4,22 +4,26 @@ from collections import Counter
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "knowledge")
 all_results = []
 
-chunks = sorted([f for f in os.listdir(OUT_DIR) if f.startswith("chunk_")])
-for chunk in chunks:
-    with open(os.path.join(OUT_DIR, chunk), encoding="utf-8") as f:
-        data = json.load(f)
-    print(f"{chunk}: {len(data)}")
-    all_results.extend(data)
+# Usar los chunks más recientes (los que tienen datos completos)
+# Priorizar chunks nuevos sobre los viejos (los de 50 en 50 que fallaron)
+chunk_ranges = [
+    (0, 50), (50, 100), (100, 150), (150, 200),
+    (200, 300), (300, 400), (400, 500), (500, 600)
+]
+
+for start, end in chunk_ranges:
+    # Buscar chunk con este rango
+    fname = f"chunk_{start:03d}_{end:03d}.json"
+    fpath = os.path.join(OUT_DIR, fname)
+    if os.path.exists(fpath):
+        with open(fpath, encoding="utf-8") as f:
+            data = json.load(f)
+        print(f"{fname}: {len(data)}")
+        all_results.extend(data)
+    else:
+        print(f"{fname}: no encontrado")
 
 print(f"\nTOTAL: {len(all_results)} conversaciones con respuesta del equipo")
-
-if all_results:
-    print("\n--- Ejemplo ---")
-    ex = all_results[0]
-    print(f"Canal: {ex['channel']}")
-    print(f"Fecha: {ex['date']}")
-    print("Dialogo (primeros 500 chars):")
-    print(ex["dialogue"][:500])
 
 channels = Counter(c["channel"] for c in all_results)
 print("\nPor canal:")

@@ -141,10 +141,31 @@ Si el problema es que nunca usaron la cuenta o es nueva:
 
 ---
 
+### Precios web vs tienda física
+**Cliente:** "¿Los precios son iguales en tienda y web?"
+> Buen día! Nuestros precios se mantienen tanto en tiendas físicas como en la web :D
+
 ### Retiro en tienda
 - Los pedidos web se reservan solo para la sucursal seleccionada al comprar. No se puede cambiar después.
 - Plazo de retiro: 30 días corridos desde la compra.
 - Retiro en Patronato requiere coordinación previa si el pedido fue devuelto por courier.
+
+### Stock en tienda específica
+Cuando el cliente pregunta si hay stock de un producto en una tienda particular, consultar internamente y responder. Ejemplo:
+> "El tono Dusk sí tiene stock en Alcántara!"
+
+### Consultas sobre Catya u otras marcas específicas
+Si preguntan por una marca que no está en el catálogo:
+> [link al catálogo] — Productos sujetos a disponibilidad :D
+
+### Consulta sobre puntos y recompensas por Mercado Libre
+> Nos encantaría hacerlo, pero las compras por Mercado Libre se hacen directo en su sistema y no podemos agregar puntos desde ahí :c
+
+### Factura electrónica
+El cliente puede solicitar factura desde la boleta que llega al correo. Al pinchar "Factura" en la boleta se genera automáticamente. Es importante que el correo esté bien ingresado al momento de la compra.
+
+### Cotización
+No hay sistema de cotización formal. El cliente puede agregar productos al carrito en la web y ver el total detallado (incluido costo de envío si el monto es bajo).
 
 ---
 
@@ -166,6 +187,15 @@ Si el problema es que nunca usaron la cuenta o es nueva:
 
 ### Reembolsos
 - Se autorizan desde Yeppo de inmediato, pero el tiempo de procesamiento depende de la tarjeta/plataforma de pago.
+
+### Días festivos / feriados
+Verificar con el equipo antes de responder. Ejemplo de respuesta cuando se confirma:
+> "Las tiendas de Providencia y Estación Seúl estarán abiertas con horario normal! Las demás tiendas cerradas."
+
+### Costos de envío
+- Envío gratis sobre cierto monto (verificar monto actual en web)
+- Bajo ese monto se cobra envío, visible al armar el carrito
+- Starken para regiones: por pagar
 
 ### Compras por Mercado Libre / Uber Eats
 - Son plataformas independientes — Yeppo no maneja la venta, solo la entrega del producto.
