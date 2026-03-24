@@ -1,0 +1,178 @@
+/**
+ * core/server.js — Webhook Express genérico
+ *
+ * Recibe mensajes de Meta Cloud API y los enruta al tenant correspondiente.
+ * No contiene lógica de negocio: todo lo específico viene de tenantBusiness.
+ */
+
+const express    = require('express');
+const bodyParser = require('body-parser');
+const memory     = require('./memory');
+const slack      = require('./slack');
+const ai         = require('./ai');
+const meta       = require('./meta');
+const logger     = require('./logger');
+
+function start(config, business) {
+  const app  = express();
+  const PORT = process.env.PORT || config.port || 3000;
+
+  app.use(bodyParser.json());
+
+  // ── GET /webhook — verificación Meta ─────────────────────────────────────
+  app.get('/webhook', (req, res) => {
+    const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
+    if (mode === 'subscribe' && token === config.verifyToken) {
+      logger.log('✅ Webhook verificado por Meta');
+      return res.status(200).send(challenge);
+    }
+    logger.log(`❌ Verificación fallida (token: ${token})`);
+    res.sendStatus(403);
+  });
+
+  // ── POST /webhook — mensajes entrantes ───────────────────────────────────
+  app.post('/webhook', async (req, res) => {
+    try {
+      res.sendStatus(200); // Responder rápido a Meta
+
+      const value = req.body?.entry?.[0]?.changes?.[0]?.value;
+      if (!value) return;
+
+      // Status updates (sent / delivered / read)
+      if (value.statuses?.length) {
+        for (const s of value.statuses) await handleStatus(s, config);
+        return;
+      }
+
+      // Mensajes entrantes
+      if (value.messages?.length) {
+        for (const msg of value.messages) await handleMessage(msg, value, config, business);
+      }
+    } catch (err) {
+      logger.log(`❌ Error en webhook: ${err.message}`);
+    }
+  });
+
+  // ── GET /status — health check ───────────────────────────────────────────
+  app.get('/status', (req, res) => {
+    res.json({
+      ok: true,
+      tenant: process.env.TENANT,
+      phone: config.businessPhone,
+      uptime: process.uptime()
+    });
+  });
+
+  app.listen(PORT, () => {
+    logger.log(`✅ Servidor escuchando en puerto ${PORT}`);
+  });
+}
+
+// ── Status updates ──────────────────────────────────────────────────────────
+const messageTracker = new Map();
+
+async function handleStatus(status, config) {
+  const { id: msgId, status: type } = status;
+  if (type !== 'read') return;
+
+  const info = messageTracker.get(msgId);
+  if (!info) return;
+
+  const { channel, ts } = info;
+  const token = process.env.SLACK_BOT_TOKEN;
+  const axios = require('axios');
+
+  // Quitar ⬜ y poner ✅
+  await axios.post('https://slack.com/api/reactions.remove',
+    { channel, timestamp: ts, name: 'white_check_mark' },
+    { headers: { Authorization: `Bearer ${token}` } }
+  ).catch(() => {});
+
+  await axios.post('https://slack.com/api/reactions.add',
+    { channel, timestamp: ts, name: 'heavy_check_mark' },
+    { headers: { Authorization: `Bearer ${token}` } }
+  ).catch(() => {});
+
+  messageTracker.delete(msgId);
+}
+
+// ── Mensaje entrante ────────────────────────────────────────────────────────
+async function handleMessage(message, value, config, business) {
+  const from = message.from;
+  const type = message.type;
+
+  let userText = '';
+  if (type === 'text')        userText = message.text.body;
+  else if (type === 'interactive') {
+    userText = message.interactive.button_reply?.title ||
+               message.interactive.list_reply?.title  || '';
+  } else {
+    logger.log(`⚠️ Tipo no soportado: ${type}`);
+    return;
+  }
+
+  logger.log(`📨 [${from}] ${userText}`);
+  memory.addMessage(from, userText, 'user');
+
+  // ¿Hay agente humano activo para este número?
+  const activeThread = slack.getActiveConversation(from);
+  if (activeThread) {
+    await slack.forwardToThread(from, userText, activeThread, config);
+    return;
+  }
+
+  // Generar respuesta
+  await sendReply(from, userText, config, business);
+}
+
+// ── Generar y enviar respuesta ──────────────────────────────────────────────
+async function sendReply(from, userText, config, business) {
+  const history = memory.getHistory(from, 6);
+  const context = memory.getContext(from) || {};
+
+  let replyText = '';
+  let notifySlack = false;
+
+  // 1. Lógica de negocio del tenant (reglas rápidas, sin LLM)
+  const quickResult = await business.quickReply(userText, context, history);
+  if (quickResult) {
+    replyText    = quickResult.text;
+    notifySlack  = quickResult.notifySlack || false;
+  }
+
+  // 2. Si el tenant pide IA o no hay respuesta rápida → Claude
+  if (!replyText || quickResult?.useAI) {
+    const systemPrompt = business.buildSystemPrompt(context);
+    const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
+
+    if (aiResult.response) {
+      replyText = aiResult.response;
+      logger.log(`🤖 Claude respondió (costo: $${aiResult.cost?.toFixed(4) || '?'})`);
+    } else {
+      replyText = aiResult.fallback || config.fallbackMessage;
+    }
+  }
+
+  // 3. Guardar en memoria
+  memory.addMessage(from, replyText, 'bot');
+
+  // 4. Delay humano
+  await humanDelay(replyText.length);
+
+  // 5. Enviar WhatsApp
+  await meta.sendMessage(from, replyText, config);
+
+  // 6. Log en Slack (supervisión)
+  if (notifySlack) {
+    await slack.notifyHandoff(from, userText, config);
+  } else {
+    await slack.logConversation(from, userText, replyText, config);
+  }
+}
+
+function humanDelay(len) {
+  const ms = Math.min(len * 40, 2500) + Math.random() * 400;
+  return new Promise(r => setTimeout(r, ms));
+}
+
+module.exports = { start };
