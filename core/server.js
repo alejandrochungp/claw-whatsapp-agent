@@ -63,8 +63,8 @@ function start(config, business) {
     });
   });
 
-  app.listen(PORT, () => {
-    logger.log(`✅ Servidor escuchando en puerto ${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    logger.log(`✅ Servidor escuchando en 0.0.0.0:${PORT}`);
   });
 }
 
