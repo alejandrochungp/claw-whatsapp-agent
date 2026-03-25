@@ -169,14 +169,9 @@ async function editOrder(order, match) {
   try {
     const orderGid = `gid://shopify/Order/${order.id}`;
 
-    // 1. Buscar variantId del complemento via REST
-    const searchResult = await shopifyRequest('GET', `/products.json?title=${encodeURIComponent(match.par.complemento)}&fields=id,title,variants&limit=5`);
-    const products = searchResult?.products || [];
-    const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const product = products.find(p => norm(p.title).includes(norm(match.par.complemento))) || products[0];
-    const variantId = product?.variants?.[0]?.id;
-
-    if (!variantId) throw new Error(`No se encontró variant para: ${match.par.complemento}`);
+    // 1. Usar variantId directo de la tabla de complementos
+    const variantId = match.par.variantId;
+    if (!variantId) throw new Error(`variantId no configurado para: ${match.par.complemento}`);
     const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
     logger.log(`[upsell] Variant encontrado: ${variantGid}`);
