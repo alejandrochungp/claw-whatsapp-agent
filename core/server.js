@@ -81,6 +81,15 @@ function start(config, business) {
     }
   });
 
+  // ── POST /admin/campaign-context — registrar contexto de campaña en Redis ──
+  app.post('/admin/campaign-context', async (req, res) => {
+    const { phone, campaign } = req.body;
+    if (!phone || !campaign) return res.status(400).json({ error: 'phone y campaign requeridos' });
+    await memory.setCampaignContext(phone, campaign);
+    logger.log(`[campaign] Contexto guardado: ${phone} → "${campaign.name}"`);
+    res.json({ ok: true, phone });
+  });
+
   // ── POST /admin/seed-thread — inyectar thread→phone en Redis (one-time migration) ──
   app.post('/admin/seed-thread', async (req, res) => {
     const { phone, thread_ts, channel } = req.body;
