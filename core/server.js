@@ -13,6 +13,7 @@ const ai         = require('./ai');
 const meta       = require('./meta');
 const logger     = require('./logger');
 const shopify    = require('./shopify');
+const audio      = require('./audio');
 
 function start(config, business) {
   const app  = express();
@@ -207,16 +208,39 @@ async function handleMessage(message, value, config, business) {
   }
 
   let userText = '';
-  if (type === 'text')        userText = message.text.body;
-  else if (type === 'interactive') {
+  let isAudio  = false;
+
+  if (type === 'text') {
+    userText = message.text.body;
+  } else if (type === 'interactive') {
     userText = message.interactive.button_reply?.title ||
                message.interactive.list_reply?.title  || '';
+  } else if (type === 'audio') {
+    const mediaId = message.audio?.id;
+    if (mediaId) {
+      logger.log(`🎤 Audio recibido de [${from}] — transcribiendo...`);
+      const transcription = await audio.transcribeWhatsAppAudio(mediaId, config);
+      if (transcription) {
+        userText = transcription;
+        isAudio  = true;
+        logger.log(`🎤 Transcripción: "${transcription.slice(0, 80)}"`);
+      } else {
+        logger.log(`⚠️ No se pudo transcribir audio de ${from}`);
+        return;
+      }
+    }
   } else {
     logger.log(`⚠️ Tipo no soportado: ${type}`);
     return;
   }
 
-  logger.log(`📨 [${from}] ${userText}`);
+  logger.log(`📨 [${from}] ${isAudio ? '🎤 ' : ''}${userText}`);
+
+  // Si envió audio, marcar en contexto para que Claude lo sepa
+  if (isAudio) {
+    await memory.updateContext(from, { canSendAudio: true });
+  }
+
   await memory.addMessage(from, userText, 'user');
 
   // Enriquecer con datos de Shopify (primera vez o si no hay contexto guardado)
