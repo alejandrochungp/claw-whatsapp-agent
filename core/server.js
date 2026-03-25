@@ -64,6 +64,17 @@ function start(config, business) {
     });
   });
 
+  // ── POST /admin/seed-thread — inyectar thread→phone en Redis (one-time migration) ──
+  app.post('/admin/seed-thread', async (req, res) => {
+    const { phone, thread_ts, channel } = req.body;
+    if (!phone || !thread_ts) return res.status(400).json({ error: 'phone y thread_ts requeridos' });
+    const data = { thread_ts, channel: channel || 'C05FES87S9J', timestamp: Date.now() };
+    slack.phoneToThread.set(phone, data);
+    await slack.saveThreadExternal(phone, data);
+    logger.log(`[seed] thread mapeado: ${phone} → ${thread_ts}`);
+    res.json({ ok: true, phone, thread_ts });
+  });
+
   // ── POST /slack/events — recibir mensajes y comandos desde Slack ─────────
   app.post('/slack/events', async (req, res) => {
     const body = req.body;

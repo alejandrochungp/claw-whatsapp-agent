@@ -226,6 +226,7 @@ module.exports = {
   getActiveConversation,
   getRecentTake,
   handleSlackCommand,
+  saveThreadExternal: saveThread,
   phoneToThread,
   activeConversations
 };
