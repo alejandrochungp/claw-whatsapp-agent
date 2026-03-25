@@ -173,7 +173,14 @@ function start(config, business) {
 const messageTracker = new Map();
 
 async function handleStatus(status, config) {
-  const { id: msgId, status: type } = status;
+  const { id: msgId, status: type, errors } = status;
+
+  // Loguear errores de entrega
+  if (type === 'failed') {
+    logger.log(`❌ Mensaje fallido [${msgId}]: ${JSON.stringify(errors)}`);
+    return;
+  }
+
   if (type !== 'read') return;
 
   const info = messageTracker.get(msgId);
