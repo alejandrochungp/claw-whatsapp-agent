@@ -12,6 +12,7 @@ const slack      = require('./slack');
 const ai         = require('./ai');
 const meta       = require('./meta');
 const logger     = require('./logger');
+const shopify    = require('./shopify');
 
 function start(config, business) {
   const app  = express();
@@ -193,6 +194,24 @@ async function handleMessage(message, value, config, business) {
   logger.log(`📨 [${from}] ${userText}`);
   await memory.addMessage(from, userText, 'user');
 
+  // Enriquecer con datos de Shopify (primera vez o si no hay contexto guardado)
+  let shopifyData = null;
+  const savedContext = await memory.getContext(from);
+  if (!savedContext?.shopifyChecked) {
+    shopifyData = await shopify.enrichContact(from);
+    if (shopifyData) {
+      logger.log(`🛍️ Cliente Shopify identificado: ${shopifyData.customer.first_name} ${shopifyData.customer.last_name || ''}`);
+      await memory.updateContext(from, {
+        shopifyChecked: true,
+        shopifyContext: shopifyData.claudeContext,
+        shopifySlackInfo: shopifyData.slackInfo,
+        customerName: [shopifyData.customer.first_name, shopifyData.customer.last_name].filter(Boolean).join(' ')
+      });
+    } else {
+      await memory.updateContext(from, { shopifyChecked: true });
+    }
+  }
+
   // ¿Hay agente humano activo para este número?
   const activeThread = slack.getActiveConversation(from);
   if (activeThread) {
@@ -221,7 +240,11 @@ async function sendReply(from, userText, config, business) {
 
   // 2. Si el tenant pide IA o no hay respuesta rápida → Claude
   if (!replyText || quickResult?.useAI) {
-    const systemPrompt = business.buildSystemPrompt(context);
+    let systemPrompt = business.buildSystemPrompt(context);
+    // Inyectar contexto Shopify al system prompt si existe
+    if (context?.shopifyContext) {
+      systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
+    }
     const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
 
     if (aiResult.response) {
@@ -241,11 +264,12 @@ async function sendReply(from, userText, config, business) {
   // 5. Enviar WhatsApp
   await meta.sendMessage(from, replyText, config);
 
-  // 6. Log en Slack (supervisión)
+  // 6. Log en Slack (supervisión) — incluir info Shopify en primer mensaje
+  const shopifySlackInfo = context?.shopifySlackInfo || null;
   if (notifySlack) {
     await slack.notifyHandoff(from, userText, config);
   } else {
-    await slack.logConversation(from, userText, replyText, config);
+    await slack.logConversation(from, userText, replyText, config, shopifySlackInfo);
   }
 }
 

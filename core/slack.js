@@ -37,7 +37,7 @@ function resolveChannel(config) {
 
 // ── Conversación normal (IA + cliente) → log en Slack ───────────────────────
 
-async function logConversation(phone, userText, botText, config) {
+async function logConversation(phone, userText, botText, config, shopifyInfo = null) {
   if (!SLACK_TOKEN) return;
 
   const channel  = resolveChannel(config);
@@ -58,15 +58,19 @@ async function logConversation(phone, userText, botText, config) {
       text: formatted
     });
   } else {
-    // Crear nuevo thread
+    // Crear nuevo thread con info de Shopify si existe
     const phoneLabel = phone.startsWith('56') ? `+${phone}` : phone;
+    let headerText = `📱 *Nueva conversación* — ${phoneLabel}`;
+    if (shopifyInfo) headerText += shopifyInfo;
+    headerText += `\n\nEscribe \`tomar\` para tomar control o \`soltar\` para devolver al bot.`;
+
     const result = await slackPost({
       channel,
-      text: `📱 *Nueva conversación* — ${phoneLabel}`,
+      text: headerText,
       blocks: [
         {
           type: 'section',
-          text: { type: 'mrkdwn', text: `📱 *Nueva conversación* — ${phoneLabel}\n\nResponde en este thread para tomar control. Escribe \`tomar\` para desactivar el bot.` }
+          text: { type: 'mrkdwn', text: headerText }
         }
       ]
     });
