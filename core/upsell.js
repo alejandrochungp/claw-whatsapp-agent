@@ -132,11 +132,8 @@ async function findComplemento(lineItems) {
         // Obtener precio del complemento
         const precioComplemento = par.precio || await getPrecioComplemento(par.complemento);
 
-        // No recomendar si sube el ticket en más del MAX_UPSELL_PCT
-        if (totalPedido > 0 && precioComplemento / totalPedido > MAX_UPSELL_PCT) {
-          logger.log(`[upsell] Complemento ${par.complemento} omitido — sube ticket ${Math.round(precioComplemento/totalPedido*100)}% (máx ${MAX_UPSELL_PCT*100}%)`);
-          continue;
-        }
+        // Filtro de precio desactivado — siempre recomendar
+        // TODO: definir lógica de precio con Alejandro
 
         return { item, par, precioComplemento, totalPedido };
       }
