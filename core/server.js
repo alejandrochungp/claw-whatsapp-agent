@@ -81,6 +81,15 @@ function start(config, business) {
     }
   });
 
+  // ── POST /admin/debug-context — ver contexto Redis de un número ──────────
+  app.post('/admin/debug-context', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone requerido' });
+    const ctx  = await memory.getContext(phone);
+    const hist = await memory.getHistory(phone, 5);
+    res.json({ context: ctx, recentHistory: hist });
+  });
+
   // ── POST /admin/campaign-context — registrar contexto de campaña en Redis ──
   app.post('/admin/campaign-context', async (req, res) => {
     const { phone, campaign } = req.body;
