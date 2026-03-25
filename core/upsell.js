@@ -12,8 +12,8 @@ const meta      = require('./meta');
 const logger    = require('./logger');
 const complementos = require('../tenants/yeppo/complementos.json');
 
-// Tiempo de espera antes de enviar upsell (15 min)
-const UPSELL_DELAY_MS = 15 * 60 * 1000;
+// Tiempo de espera antes de enviar upsell (15 min en prod, 5s en test)
+const UPSELL_DELAY_MS = process.env.UPSELL_TEST_MODE === 'true' ? 5000 : 15 * 60 * 1000;
 
 // ── Normalizar nombre de producto para matching parcial ─────────────────────
 function normalize(str) {
