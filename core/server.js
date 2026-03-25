@@ -90,6 +90,18 @@ function start(config, business) {
     res.json({ context: ctx, recentHistory: hist });
   });
 
+  // ── POST /admin/reset-context — limpiar contexto de un número (solo pruebas) ──
+  app.post('/admin/reset-context', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone requerido' });
+    await memory.updateContext(phone, {
+      shopifyChecked: false, shopifyContext: null, shopifySlackInfo: null, customerName: null,
+      upsellPendiente: false, upsellOrderId: null, upsellOrderName: null, upsellMatch: null
+    });
+    logger.log(`[admin] Contexto reseteado para ${phone}`);
+    res.json({ ok: true, phone });
+  });
+
   // ── POST /admin/campaign-context — registrar contexto de campaña en Redis ──
   app.post('/admin/campaign-context', async (req, res) => {
     const { phone, campaign } = req.body;
