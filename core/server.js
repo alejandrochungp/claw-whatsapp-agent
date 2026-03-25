@@ -14,6 +14,7 @@ const meta       = require('./meta');
 const logger     = require('./logger');
 const shopify    = require('./shopify');
 const audio      = require('./audio');
+const upsell     = require('./upsell');
 
 function start(config, business) {
   const app  = express();
@@ -63,6 +64,21 @@ function start(config, business) {
       phone: config.businessPhone,
       uptime: process.uptime()
     });
+  });
+
+  // ── POST /shopify/order — webhook Shopify order_paid ────────────────────────
+  app.post('/shopify/order', async (req, res) => {
+    res.sendStatus(200); // Responder rápido a Shopify
+    try {
+      const order = req.body;
+      if (!order?.id) return;
+      logger.log(`[shopify] Nuevo pedido: #${order.name} — ${order.financial_status}`);
+      if (order.financial_status === 'paid') {
+        await upsell.handleNewOrder(order, config);
+      }
+    } catch (err) {
+      logger.log(`[shopify] Error webhook: ${err.message}`);
+    }
   });
 
   // ── POST /admin/seed-thread — inyectar thread→phone en Redis (one-time migration) ──

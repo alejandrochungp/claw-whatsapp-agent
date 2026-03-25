@@ -1,0 +1,60 @@
+{
+  "version": "2026-03-25",
+  "nota": "Productos frecuentemente comprados juntos — basado en historial real de Shopify",
+  "pares": [
+    {
+      "producto": "COLLAGEN NIGHT WRAPPING MASK",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence",
+      "razon": "hidratación nocturna completa — la esencia potencia la acción del mask",
+      "frecuencia": 4
+    },
+    {
+      "producto": "345 Relief Cream",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence",
+      "razon": "rutina calmante + lifting — combinación muy popular",
+      "frecuencia": 4
+    },
+    {
+      "producto": "345 Relief Cream",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "razon": "manchas y rojeces — el sérum trata, la crema calma",
+      "frecuencia": 4
+    },
+    {
+      "producto": "Bloody Liar Coating Tint",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "razon": "rutina de maquillaje completa con protección solar",
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitalizing Nutrition Scalp Pack",
+      "complemento": "Vitalizing Nutrition Hair Pack",
+      "razon": "rutina capilar completa cuero cabelludo + largo",
+      "frecuencia": 3
+    },
+    {
+      "producto": "My Lash Serum",
+      "complemento": "345 Relief Cream",
+      "razon": "cuidado de área de ojos completo",
+      "frecuencia": 2
+    },
+    {
+      "producto": "Shampoo for Oily Scalp",
+      "complemento": "1025 Dokdo Cleanser",
+      "razon": "rutina de limpieza profunda piel y cuero cabelludo",
+      "frecuencia": 2
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence",
+      "complemento": "PDRN Pink Collagen Capsule Cream",
+      "razon": "rutina antiaging completa esencia + crema",
+      "frecuencia": 2
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Shampoo",
+      "complemento": "DlaeSoo Hair Loss Care Treatment",
+      "razon": "sistema completo anticaída — shampoo + tratamiento",
+      "frecuencia": 2
+    }
+  ]
+}
