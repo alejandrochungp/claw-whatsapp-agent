@@ -65,6 +65,18 @@ function shopifyGet(path) {
   });
 }
 
+// ── Verificar que el teléfono del cliente realmente coincide ─────────────────
+function phonesMatch(searchPhone, customerPhone) {
+  if (!customerPhone) return false;
+  // Normalizar ambos a solo dígitos
+  const a = searchPhone.replace(/\D/g, '');
+  const b = customerPhone.replace(/\D/g, '');
+  // Comparar los últimos 9 dígitos (número local sin prefijo país)
+  const aSuffix = a.slice(-9);
+  const bSuffix = b.slice(-9);
+  return aSuffix === bSuffix;
+}
+
 // ── Buscar cliente por teléfono ──────────────────────────────────────────────
 async function findCustomer(phone) {
   if (!TOKEN) return null;
@@ -73,10 +85,12 @@ async function findCustomer(phone) {
 
   for (const variant of variants) {
     const encoded = encodeURIComponent(variant);
-    const result  = await shopifyGet(`/customers/search.json?query=phone:${encoded}&limit=1&fields=id,first_name,last_name,email,phone,orders_count,total_spent,tags,note`);
+    const result  = await shopifyGet(`/customers/search.json?query=phone:${encoded}&limit=5&fields=id,first_name,last_name,email,phone,orders_count,total_spent,tags,note`);
 
     if (result?.customers?.length) {
-      return result.customers[0];
+      // Verificar que el teléfono realmente coincide — Shopify hace búsqueda parcial
+      const exactMatch = result.customers.find(c => phonesMatch(phone, c.phone));
+      if (exactMatch) return exactMatch;
     }
   }
 
