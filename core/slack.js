@@ -20,6 +20,43 @@ const activeConversations = new Map();
 // phone → timestamp del último "tomar" (para manejar race conditions)
 const recentTakes         = new Map();
 
+// ── Redis para persistir phoneToThread entre reinicios ──────────────────────
+let redisClient = null;
+
+async function initRedis() {
+  const url = process.env.REDIS_URL;
+  if (!url) return;
+  try {
+    const { createClient } = require('redis');
+    redisClient = createClient({ url });
+    redisClient.on('error', () => {});
+    await redisClient.connect();
+
+    // Restaurar phoneToThread desde Redis al arrancar
+    const keys = await redisClient.keys('slack:thread:*');
+    for (const key of keys) {
+      const raw = await redisClient.get(key);
+      if (raw) {
+        const phone = key.replace('slack:thread:', '');
+        phoneToThread.set(phone, JSON.parse(raw));
+      }
+    }
+    console.log(`[slack] Redis conectado ✅ — ${phoneToThread.size} threads restaurados`);
+  } catch (err) {
+    console.error('[slack] Redis error:', err.message);
+    redisClient = null;
+  }
+}
+
+async function saveThread(phone, data) {
+  if (!redisClient) return;
+  try {
+    await redisClient.setEx(`slack:thread:${phone}`, 86400, JSON.stringify(data)); // TTL 24h
+  } catch {}
+}
+
+initRedis().catch(() => {});
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function slackPost(payload) {
@@ -78,7 +115,9 @@ async function logConversation(phone, userText, botText, config, shopifyInfo = n
     });
 
     if (result?.ts) {
-      phoneToThread.set(phone, { thread_ts: result.ts, channel, timestamp: Date.now() });
+      const threadData = { thread_ts: result.ts, channel, timestamp: Date.now() };
+      phoneToThread.set(phone, threadData);
+      await saveThread(phone, threadData);
 
       await slackPost({
         channel,
@@ -106,7 +145,9 @@ async function notifyHandoff(phone, userText, config) {
   } else {
     const result = await slackPost({ channel, text: alertText });
     if (result?.ts) {
-      phoneToThread.set(phone, { thread_ts: result.ts, channel, timestamp: Date.now() });
+      const threadData = { thread_ts: result.ts, channel, timestamp: Date.now() };
+      phoneToThread.set(phone, threadData);
+      await saveThread(phone, threadData);
     }
   }
 }
