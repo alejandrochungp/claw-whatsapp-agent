@@ -132,37 +132,57 @@ function extractPhone(order) {
   return null;
 }
 
-// ── Crear Draft Order con complemento y obtener link de pago ─────────────────
-async function createDraftOrder(order, match) {
+// ── Modificar pedido original agregando el complemento + obtener link de pago ─
+async function editOrder(order, match) {
   try {
-    const draft = await shopifyRequest('POST', '/draft_orders.json', {
-      draft_order: {
-        customer: order.customer?.id ? { id: order.customer.id } : undefined,
-        shipping_address: order.shipping_address,
-        note: `Upsell post-compra — complemento a pedido ${order.name}`,
-        line_items: [{
-          title: match.par.complemento,
-          price: match.precioComplemento.toString(),
-          quantity: 1,
-          requires_shipping: true
-        }],
-        shipping_line: {
-          title: 'Envío incluido (complemento)',
-          price: '0'
+    const orderId = order.id;
+
+    // 1. Iniciar edición del pedido
+    const beginEdit = await shopifyRequest('POST', `/orders/${orderId}/edits.json`, {
+      order_edit: { reason: `Upsell post-compra — agregar ${match.par.complemento}` }
+    });
+
+    const editId = beginEdit?.order_edit?.id;
+    if (!editId) throw new Error('No se pudo iniciar edición del pedido');
+
+    // 2. Buscar variant_id del complemento en Shopify
+    const searchResult = await shopifyRequest('GET', `/products.json?title=${encodeURIComponent(match.par.complemento)}&fields=id,title,variants&limit=5`);
+    const products = searchResult?.products || [];
+    const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const product = products.find(p => norm(p.title).includes(norm(match.par.complemento))) || products[0];
+    const variantId = product?.variants?.[0]?.id;
+
+    if (!variantId) throw new Error(`No se encontró variant_id para ${match.par.complemento}`);
+
+    // 3. Agregar producto a la edición
+    await shopifyRequest('POST', `/orders/${orderId}/edits/${editId}/line_items.json`, {
+      line_item: {
+        variant_id: variantId,
+        quantity: 1,
+        applied_discount: {
+          value_type: 'fixed_amount',
+          value: '0',  // Sin descuento en envío
+          description: 'Envío incluido en pedido original'
         }
       }
     });
 
-    if (draft?.draft_order?.invoice_url) {
-      return {
-        draftId:    draft.draft_order.id,
-        invoiceUrl: draft.draft_order.invoice_url
-      };
-    }
-    return null;
+    // 4. Confirmar edición y obtener link de pago
+    const committed = await shopifyRequest('POST', `/orders/${orderId}/edits/${editId}/commit.json`, {
+      order_edit: {
+        notify_customer: false,  // No notificar por email — lo hace el agente por WA
+        staffNote: `Upsell agregado por agente WhatsApp — ${match.par.complemento}`
+      }
+    });
+
+    const paymentUrl = committed?.order_edit?.invoice_url || null;
+    logger.log(`[upsell] Pedido #${order.name} editado — complemento agregado, link: ${paymentUrl}`);
+
+    return { success: true, paymentUrl };
+
   } catch (err) {
-    logger.log(`[upsell] Error creando draft order: ${err.message}`);
-    return null;
+    logger.log(`[upsell] Error editando pedido: ${err.message}`);
+    return { success: false, paymentUrl: null };
   }
 }
 
@@ -284,9 +304,9 @@ async function handleUpsellAccepted(phone, order, match, config) {
   try {
     logger.log(`[upsell] Cliente ${phone} aceptó upsell — creando draft order`);
 
-    // 1. Crear draft order con link de pago
-    const draft = await createDraftOrder(order, match);
-    const invoiceUrl = draft?.invoiceUrl;
+    // 1. Modificar pedido original agregando el complemento
+    const edit = await editOrder(order, match);
+    const invoiceUrl = edit?.paymentUrl;
 
     // 2. Notificar #logistics
     await notifyLogistics(order, match, phone, invoiceUrl, config);
