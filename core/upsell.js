@@ -277,14 +277,23 @@ async function editOrder(order, match) {
     const invoiceResult = await shopifyGraphQL(`
       mutation orderInvoiceSend($id: ID!) {
         orderInvoiceSend(id: $id) {
-          order { id name }
+          order { id name email }
           userErrors { field message }
         }
       }
-    `, { id: orderGid }).catch(() => null);
+    `, { id: orderGid }).catch(e => { logger.log(`[upsell] invoice catch: ${e.message}`); return null; });
 
-    const invoiceSent = !invoiceResult?.data?.orderInvoiceSend?.userErrors?.length;
-    logger.log(`[upsell] ✅ Pedido ${order.name} editado — ${match.par.complemento} agregado, location OK${invoiceSent ? ', factura enviada' : ''}`);
+    const invoiceErrors = invoiceResult?.data?.orderInvoiceSend?.userErrors;
+    const invoiceOrder  = invoiceResult?.data?.orderInvoiceSend?.order;
+    if (invoiceErrors?.length) {
+      logger.log(`[upsell] ❌ Invoice error: ${JSON.stringify(invoiceErrors)}`);
+    } else if (invoiceOrder) {
+      logger.log(`[upsell] ✅ Factura enviada a: ${invoiceOrder.email}`);
+    } else {
+      logger.log(`[upsell] ⚠️ Invoice resultado inesperado: ${JSON.stringify(invoiceResult)}`);
+    }
+    const invoiceSent = !invoiceErrors?.length && !!invoiceOrder;
+    logger.log(`[upsell] ✅ Pedido ${order.name} editado — ${match.par.complemento} agregado, location OK${invoiceSent ? ', factura enviada' : ', sin factura'}`);
     return { success: true, invoiceSent };
 
   } catch (err) {
