@@ -1,26 +1,34 @@
 /**
  * core/slack.js — Bridge Slack ↔ WhatsApp (supervisión + handoff humano)
  *
- * Funcionalidades:
- * - Loguear conversaciones IA como threads en Slack
- * - Notificar cuando se requiere humano
- * - Detectar respuestas del equipo y rutearlas de vuelta al cliente
- * - Comandos: "tomar" (humano toma control) / "soltar" (devuelve al bot)
+ * Estados visuales de cada conversación:
+ *   🟡 En curso (bot respondiendo)
+ *   🔴 Requiere atención humana → menciona el canal
+ *   🟢 Resuelto por bot
+ *   ✅ Resuelto por operador humano
+ *
+ * Comandos en thread:
+ *   tomar   → humano toma control, thread pasa a 🔴
+ *   soltar  → humano devuelve al bot, thread pasa a ✅
+ *   listo   → bot marcó como resuelto, thread pasa a 🟢
+ *   urgente → menciona @canal para llamar atención
  */
 
 const axios = require('axios');
 
-const SLACK_TOKEN   = process.env.SLACK_BOT_TOKEN;
+const SLACK_TOKEN        = process.env.SLACK_BOT_TOKEN;
 const HANDOFF_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sin actividad → bot retoma
 
-// phone → { thread_ts, channel, timestamp }
+// phone → { thread_ts, channel, timestamp, headerTs }
 const phoneToThread       = new Map();
 // phone → { thread_ts, takenAt }
 const activeConversations = new Map();
 // phone → timestamp del último "tomar" (para manejar race conditions)
 const recentTakes         = new Map();
+// userId → displayName (cache)
+const userNameCache       = new Map();
 
-// ── Redis para persistir phoneToThread entre reinicios ──────────────────────
+// ── Redis ────────────────────────────────────────────────────────────────────
 let redisClient = null;
 
 async function initRedis() {
@@ -32,7 +40,6 @@ async function initRedis() {
     redisClient.on('error', () => {});
     await redisClient.connect();
 
-    // Restaurar phoneToThread desde Redis al arrancar
     const keys = await redisClient.keys('slack:thread:*');
     for (const key of keys) {
       const raw = await redisClient.get(key);
@@ -51,13 +58,13 @@ async function initRedis() {
 async function saveThread(phone, data) {
   if (!redisClient) return;
   try {
-    await redisClient.setEx(`slack:thread:${phone}`, 86400, JSON.stringify(data)); // TTL 24h
+    await redisClient.setEx(`slack:thread:${phone}`, 86400, JSON.stringify(data));
   } catch {}
 }
 
 initRedis().catch(() => {});
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function slackPost(payload) {
   if (!SLACK_TOKEN) return Promise.resolve(null);
@@ -69,12 +76,58 @@ function slackPost(payload) {
   });
 }
 
+function slackUpdate(payload) {
+  if (!SLACK_TOKEN) return Promise.resolve(null);
+  return axios.post('https://slack.com/api/chat.update', payload, {
+    headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json' }
+  }).then(r => r.data).catch(() => null);
+}
+
 function resolveChannel(config) {
-  // Acepta string "#canal" o ID directo
   return process.env.SLACK_CHANNEL_ID || config.slackChannel;
 }
 
-// ── Conversación normal (IA + cliente) → log en Slack ───────────────────────
+// Obtener nombre del operador desde su user_id de Slack
+async function getUserName(userId) {
+  if (!userId) return 'Operador';
+  if (userNameCache.has(userId)) return userNameCache.get(userId);
+  try {
+    const r = await axios.get(`https://slack.com/api/users.info?user=${userId}`, {
+      headers: { Authorization: `Bearer ${SLACK_TOKEN}` }
+    });
+    const name = r.data?.user?.profile?.display_name
+              || r.data?.user?.profile?.real_name
+              || r.data?.user?.name
+              || 'Operador';
+    const firstName = name.split(' ')[0];
+    userNameCache.set(userId, firstName);
+    return firstName;
+  } catch {
+    return 'Operador';
+  }
+}
+
+// Actualizar el header del thread con el estado actual
+async function updateThreadHeader(phone, status, channel, headerTs, extra = '') {
+  if (!headerTs) return;
+  const threadData = phoneToThread.get(phone);
+  const baseText   = threadData?.headerBase || `📱 *+${phone}*`;
+
+  let statusEmoji, statusText;
+  switch (status) {
+    case 'bot':      statusEmoji = '🟡'; statusText = 'En curso — bot respondiendo'; break;
+    case 'human':    statusEmoji = '🔴'; statusText = `Tomado por operador${extra ? ` (${extra})` : ''}`; break;
+    case 'resolved_human': statusEmoji = '✅'; statusText = `Resuelto por ${extra || 'operador'}`; break;
+    case 'resolved_bot':   statusEmoji = '🟢'; statusText = 'Resuelto por bot'; break;
+    case 'attention': statusEmoji = '🚨'; statusText = 'Requiere atención humana'; break;
+    default:         statusEmoji = '🟡'; statusText = status;
+  }
+
+  const newText = `${statusEmoji} ${baseText}\n*Estado:* ${statusText}\n\nComandos: \`tomar\` · \`soltar\` · \`urgente\``;
+  await slackUpdate({ channel, ts: headerTs, text: newText });
+}
+
+// ── Log conversación normal (bot ↔ cliente) ──────────────────────────────────
 
 async function logConversation(phone, userText, botText, config, shopifyInfo = null) {
   if (!SLACK_TOKEN) return;
@@ -90,88 +143,124 @@ async function logConversation(phone, userText, botText, config, shopifyInfo = n
   const formatted = `👤 *Cliente:* ${userText}\n🤖 *Bot:* ${botText}`;
 
   if (phoneToThread.has(phone)) {
-    // Agregar al thread existente
     await slackPost({
       channel,
       thread_ts: phoneToThread.get(phone).thread_ts,
       text: formatted
     });
   } else {
-    // Crear nuevo thread con info de Shopify si existe
-    const phoneLabel = phone.startsWith('56') ? `+${phone}` : phone;
-    let headerText = `📱 *Nueva conversación* — ${phoneLabel}`;
-    if (shopifyInfo) headerText += shopifyInfo;
-    headerText += `\n\nEscribe \`tomar\` para tomar control o \`soltar\` para devolver al bot.`;
+    // Nuevo thread
+    const phoneLabel = `+${phone}`;
+    let shopifyLine  = shopifyInfo ? shopifyInfo : '';
+    const headerBase = `📱 *${phoneLabel}*${shopifyLine}`;
+    const headerText = `🟡 ${headerBase}\n*Estado:* En curso — bot respondiendo\n\nComandos: \`tomar\` · \`soltar\` · \`urgente\``;
 
     const result = await slackPost({
       channel,
       text: headerText,
-      blocks: [
-        {
-          type: 'section',
-          text: { type: 'mrkdwn', text: headerText }
-        }
-      ]
+      blocks: [{ type: 'section', text: { type: 'mrkdwn', text: headerText } }]
     });
 
     if (result?.ts) {
-      const threadData = { thread_ts: result.ts, channel, timestamp: Date.now() };
+      const threadData = {
+        thread_ts: result.ts,
+        headerTs: result.ts,
+        headerBase,
+        channel,
+        timestamp: Date.now()
+      };
       phoneToThread.set(phone, threadData);
       await saveThread(phone, threadData);
 
-      await slackPost({
-        channel,
-        thread_ts: result.ts,
-        text: formatted
-      });
+      await slackPost({ channel, thread_ts: result.ts, text: formatted });
     }
   }
 }
 
-// ── Notificar handoff (cliente pide humano) ──────────────────────────────────
+// ── Notificar handoff (cliente pide humano) ───────────────────────────────────
 
 async function notifyHandoff(phone, userText, config) {
   if (!SLACK_TOKEN) return;
 
-  const channel   = resolveChannel(config);
-  const phoneLabel = phone.startsWith('56') ? `+${phone}` : phone;
+  const channel    = resolveChannel(config);
+  const phoneLabel = `+${phone}`;
+  const existing   = phoneToThread.get(phone);
 
-  const existing = phoneToThread.get(phone);
-
-  const alertText = `🚨 *${phoneLabel} pide hablar con una persona*\n\n"${userText}"\n\nEscribe \`tomar\` en este thread para tomar el control.`;
+  const alertText = `🚨 *${phoneLabel} pide hablar con una persona*\n\n"${userText}"\n\n<!channel> alguien puede tomar esto? escribe \`tomar\` en este thread.`;
 
   if (existing) {
     await slackPost({ channel, thread_ts: existing.thread_ts, text: alertText });
+    await updateThreadHeader(phone, 'attention', channel, existing.headerTs);
   } else {
-    const result = await slackPost({ channel, text: alertText });
+    const headerBase = `📱 *${phoneLabel}*`;
+    const headerText = `🚨 ${headerBase}\n*Estado:* Requiere atención humana\n\nComandos: \`tomar\` · \`soltar\` · \`urgente\``;
+    const result = await slackPost({
+      channel,
+      text: `<!channel> ${alertText}`,
+      blocks: [{ type: 'section', text: { type: 'mrkdwn', text: headerText } }]
+    });
     if (result?.ts) {
-      const threadData = { thread_ts: result.ts, channel, timestamp: Date.now() };
+      const threadData = { thread_ts: result.ts, headerTs: result.ts, headerBase, channel, timestamp: Date.now() };
       phoneToThread.set(phone, threadData);
       await saveThread(phone, threadData);
+      await slackPost({ channel, thread_ts: result.ts, text: alertText });
     }
   }
 }
 
-// ── Reenviar mensaje a thread existente (cuando humano tiene control) ────────
+// ── Marcar conversación como resuelta por bot ────────────────────────────────
+
+async function markResolvedByBot(phone, config) {
+  if (!SLACK_TOKEN) return;
+  const channel  = resolveChannel(config);
+  const existing = phoneToThread.get(phone);
+  if (!existing) return;
+  await updateThreadHeader(phone, 'resolved_bot', channel, existing.headerTs);
+  await slackPost({
+    channel,
+    thread_ts: existing.thread_ts,
+    text: '🟢 Conversación resuelta por el bot.'
+  });
+}
+
+// ── Reenviar mensaje al thread cuando humano tiene control ───────────────────
 
 async function forwardToThread(phone, userText, thread_ts, config) {
   const channel = resolveChannel(config);
   await slackPost({ channel, thread_ts, text: `💬 *Cliente:* ${userText}` });
 
-  // Renovar timeout
   activeConversations.set(phone, {
     thread_ts,
     takenAt: activeConversations.get(phone)?.takenAt || Date.now()
   });
 }
 
-// ── Verificar si hay humano activo para este número ──────────────────────────
+// ── Enviar respuesta del operador al cliente con su nombre ────────────────────
+
+async function sendOperatorReply(phone, text, userId, config) {
+  const operatorName = await getUserName(userId);
+  const existing     = phoneToThread.get(phone);
+  const channel      = resolveChannel(config);
+
+  // Loguear en Slack con firma del operador
+  if (existing) {
+    await slackPost({
+      channel,
+      thread_ts: existing.thread_ts,
+      text: `📤 *${operatorName}:* ${text}`
+    });
+  }
+
+  // Devolver el nombre para que server.js firme el mensaje al cliente
+  return operatorName;
+}
+
+// ── Verificar si hay humano activo ────────────────────────────────────────────
 
 function getActiveConversation(phone) {
   const info = activeConversations.get(phone);
   if (!info) return null;
 
-  // Timeout: si pasaron 30 min sin actividad, devolver al bot
   if (Date.now() - info.takenAt > HANDOFF_TIMEOUT_MS) {
     activeConversations.delete(phone);
     console.log(`🤖 Timeout handoff ${phone} → bot retoma`);
@@ -181,17 +270,14 @@ function getActiveConversation(phone) {
   return info.thread_ts;
 }
 
-// ── Procesar comandos desde Slack ────────────────────────────────────────────
-// Se llama desde el endpoint /slack/events del server si se configura
+// ── Comandos desde Slack ──────────────────────────────────────────────────────
 
 function handleSlackCommand(command, thread_ts) {
   if (command === 'tomar') {
-    // Buscar qué phone corresponde a este thread
     for (const [phone, info] of phoneToThread) {
       if (info.thread_ts === thread_ts) {
         activeConversations.set(phone, { thread_ts, takenAt: Date.now() });
         recentTakes.set(phone, Date.now());
-        console.log(`👤 Humano tomó control de ${phone}`);
         return phone;
       }
     }
@@ -201,7 +287,6 @@ function handleSlackCommand(command, thread_ts) {
     for (const [phone, info] of activeConversations) {
       if (info.thread_ts === thread_ts) {
         activeConversations.delete(phone);
-        console.log(`🤖 Bot retoma control de ${phone}`);
         return phone;
       }
     }
@@ -210,7 +295,6 @@ function handleSlackCommand(command, thread_ts) {
   return null;
 }
 
-// Detectar si "tomar" fue escrito en los últimos 5 segundos (race condition)
 function getRecentTake(phone) {
   const ts = recentTakes.get(phone);
   if (!ts) return false;
@@ -223,6 +307,9 @@ module.exports = {
   logConversation,
   notifyHandoff,
   forwardToThread,
+  sendOperatorReply,
+  markResolvedByBot,
+  updateThreadHeader,
   getActiveConversation,
   getRecentTake,
   handleSlackCommand,

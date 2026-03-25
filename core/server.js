@@ -130,43 +130,65 @@ function start(config, business) {
       return;
     }
 
-    // ── Comando: tomar ───────────────────────────────────────────────────
+    const userId = event.user; // ID del operador que escribe
+
+    // ── Comando: tomar ────────────────────────────────────────────────────
     if (text === 'tomar') {
       const phone = slack.handleSlackCommand('tomar', thread_ts);
       if (phone) {
-        logger.log(`👤 Humano tomó control de ${phone}`);
-        await postSlackMessage(channel, thread_ts, '👤 Control tomado. El bot está pausado. Escribe `soltar` para devolver al bot.');
+        const operatorName = await slack.sendOperatorReply(phone, null, userId, config);
+        logger.log(`👤 ${operatorName} tomó control de ${phone}`);
+        // Actualizar header del thread
+        const threadData = slack.phoneToThread.get(phone);
+        if (threadData?.headerTs) {
+          await slack.updateThreadHeader(phone, 'human', channel, threadData.headerTs, operatorName);
+        }
+        await postSlackMessage(channel, thread_ts, `👤 *${operatorName}* tomó el control. Bot pausado. Escribe \`soltar\` cuando termines.`);
       }
       return;
     }
 
-    // ── Comando: soltar ──────────────────────────────────────────────────
+    // ── Comando: soltar ───────────────────────────────────────────────────
     if (text === 'soltar') {
       const phone = slack.handleSlackCommand('soltar', thread_ts);
       if (phone) {
-        logger.log(`🤖 Bot retoma control de ${phone}`);
-        await postSlackMessage(channel, thread_ts, '🤖 Bot reactivado. Volviendo a respuesta automática.');
+        const operatorName = await slack.sendOperatorReply(phone, null, userId, config);
+        const threadData   = slack.phoneToThread.get(phone);
+        if (threadData?.headerTs) {
+          await slack.updateThreadHeader(phone, 'resolved_human', channel, threadData.headerTs, operatorName);
+        }
+        logger.log(`✅ ${operatorName} soltó ${phone} — marcado como resuelto`);
+        await postSlackMessage(channel, thread_ts, `✅ Resuelto por *${operatorName}*. Bot reactivado.`);
       }
       return;
     }
 
-    // ── Respuesta humana en thread → enviar al cliente ───────────────────
-    // Buscar el phone asociado a este thread
+    // ── Comando: urgente ──────────────────────────────────────────────────
+    if (text === 'urgente' || text === '!') {
+      for (const [phone, info] of slack.phoneToThread) {
+        if (info.thread_ts === thread_ts) {
+          await postSlackMessage(channel, thread_ts, `🚨 <!channel> se requiere atención urgente en esta conversación (+${phone})`);
+          if (info.headerTs) {
+            await slack.updateThreadHeader(phone, 'attention', channel, info.headerTs);
+          }
+          break;
+        }
+      }
+      return;
+    }
+
+    // ── Respuesta humana en thread → enviar al cliente con firma ──────────
     for (const [phone, info] of slack.phoneToThread) {
       if (info.thread_ts === thread_ts) {
-        // Verificar si hay control humano activo
         const activeThread = slack.getActiveConversation(phone);
-        if (activeThread) {
-          await meta.sendMessage(phone, event.text, config);
-          logger.log(`📤 Humano respondió a ${phone}: ${event.text}`);
-        } else {
-          // Thread existe pero humano aún no tomó control (race condition)
-          // Verificar si "tomar" fue escrito recientemente (últimos 5s)
-          const recentTake = slack.getRecentTake(phone);
-          if (recentTake) {
-            await meta.sendMessage(phone, event.text, config);
-            logger.log(`📤 Humano respondió a ${phone} (race condition handled): ${event.text}`);
-          }
+        const recentTake   = slack.getRecentTake(phone);
+
+        if (activeThread || recentTake) {
+          // Obtener nombre del operador y firmar el mensaje
+          const operatorName = await slack.sendOperatorReply(phone, event.text, userId, config);
+          const msgToClient  = `${event.text}\n\n— ${operatorName}`;
+          await meta.sendMessage(phone, msgToClient, config);
+          logger.log(`📤 ${operatorName} respondió a ${phone}: ${event.text}`);
         }
         break;
       }
