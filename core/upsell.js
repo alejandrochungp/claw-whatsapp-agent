@@ -253,7 +253,27 @@ async function editOrder(order, match) {
     const errors3 = commitResult?.data?.orderEditCommit?.userErrors;
     if (errors3?.length) throw new Error(errors3.map(e => e.message).join(', '));
 
-    // 5. Enviar factura al cliente por email (Shopify notifica con link de pago)
+    // 5. Mover fulfillment order del complemento a la misma ubicación del pedido original
+    if (locationId) {
+      try {
+        const foResult = await shopifyRequest('GET', `/orders/${order.id}/fulfillment_orders.json`);
+        const openFOs = (foResult?.fulfillment_orders || []).filter(fo =>
+          fo.status === 'open' && fo.assigned_location_id !== locationId &&
+          fo.line_items?.some(li => li.variant_id?.toString() === variantId.toString())
+        );
+
+        for (const fo of openFOs) {
+          await shopifyRequest('POST', `/fulfillment_orders/${fo.id}/move.json`, {
+            fulfillment_order: { new_location_id: locationId }
+          });
+          logger.log(`[upsell] FO ${fo.id} movido de ${fo.assigned_location_id} → ${locationId}`);
+        }
+      } catch (e) {
+        logger.log(`[upsell] Warning: no se pudo mover FO: ${e.message}`);
+      }
+    }
+
+    // 6. Enviar factura al cliente por email
     const invoiceResult = await shopifyGraphQL(`
       mutation orderInvoiceSend($id: ID!) {
         orderInvoiceSend(id: $id) {
@@ -264,7 +284,7 @@ async function editOrder(order, match) {
     `, { id: orderGid }).catch(() => null);
 
     const invoiceSent = !invoiceResult?.data?.orderInvoiceSend?.userErrors?.length;
-    logger.log(`[upsell] ✅ Pedido ${order.name} editado — ${match.par.complemento} agregado${invoiceSent ? ', factura enviada por email' : ''}`);
+    logger.log(`[upsell] ✅ Pedido ${order.name} editado — ${match.par.complemento} agregado, location OK${invoiceSent ? ', factura enviada' : ''}`);
     return { success: true, invoiceSent };
 
   } catch (err) {
