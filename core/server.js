@@ -78,6 +78,9 @@ function start(config, business) {
     const event = body.event;
     if (!event) return;
 
+    // Debug: loguear todos los eventos Slack entrantes
+    logger.log(`[slack-event] type=${event.type} subtype=${event.subtype || '-'} bot_id=${event.bot_id || '-'} thread=${event.thread_ts || '-'} text="${(event.text || '').slice(0, 50)}"`);
+
     // Solo procesar mensajes de texto en canales (no del propio bot)
     if (event.type !== 'message' || event.bot_id || event.subtype) return;
 
@@ -85,7 +88,10 @@ function start(config, business) {
     const thread_ts  = event.thread_ts;
     const channel    = event.channel;
 
-    if (!thread_ts) return; // Solo mensajes en threads
+    if (!thread_ts) {
+      logger.log(`[slack-event] ignorado - sin thread_ts`);
+      return;
+    }
 
     // ── Comando: tomar ───────────────────────────────────────────────────
     if (text === 'tomar') {
