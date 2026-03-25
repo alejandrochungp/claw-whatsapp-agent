@@ -228,6 +228,26 @@ function isDuplicate(messageId) {
   return false;
 }
 
+// ── Debounce por usuario — espera 3s por si el cliente envía más mensajes ────
+const pendingReplies = new Map(); // phone → { timer, texts[] }
+const DEBOUNCE_MS = 3000;
+
+function debounceMessage(phone, text, handler) {
+  if (pendingReplies.has(phone)) {
+    const pending = pendingReplies.get(phone);
+    clearTimeout(pending.timer);
+    pending.texts.push(text);
+  } else {
+    pendingReplies.set(phone, { texts: [text], timer: null });
+  }
+  const pending = pendingReplies.get(phone);
+  pending.timer = setTimeout(async () => {
+    pendingReplies.delete(phone);
+    const combined = pending.texts.join(' ... ');
+    await handler(combined);
+  }, DEBOUNCE_MS);
+}
+
 // ── Mensaje entrante ────────────────────────────────────────────────────────
 async function handleMessage(message, value, config, business) {
   const from = message.from;
@@ -300,8 +320,13 @@ async function handleMessage(message, value, config, business) {
     return;
   }
 
-  // Generar respuesta
-  await sendReply(from, userText, config, business);
+  // Debounce: esperar 3s por si el cliente envía otro mensaje seguido
+  // Los audios se procesan de inmediato (ya tomaron tiempo en transcribir)
+  if (isAudio) {
+    await sendReply(from, userText, config, business);
+  } else {
+    debounceMessage(from, userText, (combinedText) => sendReply(from, combinedText, config, business));
+  }
 }
 
 // ── Generar y enviar respuesta ──────────────────────────────────────────────
@@ -319,6 +344,11 @@ async function sendReply(from, userText, config, business) {
   if (quickResult) {
     replyText    = quickResult.text;
     notifySlack  = quickResult.notifySlack || false;
+    // skipReply: el handler externo (ej. upsell) ya envía el mensaje — no hacer nada más
+    if (quickResult.skipReply) {
+      logger.log(`[reply] skipReply activo — respuesta delegada a handler externo`);
+      return;
+    }
   }
 
   // 2. Si el tenant pide IA o no hay respuesta rápida → Claude
@@ -363,8 +393,12 @@ async function sendReply(from, userText, config, business) {
   }
 }
 
+// Delay más realista: ~50ms por carácter, mínimo 1.5s, máximo 7s + variación aleatoria
 function humanDelay(len) {
-  const ms = Math.min(len * 40, 2500) + Math.random() * 400;
+  const base = Math.min(len * 50, 7000);
+  const min  = 1500;
+  const jitter = Math.random() * 800;
+  const ms = Math.max(base, min) + jitter;
   return new Promise(r => setTimeout(r, ms));
 }
 
