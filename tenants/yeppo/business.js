@@ -8,8 +8,9 @@
  *   buildSystemPrompt(context)             → string
  */
 
-const fs   = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
+const upsell = require('../../core/upsell');
 
 // Cargar prompt base + base de conocimiento
 const PROMPT_BASE = fs.readFileSync(path.join(__dirname, 'prompt.md'), 'utf8');
@@ -35,6 +36,27 @@ async function quickReply(userText, context, history) {
       text: 'Hola! Bienvenido a Yeppo 👋\n\nEn qué te puedo ayudar?',
       useAI: false
     };
+  }
+
+  // ── Respuesta a upsell pendiente ─────────────────────────────────────────
+  if (context?.upsellPendiente) {
+    const acepta = /\b(sí|si|dale|ok|quiero|me interesa|agrega|perfecto|claro|bueno|ya|yes)\b/.test(text);
+    const rechaza = /\b(no|nop|paso|no gracias|no me interesa|no quiero)\b/.test(text);
+
+    if (acepta) {
+      // Disparar flujo de aceptación en background
+      const orderMock = { id: context.upsellOrderId, name: context.upsellOrderName, total_price: '0', customer: {} };
+      const matchMock = { item: { title: context.upsellMatch?.producto }, par: { complemento: context.upsellMatch?.complemento, razon: '' }, precioComplemento: context.upsellMatch?.precio || 0 };
+      upsell.handleUpsellAccepted(context._phone, orderMock, matchMock, context._config).catch(() => {});
+      return { text: null, useAI: false }; // La respuesta la maneja handleUpsellAccepted
+    }
+
+    if (rechaza) {
+      const memory = require('../../core/memory');
+      await memory.updateContext(context._phone, { upsellPendiente: false });
+      return { text: 'sin problema! si en algún momento lo necesitas, avisame 😊' };
+    }
+    // Si no es clara la respuesta → dejar que la IA maneje
   }
 
   // ── Pedir humano ─────────────────────────────────────────────────────────

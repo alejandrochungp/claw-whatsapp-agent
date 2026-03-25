@@ -297,7 +297,9 @@ async function sendReply(from, userText, config, business) {
   let notifySlack = false;
 
   // 1. Lógica de negocio del tenant (reglas rápidas, sin LLM)
-  const quickResult = await business.quickReply(userText, context, history);
+  // Pasar phone y config en contexto para upsell handler
+  const contextWithMeta = { ...context, _phone: from, _config: config };
+  const quickResult = await business.quickReply(userText, contextWithMeta, history);
   if (quickResult) {
     replyText    = quickResult.text;
     notifySlack  = quickResult.notifySlack || false;
