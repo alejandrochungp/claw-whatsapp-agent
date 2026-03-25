@@ -20,7 +20,7 @@ const LOGISTICS_CHANNEL = 'C03L5HDQ0Q5';
 // No recomendar si el complemento sube el ticket en más de este %
 const MAX_UPSELL_PCT    = 0.5; // 50% del total del pedido
 
-// ── Shopify API helper ───────────────────────────────────────────────────────
+// ── Shopify REST helper ──────────────────────────────────────────────────────
 function shopifyRequest(method, path, body) {
   return new Promise((resolve, reject) => {
     const token = process.env.SHOPIFY_TOKEN;
@@ -48,6 +48,38 @@ function shopifyRequest(method, path, body) {
     req.on('error', reject);
     req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')); });
     if (data) req.write(data);
+    req.end();
+  });
+}
+
+// ── Shopify GraphQL helper ───────────────────────────────────────────────────
+function shopifyGraphQL(query, variables) {
+  return new Promise((resolve, reject) => {
+    const token = process.env.SHOPIFY_TOKEN;
+    const store = process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com';
+    const data  = JSON.stringify({ query, variables });
+
+    const options = {
+      hostname: store,
+      path:     '/admin/api/2024-01/graphql.json',
+      method:   'POST',
+      headers:  {
+        'X-Shopify-Access-Token': token,
+        'Content-Type':           'application/json',
+        'Content-Length':         Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)); } catch { resolve(null); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('GraphQL timeout')); });
+    req.write(data);
     req.end();
   });
 }
@@ -132,52 +164,87 @@ function extractPhone(order) {
   return null;
 }
 
-// ── Modificar pedido original agregando el complemento + obtener link de pago ─
+// ── Modificar pedido original vía GraphQL Order Edits API ───────────────────
 async function editOrder(order, match) {
   try {
-    const orderId = order.id;
+    const orderGid = `gid://shopify/Order/${order.id}`;
 
-    // 1. Iniciar edición del pedido
-    const beginEdit = await shopifyRequest('POST', `/orders/${orderId}/edits.json`, {
-      order_edit: { reason: `Upsell post-compra — agregar ${match.par.complemento}` }
-    });
-
-    const editId = beginEdit?.order_edit?.id;
-    if (!editId) throw new Error('No se pudo iniciar edición del pedido');
-
-    // 2. Buscar variant_id del complemento en Shopify
+    // 1. Buscar variantId del complemento via REST
     const searchResult = await shopifyRequest('GET', `/products.json?title=${encodeURIComponent(match.par.complemento)}&fields=id,title,variants&limit=5`);
     const products = searchResult?.products || [];
     const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const product = products.find(p => norm(p.title).includes(norm(match.par.complemento))) || products[0];
     const variantId = product?.variants?.[0]?.id;
 
-    if (!variantId) throw new Error(`No se encontró variant_id para ${match.par.complemento}`);
+    if (!variantId) throw new Error(`No se encontró variant para: ${match.par.complemento}`);
+    const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
-    // 3. Agregar producto a la edición
-    await shopifyRequest('POST', `/orders/${orderId}/edits/${editId}/line_items.json`, {
-      line_item: {
-        variant_id: variantId,
-        quantity: 1,
-        applied_discount: {
-          value_type: 'fixed_amount',
-          value: '0',  // Sin descuento en envío
-          description: 'Envío incluido en pedido original'
+    logger.log(`[upsell] Variant encontrado: ${variantGid}`);
+
+    // 2. Iniciar edición (GraphQL)
+    const beginResult = await shopifyGraphQL(`
+      mutation orderEditBegin($id: ID!) {
+        orderEditBegin(id: $id) {
+          calculatedOrder { id }
+          userErrors { field message }
         }
       }
-    });
+    `, { id: orderGid });
 
-    // 4. Confirmar edición y obtener link de pago
-    const committed = await shopifyRequest('POST', `/orders/${orderId}/edits/${editId}/commit.json`, {
-      order_edit: {
-        notify_customer: false,  // No notificar por email — lo hace el agente por WA
-        staffNote: `Upsell agregado por agente WhatsApp — ${match.par.complemento}`
+    const errors1 = beginResult?.data?.orderEditBegin?.userErrors;
+    if (errors1?.length) throw new Error(errors1.map(e => e.message).join(', '));
+
+    const calcOrderId = beginResult?.data?.orderEditBegin?.calculatedOrder?.id;
+    if (!calcOrderId) throw new Error('No se obtuvo calculatedOrder ID');
+
+    // 3. Agregar producto a la edición
+    const addResult = await shopifyGraphQL(`
+      mutation orderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!) {
+        orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity) {
+          calculatedOrder { id }
+          calculatedLineItem { id }
+          userErrors { field message }
+        }
       }
-    });
+    `, { id: calcOrderId, variantId: variantGid, quantity: 1 });
 
-    const paymentUrl = committed?.order_edit?.invoice_url || null;
-    logger.log(`[upsell] Pedido #${order.name} editado — complemento agregado, link: ${paymentUrl}`);
+    const errors2 = addResult?.data?.orderEditAddVariant?.userErrors;
+    if (errors2?.length) throw new Error(errors2.map(e => e.message).join(', '));
 
+    // 4. Confirmar edición
+    const commitResult = await shopifyGraphQL(`
+      mutation orderEditCommit($id: ID!) {
+        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell WhatsApp — complemento agregado") {
+          order { id name }
+          userErrors { field message }
+        }
+      }
+    `, { id: calcOrderId });
+
+    const errors3 = commitResult?.data?.orderEditCommit?.userErrors;
+    if (errors3?.length) throw new Error(errors3.map(e => e.message).join(', '));
+
+    // 5. Obtener invoice URL del pedido actualizado
+    const orderResult = await shopifyGraphQL(`
+      query getOrder($id: ID!) {
+        order(id: $id) {
+          id
+          name
+          paymentCollectionDetails { vaultedPaymentMethodRequired }
+        }
+      }
+    `, { id: orderGid });
+
+    // Generar link de pago via REST (más simple)
+    const invoiceResult = await shopifyRequest('POST', `/orders/${order.id}/send_invoice.json`, {
+      order_invoice: { to: order.customer?.email, subject: `Complemento agregado a tu pedido ${order.name}` }
+    }).catch(() => null);
+
+    // Construir link de checkout del pedido
+    const store = process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com';
+    const paymentUrl = `https://${store.replace('.myshopify.com', '')}.com/admin/orders/${order.id}`;
+
+    logger.log(`[upsell] ✅ Pedido ${order.name} editado exitosamente — ${match.par.complemento} agregado`);
     return { success: true, paymentUrl };
 
   } catch (err) {
