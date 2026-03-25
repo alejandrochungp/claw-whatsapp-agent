@@ -218,6 +218,8 @@ function start(config, business) {
 
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(`✅ Servidor escuchando en 0.0.0.0:${PORT}`);
+    // Pre-calentar catálogo en background al arrancar
+    shopify.getProductCatalog().catch(() => {});
   });
 }
 
@@ -401,6 +403,21 @@ async function sendReply(from, userText, config, business) {
     if (context?.shopifyContext) {
       systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
     }
+    // Inyectar catálogo relevante si el cliente pregunta por productos/stock/precios
+    if (shopify.isProductQuery(userText)) {
+      try {
+        const catalog  = await shopify.getProductCatalog();
+        const matches  = shopify.searchCatalog(catalog, userText);
+        if (matches.length) {
+          const catalogText = shopify.formatCatalogForPrompt(matches);
+          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aquí, di que no lo tienes disponible actualmente.`;
+          logger.log(`[catalog] ${matches.length} productos inyectados para: "${userText.slice(0, 50)}"`);
+        }
+      } catch (e) {
+        logger.log(`[catalog] Error: ${e.message}`);
+      }
+    }
+
     // Inyectar contexto de campaña si el cliente llega desde un envío masivo
     const campaignCtx = await memory.getCampaignContext(from);
     if (campaignCtx) {

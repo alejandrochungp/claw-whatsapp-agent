@@ -179,4 +179,133 @@ async function enrichContact(phone) {
   }
 }
 
-module.exports = { enrichContact };
+// ── Catálogo de productos con caché Redis ────────────────────────────────────
+// Solo campos necesarios para el bot: título, precio, stock, tipo
+// Se refresca cada hora — no se consulta en cada mensaje, solo cuando relevante
+
+const CATALOG_TTL  = 60 * 60;       // 1 hora
+const CATALOG_KEY  = 'catalog:yeppo';
+let   catalogRam   = null;           // fallback en RAM si no hay Redis
+let   catalogRamTs = 0;
+
+let redisClient = null;
+
+async function getRedis() {
+  if (redisClient) return redisClient;
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  try {
+    const { createClient } = require('redis');
+    redisClient = createClient({ url });
+    redisClient.on('error', () => {});
+    await redisClient.connect();
+    return redisClient;
+  } catch { return null; }
+}
+
+async function fetchCatalogFromShopify() {
+  if (!TOKEN) return [];
+
+  const products = [];
+  let page = 1;
+  let pageInfo = null;
+  let path = '/products.json?limit=250&status=active&fields=id,title,product_type,tags,variants';
+
+  // Paginar hasta traer todos
+  while (true) {
+    const r = await shopifyGet(path);
+    if (!r?.products?.length) break;
+
+    for (const p of r.products) {
+      // Para productos con múltiples variantes, tomar la de menor precio con stock
+      const variants = p.variants || [];
+      const activeVariants = variants.filter(v => (v.inventory_quantity || 0) > 0 || v.inventory_policy === 'continue');
+      const bestVariant = activeVariants.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0] || variants[0];
+
+      if (!bestVariant) continue;
+
+      products.push({
+        id:    p.id,
+        title: p.title,
+        type:  p.product_type || '',
+        tags:  p.tags || '',
+        price: parseFloat(bestVariant.price || 0),
+        stock: activeVariants.length > 0,
+        variantTitle: bestVariant.title !== 'Default Title' ? bestVariant.title : null
+      });
+    }
+
+    // Shopify paginación por cursor — si hay menos de 250 resultados, terminó
+    if (r.products.length < 250) break;
+    // Usar el last ID como cursor
+    const lastId = r.products[r.products.length - 1].id;
+    path = `/products.json?limit=250&status=active&fields=id,title,product_type,tags,variants&since_id=${lastId}`;
+  }
+
+  return products;
+}
+
+async function getProductCatalog() {
+  // Intentar desde Redis
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get(CATALOG_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+  } else {
+    // Fallback RAM — TTL 1 hora
+    if (catalogRam && Date.now() - catalogRamTs < CATALOG_TTL * 1000) return catalogRam;
+  }
+
+  // Fetch desde Shopify
+  console.log('[shopify] Refrescando catálogo de productos...');
+  const products = await fetchCatalogFromShopify();
+
+  // Guardar en caché
+  if (redis) {
+    try { await redis.setEx(CATALOG_KEY, CATALOG_TTL, JSON.stringify(products)); } catch {}
+  } else {
+    catalogRam   = products;
+    catalogRamTs = Date.now();
+  }
+
+  console.log(`[shopify] Catálogo cargado: ${products.length} productos`);
+  return products;
+}
+
+// ── Buscar productos relevantes por query del cliente ─────────────────────────
+// Devuelve los top N productos que hacen match con el texto
+function searchCatalog(catalog, query, limit = 5) {
+  if (!query || !catalog?.length) return [];
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '');
+  const terms = norm(query).split(/\s+/).filter(t => t.length > 2);
+  if (!terms.length) return [];
+
+  const scored = catalog.map(p => {
+    const haystack = norm(`${p.title} ${p.type} ${p.tags}`);
+    const score    = terms.reduce((s, t) => s + (haystack.includes(t) ? 1 : 0), 0);
+    return { ...p, score };
+  }).filter(p => p.score > 0).sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, limit);
+}
+
+// ── Formatear catálogo para el prompt de Claude ───────────────────────────────
+function formatCatalogForPrompt(products) {
+  if (!products?.length) return '';
+  const lines = products.map(p => {
+    const precio = `$${Math.round(p.price).toLocaleString('es-CL')}`;
+    const stock  = p.stock ? '✅' : '❌ sin stock';
+    const variant = p.variantTitle ? ` (${p.variantTitle})` : '';
+    return `• ${p.title}${variant} — ${precio} — ${stock}`;
+  });
+  return lines.join('\n');
+}
+
+// ── Detectar si el mensaje pregunta por productos/stock/precios ───────────────
+function isProductQuery(text) {
+  return /\b(tienen|hay|stock|precio|cuánto cuesta|cuanto vale|disponible|busco|tienes|existe|venden|producto|cuánto está|cuanto esta)\b/i.test(text);
+}
+
+module.exports = { enrichContact, getProductCatalog, searchCatalog, formatCatalogForPrompt, isProductQuery };
