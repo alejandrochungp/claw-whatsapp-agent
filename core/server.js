@@ -319,6 +319,13 @@ async function sendReply(from, userText, config, business) {
     if (context?.shopifyContext) {
       systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
     }
+    // Inyectar contexto de campaña si el cliente llega desde un envío masivo
+    const campaignCtx = await memory.getCampaignContext(from);
+    if (campaignCtx) {
+      const sentDate = campaignCtx.sentAt ? new Date(campaignCtx.sentAt).toLocaleDateString('es-CL') : 'recientemente';
+      systemPrompt = `${systemPrompt}\n\n---\n## Contexto de campaña\nEste cliente recibió un mensaje de campaña el ${sentDate}.\nCampaña: "${campaignCtx.name}"\nDescripción: ${campaignCtx.description || 'sin descripción'}\n${campaignCtx.extra ? `Detalle extra: ${campaignCtx.extra}` : ''}\nTen esto en cuenta al responder: el cliente probablemente escribe en respuesta a esa campaña. Responde de forma coherente con la oferta o mensaje que recibió.`;
+      logger.log(`🎯 Contexto de campaña inyectado: "${campaignCtx.name}"`);
+    }
     const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
 
     if (aiResult.response) {

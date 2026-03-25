@@ -128,4 +128,42 @@ async function isReturning(phone) {
   }
 }
 
-module.exports = { addMessage, getHistory, getContext, updateContext, isReturning };
+// ─── Contexto de campaña ─────────────────────────────────────────────────────
+// TTL más largo para campañas (7 días) — el cliente puede responder días después
+const CAMPAIGN_TTL_SECS = 7 * 24 * 60 * 60;
+const campaignKey = (phone) => `campaign:${phone}`;
+
+/**
+ * Guarda el contexto de campaña para un teléfono.
+ * @param {string} phone
+ * @param {object} data  — { name, description, sentAt, ... }
+ */
+async function setCampaignContext(phone, data) {
+  const payload = { ...data, sentAt: data.sentAt || Date.now() };
+  if (useRedis) {
+    try {
+      await redisClient.setEx(campaignKey(phone), CAMPAIGN_TTL_SECS, JSON.stringify(payload));
+    } catch (e) { console.error('[memory] setCampaignContext error:', e.message); }
+  } else {
+    // Fallback RAM: guardar en context del contacto
+    const conv = ramGetOrCreate(phone);
+    conv.context = { ...conv.context, campaignContext: payload };
+  }
+}
+
+/**
+ * Lee el contexto de campaña para un teléfono.
+ * Devuelve null si no existe.
+ */
+async function getCampaignContext(phone) {
+  if (useRedis) {
+    try {
+      const raw = await redisClient.get(campaignKey(phone));
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  } else {
+    return ramStore.get(phone)?.context?.campaignContext || null;
+  }
+}
+
+module.exports = { addMessage, getHistory, getContext, updateContext, isReturning, setCampaignContext, getCampaignContext };
