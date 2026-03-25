@@ -161,6 +161,28 @@ function extractPhone(order) {
   return null;
 }
 
+// ── Obtener location_id del pedido original ──────────────────────────────────
+async function getOrderLocationId(orderId) {
+  try {
+    const r = await shopifyRequest('GET', `/orders/${orderId}.json?fields=id,fulfillments,location_id`);
+    // Intentar desde fulfillments primero
+    const fulfillmentLocationId = r?.order?.fulfillments?.[0]?.location_id;
+    if (fulfillmentLocationId) return fulfillmentLocationId;
+    // Fallback: location_id directo del pedido
+    return r?.order?.location_id || null;
+  } catch { return null; }
+}
+
+// ── Obtener link de pago de la diferencia via payment terms ──────────────────
+async function getPaymentLink(orderId) {
+  try {
+    // Usar send_invoice para enviar por email al cliente
+    const r = await shopifyRequest('POST', `/orders/${orderId}/send_invoice.json`, {});
+    if (r?.order_invoice) return true;
+    return false;
+  } catch { return false; }
+}
+
 // ── Modificar pedido original vía GraphQL Order Edits API ───────────────────
 async function editOrder(order, match) {
   try {
@@ -170,6 +192,11 @@ async function editOrder(order, match) {
     const variantId = match.par.variantId;
     if (!variantId) throw new Error(`variantId no configurado para: ${match.par.complemento}`);
     const variantGid = `gid://shopify/ProductVariant/${variantId}`;
+
+    // 1b. Obtener location_id del pedido original
+    const locationId = await getOrderLocationId(order.id);
+    const locationGid = locationId ? `gid://shopify/Location/${locationId}` : null;
+    if (locationId) logger.log(`[upsell] Usando location: ${locationId}`);
 
     logger.log(`[upsell] Variant encontrado: ${variantGid}`);
 
@@ -189,16 +216,26 @@ async function editOrder(order, match) {
     const calcOrderId = beginResult?.data?.orderEditBegin?.calculatedOrder?.id;
     if (!calcOrderId) throw new Error('No se obtuvo calculatedOrder ID');
 
-    // 3. Agregar producto a la edición
-    const addResult = await shopifyGraphQL(`
-      mutation orderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!) {
-        orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity) {
-          calculatedOrder { id }
-          calculatedLineItem { id }
-          userErrors { field message }
-        }
-      }
-    `, { id: calcOrderId, variantId: variantGid, quantity: 1 });
+    // 3. Agregar producto a la edición (con location si está disponible)
+    const addVars = { id: calcOrderId, variantId: variantGid, quantity: 1 };
+    const addMutation = locationGid
+      ? `mutation orderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!, $locationId: ID!) {
+          orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity, locationId: $locationId) {
+            calculatedOrder { id }
+            calculatedLineItem { id }
+            userErrors { field message }
+          }
+        }`
+      : `mutation orderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!) {
+          orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity) {
+            calculatedOrder { id }
+            calculatedLineItem { id }
+            userErrors { field message }
+          }
+        }`;
+    if (locationGid) addVars.locationId = locationGid;
+
+    const addResult = await shopifyGraphQL(addMutation, addVars);
 
     const errors2 = addResult?.data?.orderEditAddVariant?.userErrors;
     if (errors2?.length) throw new Error(errors2.map(e => e.message).join(', '));
@@ -216,28 +253,19 @@ async function editOrder(order, match) {
     const errors3 = commitResult?.data?.orderEditCommit?.userErrors;
     if (errors3?.length) throw new Error(errors3.map(e => e.message).join(', '));
 
-    // 5. Obtener invoice URL del pedido actualizado
-    const orderResult = await shopifyGraphQL(`
-      query getOrder($id: ID!) {
-        order(id: $id) {
-          id
-          name
-          paymentCollectionDetails { vaultedPaymentMethodRequired }
+    // 5. Enviar factura al cliente por email (Shopify notifica con link de pago)
+    const invoiceResult = await shopifyGraphQL(`
+      mutation orderInvoiceSend($id: ID!) {
+        orderInvoiceSend(id: $id) {
+          order { id name }
+          userErrors { field message }
         }
       }
-    `, { id: orderGid });
+    `, { id: orderGid }).catch(() => null);
 
-    // Generar link de pago via REST (más simple)
-    const invoiceResult = await shopifyRequest('POST', `/orders/${order.id}/send_invoice.json`, {
-      order_invoice: { to: order.customer?.email, subject: `Complemento agregado a tu pedido ${order.name}` }
-    }).catch(() => null);
-
-    // Construir link de checkout del pedido
-    const store = process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com';
-    const paymentUrl = `https://${store.replace('.myshopify.com', '')}.com/admin/orders/${order.id}`;
-
-    logger.log(`[upsell] ✅ Pedido ${order.name} editado exitosamente — ${match.par.complemento} agregado`);
-    return { success: true, paymentUrl };
+    const invoiceSent = !invoiceResult?.data?.orderInvoiceSend?.userErrors?.length;
+    logger.log(`[upsell] ✅ Pedido ${order.name} editado — ${match.par.complemento} agregado${invoiceSent ? ', factura enviada por email' : ''}`);
+    return { success: true, invoiceSent };
 
   } catch (err) {
     logger.log(`[upsell] Error editando pedido: ${err.message}`);
@@ -365,17 +393,16 @@ async function handleUpsellAccepted(phone, order, match, config) {
 
     // 1. Modificar pedido original agregando el complemento
     const edit = await editOrder(order, match);
-    const invoiceUrl = edit?.paymentUrl;
 
     // 2. Notificar #logistics
-    await notifyLogistics(order, match, phone, invoiceUrl, config);
+    await notifyLogistics(order, match, phone, null, config);
 
-    // 3. Responder al cliente con el link
+    // 3. Responder al cliente
     let msgCliente;
-    if (invoiceUrl) {
-      msgCliente = `perfecto! te paso el link para completar el pago del ${nombreLimpio(match.par.complemento)} 👇\n\n${invoiceUrl}\n\nes un pago separado pero lo despachamos junto con tu pedido 🚚`;
+    if (edit?.invoiceSent) {
+      msgCliente = `perfecto! agregamos el ${nombreLimpio(match.par.complemento)} a tu pedido 🎉\n\nte llegará un email con el link para pagar la diferencia. una vez confirmado lo despachamos todo junto 🚚`;
     } else {
-      msgCliente = `perfecto! ya le avisé al equipo para coordinar el envío del ${nombreLimpio(match.par.complemento)} junto con tu pedido. te contactarán para el pago 😊`;
+      msgCliente = `perfecto! ya agregamos el ${nombreLimpio(match.par.complemento)} a tu pedido. el equipo te contactará para coordinar el pago y lo despachamos todo junto 😊`;
     }
 
     await meta.sendMessage(phone, msgCliente, config);
