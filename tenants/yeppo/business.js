@@ -46,7 +46,7 @@ async function quickReply(userText, context, history) {
     if (acepta) {
       // Disparar flujo de aceptación en background
       const orderMock = { id: context.upsellOrderId, name: context.upsellOrderName, total_price: '0', customer: {} };
-      const matchMock = { item: { title: context.upsellMatch?.producto }, par: { complemento: context.upsellMatch?.complemento, razon: '' }, precioComplemento: context.upsellMatch?.precio || 0 };
+      const matchMock = { item: { title: context.upsellMatch?.producto }, par: { complemento: context.upsellMatch?.complemento, razon: '', variantId: context.upsellMatch?.variantId }, precioComplemento: context.upsellMatch?.precio || 0 };
       upsell.handleUpsellAccepted(context._phone, orderMock, matchMock, context._config).catch(() => {});
       return { text: null, useAI: false }; // La respuesta la maneja handleUpsellAccepted
     }

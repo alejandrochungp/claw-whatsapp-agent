@@ -328,7 +328,7 @@ async function handleNewOrder(order, config) {
       upsellPendiente: true,
       upsellOrderId:   order.id,
       upsellOrderName: order.name,
-      upsellMatch:     { producto: match.item.title, complemento: match.par.complemento, precio: match.precioComplemento }
+      upsellMatch:     { producto: match.item.title, complemento: match.par.complemento, precio: match.precioComplemento, variantId: match.par.variantId }
     });
 
     setTimeout(async () => {
