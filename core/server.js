@@ -87,18 +87,12 @@ function start(config, business) {
 
     if (!thread_ts) return; // Solo mensajes en threads
 
-    // ── Comando: tomar [mensaje opcional] ────────────────────────────────
-    if (text === 'tomar' || text.startsWith('tomar ')) {
+    // ── Comando: tomar ───────────────────────────────────────────────────
+    if (text === 'tomar') {
       const phone = slack.handleSlackCommand('tomar', thread_ts);
       if (phone) {
         logger.log(`👤 Humano tomó control de ${phone}`);
         await postSlackMessage(channel, thread_ts, '👤 Control tomado. El bot está pausado. Escribe `soltar` para devolver al bot.');
-        // Si venía mensaje después de "tomar", enviarlo al cliente
-        const extraMsg = event.text.trim().slice(5).trim(); // quitar "tomar"
-        if (extraMsg) {
-          await meta.sendMessage(phone, extraMsg, config);
-          logger.log(`📤 Humano respondió a ${phone}: ${extraMsg}`);
-        }
       }
       return;
     }
@@ -113,15 +107,23 @@ function start(config, business) {
       return;
     }
 
-    // ── Respuesta humana en thread activo → enviar al cliente ────────────
-    // Buscar si este thread tiene un cliente asociado
+    // ── Respuesta humana en thread → enviar al cliente ───────────────────
+    // Buscar el phone asociado a este thread
     for (const [phone, info] of slack.phoneToThread) {
       if (info.thread_ts === thread_ts) {
+        // Verificar si hay control humano activo
         const activeThread = slack.getActiveConversation(phone);
         if (activeThread) {
-          // Hay humano activo → enviar mensaje al cliente
           await meta.sendMessage(phone, event.text, config);
           logger.log(`📤 Humano respondió a ${phone}: ${event.text}`);
+        } else {
+          // Thread existe pero humano aún no tomó control (race condition)
+          // Verificar si "tomar" fue escrito recientemente (últimos 5s)
+          const recentTake = slack.getRecentTake(phone);
+          if (recentTake) {
+            await meta.sendMessage(phone, event.text, config);
+            logger.log(`📤 Humano respondió a ${phone} (race condition handled): ${event.text}`);
+          }
         }
         break;
       }

@@ -17,6 +17,8 @@ const HANDOFF_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sin actividad → bot retom
 const phoneToThread       = new Map();
 // phone → { thread_ts, takenAt }
 const activeConversations = new Map();
+// phone → timestamp del último "tomar" (para manejar race conditions)
+const recentTakes         = new Map();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -147,6 +149,7 @@ function handleSlackCommand(command, thread_ts) {
     for (const [phone, info] of phoneToThread) {
       if (info.thread_ts === thread_ts) {
         activeConversations.set(phone, { thread_ts, takenAt: Date.now() });
+        recentTakes.set(phone, Date.now());
         console.log(`👤 Humano tomó control de ${phone}`);
         return phone;
       }
@@ -166,11 +169,21 @@ function handleSlackCommand(command, thread_ts) {
   return null;
 }
 
+// Detectar si "tomar" fue escrito en los últimos 5 segundos (race condition)
+function getRecentTake(phone) {
+  const ts = recentTakes.get(phone);
+  if (!ts) return false;
+  if (Date.now() - ts < 5000) return true;
+  recentTakes.delete(phone);
+  return false;
+}
+
 module.exports = {
   logConversation,
   notifyHandoff,
   forwardToThread,
   getActiveConversation,
+  getRecentTake,
   handleSlackCommand,
   phoneToThread,
   activeConversations
