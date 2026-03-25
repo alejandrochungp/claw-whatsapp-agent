@@ -166,4 +166,41 @@ async function getCampaignContext(phone) {
   }
 }
 
-module.exports = { addMessage, getHistory, getContext, updateContext, isReturning, setCampaignContext, getCampaignContext };
+// ─── Upsell pendiente — clave separada para evitar race conditions ────────────
+// TTL 30 min: si el cliente no responde en 30 min, se cancela
+const UPSELL_TTL_SECS = 30 * 60;
+const upsellKey = (phone) => `upsell:${phone}`;
+
+async function setUpsellPending(phone, data) {
+  const payload = { ...data, setAt: Date.now() };
+  if (useRedis) {
+    try {
+      await redisClient.setEx(upsellKey(phone), UPSELL_TTL_SECS, JSON.stringify(payload));
+    } catch (e) { console.error('[memory] setUpsellPending error:', e.message); }
+  } else {
+    const conv = ramGetOrCreate(phone);
+    conv.context = { ...conv.context, _upsell: payload };
+  }
+}
+
+async function getUpsellPending(phone) {
+  if (useRedis) {
+    try {
+      const raw = await redisClient.get(upsellKey(phone));
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  } else {
+    return ramStore.get(phone)?.context?._upsell || null;
+  }
+}
+
+async function clearUpsellPending(phone) {
+  if (useRedis) {
+    try { await redisClient.del(upsellKey(phone)); } catch {}
+  } else {
+    const conv = ramStore.get(phone);
+    if (conv) delete conv.context._upsell;
+  }
+}
+
+module.exports = { addMessage, getHistory, getContext, updateContext, isReturning, setCampaignContext, getCampaignContext, setUpsellPending, getUpsellPending, clearUpsellPending };

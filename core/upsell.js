@@ -379,25 +379,26 @@ async function handleNewOrder(order, config) {
 
     logger.log(`[upsell] Pedido #${order.name} — upsell en ${UPSELL_DELAY_MS/1000}s → ${match.par.complemento} ($${match.precioComplemento})`);
 
-    // Guardar contexto del upsell en memoria para cuando el cliente responda
     const memory = require('./memory');
-    await memory.updateContext(phone, {
-      upsellPendiente: true,
-      upsellOrderId:   order.id,
-      upsellOrderName: order.name,
-      upsellMatch:     { producto: match.item.title, complemento: match.par.complemento, precio: match.precioComplemento, variantId: match.par.variantId }
-    });
 
     setTimeout(async () => {
       // 1. Crear thread en Slack con contexto completo
       await createUpsellThread(phone, order, match, config);
 
-      // 2. Enviar mensaje WhatsApp
-      const nombre           = order.customer?.first_name || order.shipping_address?.first_name || '';
-      const saludo           = nombre ? `hola ${nombre}!` : 'hola!';
-      const productoLimpio   = nombreLimpio(match.item.title);
+      // 2. Guardar upsell pendiente en clave Redis separada (después del delay, justo antes de enviar)
+      // Así evitamos race conditions con mensajes entrantes del cliente
+      await memory.setUpsellPending(phone, {
+        orderId:   order.id,
+        orderName: order.name,
+        match:     { producto: match.item.title, complemento: match.par.complemento, precio: match.precioComplemento, variantId: match.par.variantId }
+      });
+
+      // 3. Enviar mensaje WhatsApp
+      const nombre            = order.customer?.first_name || order.shipping_address?.first_name || '';
+      const saludo            = nombre ? `hola ${nombre}!` : 'hola!';
+      const productoLimpio    = nombreLimpio(match.item.title);
       const complementoLimpio = nombreLimpio(match.par.complemento);
-      const precioStr        = match.precioComplemento > 0 ? ` ($${Math.round(match.precioComplemento).toLocaleString('es-CL')})` : '';
+      const precioStr         = match.precioComplemento > 0 ? ` ($${Math.round(match.precioComplemento).toLocaleString('es-CL')})` : '';
 
       const msg = `${saludo} tu pedido ya está confirmado 🎉
 
@@ -436,9 +437,9 @@ async function handleUpsellAccepted(phone, order, match, config) {
 
     await meta.sendMessage(phone, msgCliente, config);
 
-    // 4. Limpiar contexto upsell
+    // 4. Limpiar upsell pendiente
     const memory = require('./memory');
-    await memory.updateContext(phone, { upsellPendiente: false });
+    await memory.clearUpsellPending(phone);
 
     logger.log(`[upsell] ✅ Flujo completo para ${phone}`);
   } catch (err) {

@@ -39,25 +39,28 @@ async function quickReply(userText, context, history) {
   }
 
   // ── Respuesta a upsell pendiente ─────────────────────────────────────────
-  if (context?.upsellPendiente) {
-    const acepta = /\b(sí|si|dale|ok|quiero|me interesa|agrega|perfecto|claro|bueno|ya|yes)\b/.test(text);
+  const memory = require('../../core/memory');
+  const upsellPending = await memory.getUpsellPending(context._phone);
+  if (upsellPending) {
+    const acepta  = /\b(sí|si|dale|ok|quiero|me interesa|agrega|perfecto|claro|bueno|ya|yes)\b/.test(text);
     const rechaza = /\b(no|nop|paso|no gracias|no me interesa|no quiero)\b/.test(text);
 
     if (acepta) {
-      // Disparar flujo de aceptación en background
-      const orderMock = { id: context.upsellOrderId, name: context.upsellOrderName, total_price: '0', customer: {} };
-      const matchMock = { item: { title: context.upsellMatch?.producto }, par: { complemento: context.upsellMatch?.complemento, razon: '', variantId: context.upsellMatch?.variantId }, precioComplemento: context.upsellMatch?.precio || 0 };
+      const orderMock = { id: upsellPending.orderId, name: upsellPending.orderName, total_price: '0', customer: {} };
+      const matchMock = {
+        item: { title: upsellPending.match?.producto },
+        par:  { complemento: upsellPending.match?.complemento, razon: '', variantId: upsellPending.match?.variantId },
+        precioComplemento: upsellPending.match?.precio || 0
+      };
       upsell.handleUpsellAccepted(context._phone, orderMock, matchMock, context._config).catch(() => {});
-      // text: null + useAI: false → el core NO envía nada, la respuesta la maneja handleUpsellAccepted
       return { text: null, useAI: false, skipReply: true };
     }
 
     if (rechaza) {
-      const memory = require('../../core/memory');
-      await memory.updateContext(context._phone, { upsellPendiente: false });
+      await memory.clearUpsellPending(context._phone);
       return { text: 'sin problema! si en algún momento lo necesitas, avisame 😊' };
     }
-    // Si no es clara la respuesta → dejar que la IA maneje
+    // Si no es clara la respuesta → dejar que la IA maneje con contexto de upsell
   }
 
   // ── Pedir humano ─────────────────────────────────────────────────────────
