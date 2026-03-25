@@ -154,10 +154,31 @@ async function handleStatus(status, config) {
   messageTracker.delete(msgId);
 }
 
+// ── Deduplicación de mensajes ────────────────────────────────────────────────
+const processedMessages = new Map(); // messageId → timestamp
+const DEDUP_TTL = 60 * 1000; // 60 segundos
+
+function isDuplicate(messageId) {
+  if (processedMessages.has(messageId)) return true;
+  processedMessages.set(messageId, Date.now());
+  // Limpiar entradas viejas
+  const cutoff = Date.now() - DEDUP_TTL;
+  for (const [id, ts] of processedMessages) {
+    if (ts < cutoff) processedMessages.delete(id);
+  }
+  return false;
+}
+
 // ── Mensaje entrante ────────────────────────────────────────────────────────
 async function handleMessage(message, value, config, business) {
   const from = message.from;
   const type = message.type;
+
+  // Deduplicar — Meta puede reenviar el mismo webhook varias veces
+  if (message.id && isDuplicate(message.id)) {
+    logger.log(`⚠️ Mensaje duplicado ignorado: ${message.id}`);
+    return;
+  }
 
   let userText = '';
   if (type === 'text')        userText = message.text.body;
