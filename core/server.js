@@ -87,12 +87,18 @@ function start(config, business) {
 
     if (!thread_ts) return; // Solo mensajes en threads
 
-    // ── Comando: tomar ───────────────────────────────────────────────────
-    if (text === 'tomar') {
+    // ── Comando: tomar [mensaje opcional] ────────────────────────────────
+    if (text === 'tomar' || text.startsWith('tomar ')) {
       const phone = slack.handleSlackCommand('tomar', thread_ts);
       if (phone) {
         logger.log(`👤 Humano tomó control de ${phone}`);
-        await postSlackMessage(channel, thread_ts, '👤 Control tomado. El bot está pausado para este cliente. Escribe `soltar` para devolver al bot.');
+        await postSlackMessage(channel, thread_ts, '👤 Control tomado. El bot está pausado. Escribe `soltar` para devolver al bot.');
+        // Si venía mensaje después de "tomar", enviarlo al cliente
+        const extraMsg = event.text.trim().slice(5).trim(); // quitar "tomar"
+        if (extraMsg) {
+          await meta.sendMessage(phone, extraMsg, config);
+          logger.log(`📤 Humano respondió a ${phone}: ${extraMsg}`);
+        }
       }
       return;
     }
