@@ -545,18 +545,37 @@ async function applyApprovedMessage(messageTs, channelId) {
     }
 
     fs.writeFileSync(promptPath, prompt, 'utf8');
-    console.log(`[learning] ✅ Aprendizaje agregado al prompt: ${situacion.substring(0, 60)}`);
+    console.log(`[learning] ✅ Aprendizaje agregado al prompt en RAM: ${situacion.substring(0, 60)}`);
 
-    // 3. Push a GitHub
+    // 3. Push a GitHub via API (no requiere git instalado en Railway)
     try {
-      const { execSync } = require('child_process');
-      const repoRoot = path.join(__dirname, '..');
-      execSync(`git -C "${repoRoot}" add tenants/${process.env.TENANT || 'yeppo'}/prompt.md`, { stdio: 'pipe' });
-      execSync(`git -C "${repoRoot}" commit -m "learning: aprendizaje aprobado via reacción Slack"`, { stdio: 'pipe' });
-      execSync(`git -C "${repoRoot}" push`, { stdio: 'pipe' });
-      console.log('[learning] Pusheado a GitHub ✅');
+      const githubToken = process.env.GITHUB_TOKEN;
+      const tenant = process.env.TENANT || 'yeppo';
+      const filePath = `tenants/${tenant}/prompt.md`;
+      const repo = process.env.GITHUB_REPO || 'alejandrochungp/claw-whatsapp-agent';
+
+      if (githubToken) {
+        // Obtener SHA actual del archivo
+        const fileRes = await axios.get(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+          headers: { Authorization: `Bearer ${githubToken}`, 'User-Agent': 'yeppo-learning-bot' }
+        });
+        const sha = fileRes.data.sha;
+
+        // Subir archivo actualizado
+        const content = Buffer.from(prompt, 'utf8').toString('base64');
+        await axios.put(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+          message: `learning: aprendizaje aprobado via reacción Slack\n\nSituación: ${situacion.substring(0, 80)}`,
+          content,
+          sha
+        }, {
+          headers: { Authorization: `Bearer ${githubToken}`, 'User-Agent': 'yeppo-learning-bot', 'Content-Type': 'application/json' }
+        });
+        console.log('[learning] ✅ Pusheado a GitHub via API — Railway redesplegará automáticamente');
+      } else {
+        console.log('[learning] GITHUB_TOKEN no configurado — aprendizaje solo en RAM hasta próximo deploy');
+      }
     } catch (e) {
-      console.log('[learning] Push manual necesario');
+      console.log('[learning] Error push GitHub:', e.response?.data?.message || e.message);
     }
 
     // 4. Confirmar en Slack con emoji ✍️ en el mensaje
