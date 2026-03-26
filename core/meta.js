@@ -39,4 +39,42 @@ async function sendMessage(to, text, config) {
   }
 }
 
-module.exports = { sendMessage };
+/**
+ * Obtiene la URL de descarga de un media de WhatsApp (imagen, video, doc).
+ * Devuelve { url, mimeType } o null.
+ */
+async function getMediaUrl(mediaId, config) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token || !mediaId) return null;
+  try {
+    const r = await axios.get(
+      `https://graph.facebook.com/v18.0/${mediaId}`,
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+    );
+    return { url: r.data.url, mimeType: r.data.mime_type };
+  } catch (e) {
+    console.error('[meta] getMediaUrl error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+/**
+ * Descarga un media de WhatsApp y devuelve el buffer en base64.
+ */
+async function downloadMedia(mediaUrl) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token || !mediaUrl) return null;
+  try {
+    const r = await axios.get(mediaUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: 'arraybuffer',
+      timeout: 20000
+    });
+    return Buffer.from(r.data).toString('base64');
+  } catch (e) {
+    console.error('[meta] downloadMedia error:', e.message);
+    return null;
+  }
+}
+
+module.exports = { sendMessage, getMediaUrl, downloadMedia };

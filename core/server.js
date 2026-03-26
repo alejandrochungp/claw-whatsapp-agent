@@ -381,6 +381,92 @@ async function handleMessage(message, value, config, business) {
         return;
       }
     }
+  } else if (type === 'image' || type === 'document' || type === 'video' || type === 'sticker') {
+    // Obtener URL del media y reenviarlo a Slack + intentar análisis con Claude
+    const mediaId      = message[type]?.id;
+    const caption      = message[type]?.caption || '';
+    const mediaInfo    = mediaId ? await meta.getMediaUrl(mediaId, config) : null;
+    const mimeType     = mediaInfo?.mimeType || type;
+    const mediaUrl     = mediaInfo?.url || null;
+    const typeEmoji    = type === 'image' ? '🖼️' : type === 'video' ? '🎥' : type === 'sticker' ? '🎭' : '📄';
+
+    logger.log(`${typeEmoji} ${type} recibido de [${from}]${caption ? ` caption: "${caption}"` : ''}`);
+
+    // Reenviar a Slack si hay un thread activo
+    const activeThread = slack.getActiveConversation(from);
+    const existingThread = slack.phoneToThread.get(from);
+    const targetThread = activeThread || existingThread?.thread_ts;
+
+    if (targetThread && mediaUrl) {
+      const token   = process.env.WHATSAPP_ACCESS_TOKEN;
+      const channel = process.env.SLACK_CHANNEL_ID;
+      const label   = `${typeEmoji} *+${from}* envió ${type}${caption ? `: "${caption}"` : ''}`;
+      try {
+        // Descargar y subir a Slack
+        const buf = await meta.downloadMedia(mediaUrl);
+        if (buf) {
+          const binBuf  = Buffer.from(buf, 'base64');
+          const ext     = mimeType.split('/')[1]?.split(';')[0] || type;
+          const fname   = `media_${Date.now()}.${ext}`;
+          const axios   = require('axios');
+          const FormData = require('form-data');
+          const form    = new FormData();
+          form.append('channels', channel);
+          form.append('thread_ts', targetThread);
+          form.append('initial_comment', label);
+          form.append('file', binBuf, { filename: fname, contentType: mimeType });
+          await axios.post('https://slack.com/api/files.upload', form, {
+            headers: { ...form.getHeaders(), Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` },
+            timeout: 30000
+          }).catch(e => logger.log(`[media] Slack upload error: ${e.message}`));
+        } else {
+          // Fallback: postear solo el link (solo visible con token Meta)
+          await slack.forwardToThread(from, `${typeEmoji} [${type}]${caption ? ` "${caption}"` : ''} (no se pudo descargar)`, targetThread, config);
+        }
+      } catch (e) {
+        logger.log(`[media] Error procesando ${type}: ${e.message}`);
+      }
+    }
+
+    // Si hay operador activo, reenviar y terminar (no pasar a Claude)
+    if (activeThread) {
+      if (!mediaUrl) {
+        await slack.forwardToThread(from, `${typeEmoji} [${type}]${caption ? ` "${caption}"` : ''}`, activeThread, config);
+      }
+      return;
+    }
+
+    // Si hay caption, usarla como userText para que Claude pueda responder
+    if (caption) {
+      userText = `[${type}] ${caption}`;
+    } else if (type === 'image') {
+      // Intentar describir imagen con Claude Vision si hay mediaUrl
+      if (mediaUrl) {
+        try {
+          const buf64   = await meta.downloadMedia(mediaUrl);
+          const aiReply = buf64
+            ? await ai.analyzeImage(buf64, mimeType, config)
+            : null;
+          if (aiReply) {
+            await meta.sendMessage(from, aiReply, config);
+            await memory.addMessage(from, '[imagen enviada]', 'user');
+            await memory.addMessage(from, aiReply, 'assistant');
+          } else {
+            await meta.sendMessage(from, '¡Recibimos tu foto! 📸 ¿En qué te podemos ayudar?', config);
+          }
+        } catch (e) {
+          logger.log(`[media] Error analizando imagen: ${e.message}`);
+          await meta.sendMessage(from, '¡Recibimos tu foto! 📸 ¿En qué te podemos ayudar?', config);
+        }
+      } else {
+        await meta.sendMessage(from, '¡Recibimos tu foto! 📸 ¿En qué te podemos ayudar?', config);
+      }
+      return;
+    } else {
+      // Video, doc, sticker sin caption → acuse genérico
+      await meta.sendMessage(from, `¡Recibimos tu ${type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo'}! 📎 ¿En qué te podemos ayudar?`, config);
+      return;
+    }
   } else {
     logger.log(`⚠️ Tipo no soportado: ${type}`);
     return;

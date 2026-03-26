@@ -333,22 +333,16 @@ async function forwardToThread(phone, userText, thread_ts, config) {
 
 async function sendOperatorReply(phone, text, userId, config) {
   const operatorName = await getUserName(userId);
-  const existing     = phoneToThread.get(phone);
-  const channel      = resolveChannel(config);
 
-  // Loguear en Slack con firma del operador
-  if (existing) {
-    await slackPost({
-      channel,
-      thread_ts: existing.thread_ts,
-      text: `📤 *${operatorName}:* ${text}`
-    });
+  // NO hacer slackPost aquí — el mensaje del operador ya aparece en Slack
+  // porque ellos lo escribieron ahí. Postear aquí crea duplicado.
+
+  // Registrar en log de aprendizaje (solo si hay texto real)
+  if (text) {
+    if (!conversationLog.has(phone)) conversationLog.set(phone, []);
+    conversationLog.get(phone).push({ role: 'human', text, ts: Date.now(), operatorId: userId });
+    await getLearning().incrementOperatorMetric(userId, 'total_takeovers');
   }
-
-  // Registrar respuesta del operador en log de aprendizaje
-  if (!conversationLog.has(phone)) conversationLog.set(phone, []);
-  conversationLog.get(phone).push({ role: 'human', text, ts: Date.now(), operatorId: userId });
-  await getLearning().incrementOperatorMetric(userId, 'total_takeovers');
 
   // Devolver el nombre para que server.js firme el mensaje al cliente
   return operatorName;
