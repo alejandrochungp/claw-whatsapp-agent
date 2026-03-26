@@ -247,6 +247,34 @@ function start(config, business) {
     }
   });
 
+  // ── POST /admin/learning/inject — inyectar conversaciones de Slack ───────
+  app.post('/admin/learning/inject', async (req, res) => {
+    const { date, conversations } = req.body;
+    if (!date || !conversations?.length) {
+      return res.status(400).json({ error: 'date y conversations requeridos' });
+    }
+    try {
+      let count = 0;
+      for (const conv of conversations) {
+        const lines    = (conv.dialogue || '').split('\n').filter(l => l.trim());
+        const messages = lines.map(line => {
+          const isBot   = line.startsWith('bot:');
+          const isHuman = line.startsWith('human_operator:');
+          const text    = line.replace(/^(bot|human_operator|system):\s*/, '').trim();
+          return { role: isBot ? 'bot' : isHuman ? 'human' : 'system', text, ts: Date.now(),
+                   operatorId: isHuman ? 'slack_operator' : undefined };
+        }).filter(m => m.text && m.role !== 'system');
+
+        await learning.saveConversationForReview(conv.ts || String(count), messages, 'human_resolved', 'slack_operator');
+        count++;
+      }
+      logger.log(`[learning/inject] ${count} conversaciones inyectadas para ${date}`);
+      res.json({ ok: true, injected: count, date });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── POST /admin/learning/run — forzar análisis manual ────────────────────
   app.post('/admin/learning/run', async (req, res) => {
     const { date } = req.body;
