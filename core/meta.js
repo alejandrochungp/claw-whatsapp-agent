@@ -77,4 +77,39 @@ async function downloadMedia(mediaUrl) {
   }
 }
 
-module.exports = { sendMessage, getMediaUrl, downloadMedia };
+/**
+ * Envía un template de WhatsApp.
+ * @param {string} to - número destino
+ * @param {string} templateName - nombre del template
+ * @param {string} languageCode - ej: 'es_CL'
+ * @param {Array}  components   - parámetros del template
+ */
+async function sendTemplate(to, templateName, languageCode = 'es_CL', components = []) {
+  const token         = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) {
+    console.error('❌ WHATSAPP_ACCESS_TOKEN o PHONE_NUMBER_ID no configurados');
+    return null;
+  }
+  try {
+    const body = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'template',
+      template: { name: templateName, language: { code: languageCode }, components }
+    };
+    const response = await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      body,
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+    );
+    console.log(`✅ Template [${templateName}] enviado a ${to}`);
+    return response.data;
+  } catch (err) {
+    console.error(`❌ Error enviando template a ${to}:`, err.response?.data || err.message);
+    return null;
+  }
+}
+
+module.exports = { sendMessage, sendTemplate, getMediaUrl, downloadMedia };

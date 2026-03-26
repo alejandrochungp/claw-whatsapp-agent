@@ -400,13 +400,25 @@ async function handleNewOrder(order, config) {
       const complementoLimpio = nombreLimpio(match.par.complemento);
       const precioStr         = match.precioComplemento > 0 ? ` ($${Math.round(match.precioComplemento).toLocaleString('es-CL')})` : '';
 
-      const msg = `${saludo} tu pedido ya está confirmado 🎉
+      // Usar template aprobado (evita error 131047 - ventana 24h)
+      const templateName = process.env.UPSELL_TEMPLATE || 'pago_confirmado_upsell';
+      const templateResult = await meta.sendTemplate(phone, templateName, 'es_CL', [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: nombre || 'ahí' },
+            { type: 'text', text: productoLimpio },
+            { type: 'text', text: complementoLimpio },
+            { type: 'text', text: precioStr ? `$${Math.round(match.precioComplemento).toLocaleString('es-CL')}` : 'precio especial' }
+          ]
+        }
+      ]);
 
-llevaste el ${productoLimpio} — muchas clientas lo combinan con el ${complementoLimpio}${precioStr} porque ${match.par.razon} 🌟
-
-si quieres te lo agregamos antes del despacho, te lo enviamos todo junto sin costo adicional de envío. avisame si te interesa!`;
-
-      await meta.sendMessage(phone, msg, config);
+      // Fallback a texto libre si el template falla (ej: cliente dentro de ventana 24h)
+      if (!templateResult) {
+        const msg = `${saludo} tu pedido ya está confirmado!\n\nllevaste el ${productoLimpio} — muchas clientas lo combinan con el ${complementoLimpio}${precioStr} porque ${match.par.razon}\n\nsi quieres te lo agregamos antes del despacho, te lo enviamos todo junto sin costo adicional. avisame si te interesa!`;
+        await meta.sendMessage(phone, msg, config);
+      }
       logger.log(`[upsell] ✅ Mensaje enviado a ${phone}`);
     }, UPSELL_DELAY_MS);
 
