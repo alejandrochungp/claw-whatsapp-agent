@@ -82,6 +82,12 @@ function start(config, business) {
     }
   });
 
+  // ── GET /admin/prompt — ver prompt activo en memoria ─────────────────────
+  app.get('/admin/prompt', (req, res) => {
+    const samplePrompt = business.buildSystemPrompt({});
+    res.json({ ok: true, length: samplePrompt.length, preview: samplePrompt.slice(0, 500) });
+  });
+
   // ── POST /admin/debug-context — ver contexto Redis de un número ──────────
   app.post('/admin/debug-context', async (req, res) => {
     const { phone } = req.body;
@@ -508,9 +514,11 @@ async function handleMessage(message, value, config, business) {
     // Bot responde: imagen con Claude Vision, resto acuse genérico
     if (type === 'image' && mediaUrl) {
       try {
-        const buf64   = await meta.downloadMedia(mediaUrl);
-        const aiReply = buf64 ? await ai.analyzeImage(buf64, mimeType, config) : null;
-        const reply   = aiReply || (caption ? null : 'recibimos tu foto 📸 en qué te puedo ayudar?');
+        const buf64      = await meta.downloadMedia(mediaUrl);
+        const imgContext = await memory.getContext(from) || {};
+        const sysPrompt  = business.buildSystemPrompt(imgContext);
+        const aiReply    = buf64 ? await ai.analyzeImage(buf64, mimeType, sysPrompt) : null;
+        const reply      = aiReply || (caption ? null : 'recibimos tu foto 📸 en qué te puedo ayudar?');
         if (reply) {
           await meta.sendMessage(from, reply, config);
           await memory.addMessage(from, caption || '[imagen]', 'user');

@@ -116,20 +116,30 @@ function getStats() {
  * @param {object} config
  * @returns {string|null} descripción/respuesta de Claude
  */
-async function analyzeImage(base64, mimeType, config) {
+/**
+ * Analizar una imagen con Claude Vision.
+ * Recibe el systemPrompt del tenant para mantener el tono correcto.
+ */
+async function analyzeImage(base64, mimeType, systemPrompt) {
   if (!CLAUDE_API_KEY) return null;
   try {
+    // Usar el system prompt del tenant + instrucción de análisis de imagen
+    const imageSystem = (systemPrompt || '') +
+      '\n\nEl cliente acaba de enviarte una imagen. Analízala brevemente y responde de forma natural. ' +
+      'Si es un producto, ayuda a identificarlo. Si es una consulta de piel, da un consejo breve y sugiere venir a la tienda para asesoría gratuita. ' +
+      'Máximo 2-3 oraciones. Usa el mismo tono natural que usarías en cualquier otro mensaje.';
+
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
         model: CLAUDE_MODEL,
-        max_tokens: 512,
-        system: 'Eres el asistente de Yeppo, tienda de cosméticos coreanos. Analiza brevemente la imagen que envió el cliente y responde de forma útil y amigable en español. Si es un producto, ayuda a identificarlo. Si es una consulta de piel, da consejos generales y recomienda venir a la tienda para asesoría personalizada gratuita.',
+        max_tokens: 300,
+        system: imageSystem,
         messages: [{
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-            { type: 'text', text: '¿Qué ves en esta imagen? Responde de forma útil como asistente de Yeppo.' }
+            { type: 'text', text: 'qué ves en esta imagen?' }
           ]
         }]
       },
