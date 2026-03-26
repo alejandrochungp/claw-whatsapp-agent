@@ -273,6 +273,7 @@ function start(config, business) {
   app.post('/slack/actions', express.urlencoded({ extended: true }), async (req, res) => {
     res.sendStatus(200); // Responder rápido a Slack
     try {
+      logger.log(`[slack/actions] body keys: ${Object.keys(req.body || {}).join(',') || 'EMPTY'} | raw: ${JSON.stringify(req.body).substring(0, 100)}`);
       const payload = JSON.parse(req.body.payload);
 
       // Botones de aprendizaje (Aprobar/Editar/Rechazar)
