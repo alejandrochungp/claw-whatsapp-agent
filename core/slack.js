@@ -37,6 +37,25 @@ const userNameCache       = new Map();
 // phone → [ { role, text, ts, operatorId? } ] — log temporal para learning
 const conversationLog     = new Map();
 
+// ── Sweeper: cierra automáticamente conversaciones inactivas ──────────────────
+// Corre cada 15 min. Si el operador tomó control hace >30 min → guarda y cierra.
+setInterval(() => {
+  const now = Date.now();
+  for (const [phone, info] of activeConversations) {
+    if (now - info.takenAt > HANDOFF_TIMEOUT_MS) {
+      activeConversations.delete(phone);
+      console.log(`[sweeper] Timeout auto-cierre: ${phone}`);
+      const messages = conversationLog.get(phone) || [];
+      if (messages.length > 0) {
+        const operatorId = messages.find(m => m.operatorId)?.operatorId || null;
+        getLearning().saveConversationForReview(phone, messages, 'human_resolved', operatorId)
+          .catch(() => {});
+        conversationLog.delete(phone);
+      }
+    }
+  }
+}, 15 * 60 * 1000); // cada 15 min
+
 // ── Redis ────────────────────────────────────────────────────────────────────
 let redisClient = null;
 
@@ -295,6 +314,14 @@ function getActiveConversation(phone) {
   if (Date.now() - info.takenAt > HANDOFF_TIMEOUT_MS) {
     activeConversations.delete(phone);
     console.log(`🤖 Timeout handoff ${phone} → bot retoma`);
+    // Guardar conversación para aprendizaje aunque no hayan soltado
+    const messages = conversationLog.get(phone) || [];
+    if (messages.length > 0) {
+      const operatorId = messages.find(m => m.operatorId)?.operatorId || null;
+      getLearning().saveConversationForReview(phone, messages, 'human_resolved', operatorId)
+        .catch(() => {});
+      conversationLog.delete(phone);
+    }
     return null;
   }
 
