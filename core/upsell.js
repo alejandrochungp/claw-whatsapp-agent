@@ -449,8 +449,6 @@ async function handleNewOrder(order, config) {
 
     logger.log(`[upsell] Pedido #${order.name} — upsell en ${UPSELL_DELAY_MS/1000}s → ${match.par.complemento} ($${match.precioComplemento})`);
 
-    const memory = require('./memory');
-
     setTimeout(async () => {
       // 1. Crear thread en Slack con contexto completo
       await createUpsellThread(phone, order, match, config);
