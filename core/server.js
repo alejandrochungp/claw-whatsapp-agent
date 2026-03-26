@@ -275,10 +275,12 @@ function start(config, business) {
     try {
       logger.log(`[slack/actions] body keys: ${Object.keys(req.body || {}).join(',') || 'EMPTY'} | raw: ${JSON.stringify(req.body).substring(0, 100)}`);
       const payload = JSON.parse(req.body.payload);
+      logger.log(`[slack/actions] type=${payload.type} actions=${JSON.stringify((payload.actions||[]).map(a=>a.action_id))}`);
 
       // Botones de aprendizaje (Aprobar/Editar/Rechazar)
       if (payload.type === 'block_actions') {
         for (const action of payload.actions || []) {
+          logger.log(`[slack/actions] action_id=${action.action_id}`);
           if (action.action_id?.startsWith('learning_')) {
             action.trigger_id = payload.trigger_id;
             action.user       = payload.user;
@@ -293,10 +295,11 @@ function start(config, business) {
 
       // Modal de edición enviado
       if (payload.type === 'view_submission' && payload.view?.callback_id === 'learning_edit_submit') {
+        logger.log(`[slack/actions] view_submission learning_edit_submit`);
         await learning.handleEditSubmit(payload);
       }
     } catch (e) {
-      logger.log(`[slack/actions] Error: ${e.message}`);
+      logger.log(`[slack/actions] Error: ${e.message} | stack: ${e.stack?.split('\n')[1]}`);
     }
   });
 
