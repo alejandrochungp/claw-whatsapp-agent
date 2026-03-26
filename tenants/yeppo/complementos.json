@@ -1,6 +1,6 @@
 {
-  "version": "2026-03-25",
-  "nota": "Productos frecuentemente comprados juntos — basado en historial real de Shopify",
+  "version": "2026-03-26",
+  "nota": "Productos frecuentemente comprados juntos — basado en historial real de Shopify (2000 pedidos)",
   "pares": [
     {
       "producto": "COLLAGEN NIGHT WRAPPING MASK",
@@ -16,7 +16,7 @@
       "variantId": "46324582547605",
       "precio": 31490,
       "razon": "rutina calmante + lifting — combinación muy popular",
-      "frecuencia": 4
+      "frecuencia": 9
     },
     {
       "producto": "345 Relief Cream",
@@ -24,6 +24,46 @@
       "variantId": "45496153407637",
       "precio": 25590,
       "razon": "manchas y rojeces — el sérum trata, la crema calma",
+      "frecuencia": 16
+    },
+    {
+      "producto": "345 Relief Cream",
+      "complemento": "Vitamin C Boosting Serum 30ml",
+      "variantId": "46497676689557",
+      "precio": 0,
+      "razon": "iluminación + calmante — dupla favorita para piel sensible",
+      "frecuencia": 6
+    },
+    {
+      "producto": "345 Relief Cream",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": "44017985486997",
+      "precio": 0,
+      "razon": "protección solar suave para pieles sensibles — cierra la rutina",
+      "frecuencia": 5
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantId": "46324582547605",
+      "precio": 31490,
+      "razon": "manchas + firmeza — dos sérums que se potencian",
+      "frecuencia": 5
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": "44017985486997",
+      "precio": 0,
+      "razon": "tratamiento de manchas de día necesita protección solar sí o sí",
+      "frecuencia": 4
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "Soon Jung 5.5 Foam Cleanser",
+      "variantId": "44018295275669",
+      "precio": 0,
+      "razon": "limpieza de pH balanceado — base ideal para que el sérum funcione mejor",
       "frecuencia": 4
     },
     {
@@ -43,6 +83,134 @@
       "frecuencia": 2
     },
     {
+      "producto": "No.9 NAD Bio Lifting-sil Essence",
+      "complemento": "PDRN Pink Collagen Capsule Cream",
+      "variantId": "46324603453589",
+      "precio": 32990,
+      "razon": "rutina antiaging completa esencia + crema",
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence",
+      "complemento": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "variantId": "46756485857429",
+      "precio": 0,
+      "razon": "línea No.9 completa — tónico + esencia para máximo efecto lifting",
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence",
+      "complemento": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "variantId": "46741809266837",
+      "precio": 0,
+      "razon": "línea No.9 — contorno de ojos complementa la esencia antiaging",
+      "frecuencia": 5
+    },
+    {
+      "producto": "PDRN Pink Collagen Capsule Cream",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantId": "46324582547605",
+      "precio": 31490,
+      "razon": "PDRN + NAD — combinación antiaging de alta tecnología",
+      "frecuencia": 5
+    },
+    {
+      "producto": "Teatree CICA 80 Toner",
+      "complemento": "Teatree CICA 60 Moisturizer",
+      "variantId": "44018258935957",
+      "precio": 0,
+      "razon": "rutina CICA completa — tónico + crema de la misma línea",
+      "frecuencia": 6
+    },
+    {
+      "producto": "Teatree CICA 80 Toner",
+      "complemento": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantId": "44018565644437",
+      "precio": 0,
+      "razon": "rutina anti-acné completa — limpieza + tónico de la línea CICA",
+      "frecuencia": 7
+    },
+    {
+      "producto": "Teatree CICA 60 Moisturizer",
+      "complemento": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantId": "44018565644437",
+      "precio": 0,
+      "razon": "cierra la rutina CICA — limpieza + hidratación para piel problemática",
+      "frecuencia": 6
+    },
+    {
+      "producto": "Rich Perfume Shampoo",
+      "complemento": "Rich Perfume Treatment",
+      "variantId": "45501208854677",
+      "precio": 0,
+      "razon": "shampoo + tratamiento de la misma línea — fragancia y nutrición completa",
+      "frecuencia": 9
+    },
+    {
+      "producto": "Ki Gold Premium Shampoo",
+      "complemento": "Ki Gold Premium Treatment",
+      "variantId": "46324233863317",
+      "precio": 0,
+      "razon": "sistema Ki Gold completo — shampoo + tratamiento para máximo brillo",
+      "frecuencia": 7
+    },
+    {
+      "producto": "Advanced Repair Ampoule Shampoo",
+      "complemento": "Advanced Repair Ampoule Conditioner",
+      "variantId": "44026285719701",
+      "precio": 0,
+      "razon": "reparación capilar completa — la ampolla del shampoo necesita el acondicionador para sellarse",
+      "frecuencia": 6
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Shampoo",
+      "complemento": "DlaeSoo Hair Loss Care Treatment",
+      "variantId": "46324234518677",
+      "precio": 0,
+      "razon": "sistema completo anticaída — shampoo + tratamiento de la misma línea",
+      "frecuencia": 5
+    },
+    {
+      "producto": "Dear Flora Cherry Blossom Shampoo",
+      "complemento": "Dear Flora Cherry Blossom Rinse",
+      "variantId": "46331901804693",
+      "precio": 0,
+      "razon": "dupla Cherry Blossom — fragancia coherente y nutrición de punta a punta",
+      "frecuencia": 5
+    },
+    {
+      "producto": "Advanced Snail 96 Mucin Power Essence",
+      "complemento": "Advanced Snail 92 All In One Cream",
+      "variantId": "44019267240085",
+      "precio": 0,
+      "razon": "rutina caracol completa — esencia + crema all-in-one para máxima hidratación",
+      "frecuencia": 4
+    },
+    {
+      "producto": "Bean Essence",
+      "complemento": "Bean Cleansing Oil",
+      "variantId": "46124946161813",
+      "precio": 0,
+      "razon": "rutina Bean completa — limpieza + esencia de la misma línea natural",
+      "frecuencia": 4
+    },
+    {
+      "producto": "Retinosine Deep Intense Serum",
+      "complemento": "Retinosine Deep Intense Cream",
+      "variantId": "45621253046421",
+      "precio": 0,
+      "razon": "sistema Retinosine completo — sérum activa, crema sella y potencia el retinol",
+      "frecuencia": 2
+    },
+    {
+      "producto": "1025 Dokdo Cleanser",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": "46331858583701",
+      "precio": 28890,
+      "razon": "limpieza + hidratación calmante — rutina mínima perfecta para piel sensible",
+      "frecuencia": 3
+    },
+    {
       "producto": "Shampoo for Oily Scalp",
       "complemento": "1025 Dokdo Cleanser",
       "variantId": "44017975328917",
@@ -51,19 +219,11 @@
       "frecuencia": 2
     },
     {
-      "producto": "No.9 NAD Bio Lifting-sil Essence",
-      "complemento": "PDRN Pink Collagen Capsule Cream",
-      "variantId": "46324603453589",
-      "precio": 32990,
-      "razon": "rutina antiaging completa esencia + crema",
-      "frecuencia": 2
-    },
-    {
-      "producto": "DlaeSoo Hair Loss Care Shampoo",
-      "complemento": "DlaeSoo Hair Loss Care Treatment",
-      "variantId": "45092844142741",
-      "precio": 23990,
-      "razon": "sistema completo anticaída — shampoo + tratamiento",
+      "producto": "Keratin Bond Silky Moisture Shampoo",
+      "complemento": "Keratin Bond Silky Moisture Conditioner",
+      "variantId": "44026286178453",
+      "precio": 0,
+      "razon": "sistema Keratin Bond completo — keratina y humectación de shampoo a punta",
       "frecuencia": 2
     }
   ]
