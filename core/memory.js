@@ -168,7 +168,7 @@ async function getCampaignContext(phone) {
 
 // ─── Upsell pendiente — clave separada para evitar race conditions ────────────
 // TTL 30 min: si el cliente no responde en 30 min, se cancela
-const UPSELL_TTL_SECS = 30 * 60;
+const UPSELL_TTL_SECS = 4 * 60 * 60; // 4 horas (el despacho puede demorar)
 const upsellKey = (phone) => `upsell:${phone}`;
 
 async function setUpsellPending(phone, data) {
