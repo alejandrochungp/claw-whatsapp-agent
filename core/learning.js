@@ -182,15 +182,28 @@ async function analyzeConversations(dateStr) {
     return [];
   }
 
+  // Limpiar texto de formato Slack antes de pasar a Claude
+  function cleanText(text) {
+    if (!text) return '';
+    return text
+      .replace(/:[\w_]+:/g, '')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/<[^>]+>/g, '')
+      .replace(/`[^`]+`/g, '')
+      .replace(/Comandos.*$/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   // Preparar texto para Claude
   const convsText = withHuman.map((c, i) => {
     const msgs = (c.messages || []).map(m => {
-      const who = m.role === 'client' ? '👤 Cliente'
-                : m.role === 'bot'    ? '🤖 Bot'
-                :                      '👩 Operador';
-      return `${who}: ${m.text}`;
-    }).join('\n');
-    return `--- Conversación ${i+1} (${c.outcome}) ---\n${msgs}`;
+      const who = m.role === 'client' ? 'Cliente'
+                : m.role === 'bot'    ? 'Bot'
+                :                      'Operador';
+      return `${who}: ${cleanText(m.text)}`;
+    }).filter(line => line.split(': ')[1]?.length > 3).join('\n');
+    return `--- Conversación ${i+1} ---\n${msgs}`;
   }).join('\n\n');
 
   const prompt = `Analiza estas ${withHuman.length} conversaciones donde un operador humano tuvo que intervenir para atender a clientes de Yeppo (tienda de cosméticos coreanos).
