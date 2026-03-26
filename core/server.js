@@ -306,53 +306,79 @@ function start(config, business) {
   });
 }
 
-// ── Subir media de WhatsApp a Slack ─────────────────────────────────────────
+// ── Subir media de WhatsApp a Slack (nueva API v2) ──────────────────────────
 async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mimeType, config) {
   const slackToken = process.env.SLACK_BOT_TOKEN;
-  if (!slackToken) return;
+  if (!slackToken) { logger.log('[media] Sin SLACK_BOT_TOKEN'); return; }
+
+  // Resolver channel y thread_ts
+  const threadData = slack.phoneToThread.get(phone);
+  const channel    = threadData?.channel
+                  || process.env.SLACK_CHANNEL_ID
+                  || process.env.SLACK_CHANNEL_WHATSAPP;
+
+  if (!channel) { logger.log('[media] Sin canal Slack configurado'); return; }
 
   try {
-    const buf64  = await meta.downloadMedia(mediaUrl);
-    if (!buf64) {
-      logger.log(`[media] No se pudo descargar ${type} de ${phone}`);
+    // 1. Descargar imagen de Meta
+    const buf64 = await meta.downloadMedia(mediaUrl);
+    if (!buf64) { logger.log(`[media] No se pudo descargar ${type} de ${phone}`); return; }
+
+    const binBuf  = Buffer.from(buf64, 'base64');
+    const ext     = mimeType.split('/')[1]?.split(';')[0]?.split('+')[0] || type;
+    const fname   = `media_${Date.now()}.${ext}`;
+    const label   = `${typeEmoji} +${phone} envió ${type}${caption ? ': "' + caption + '"' : ''}`;
+    const axiosI  = require('axios');
+
+    // 2. Solicitar URL de upload (nueva API Slack)
+    const urlResp = await axiosI.post('https://slack.com/api/files.getUploadURLExternal', {
+      filename: fname,
+      length:   binBuf.length
+    }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' }, timeout: 15000 });
+
+    if (!urlResp.data?.ok) {
+      logger.log(`[media] getUploadURL error: ${urlResp.data?.error}`);
+      // Fallback: postear texto indicando que hay una imagen
+      await axiosI.post('https://slack.com/api/chat.postMessage', {
+        channel,
+        thread_ts: threadData?.thread_ts,
+        text: `${label} (imagen no disponible directamente — revisar en WhatsApp)`
+      }, { headers: { Authorization: `Bearer ${slackToken}` } });
       return;
     }
 
-    const binBuf = Buffer.from(buf64, 'base64');
-    const ext    = mimeType.split('/')[1]?.split(';')[0]?.split('+')[0] || type;
-    const fname  = `media_${Date.now()}.${ext}`;
-    const label  = `${typeEmoji} *+${phone}* envió ${type}${caption ? `: "${caption}"` : ''}`;
+    const { upload_url, file_id } = urlResp.data;
 
-    // Resolver channel y thread_ts
-    const threadData = slack.phoneToThread.get(phone);
-    const channel    = threadData?.channel
-                    || process.env.SLACK_CHANNEL_ID
-                    || process.env.SLACK_CHANNEL_WHATSAPP;
-
-    if (!channel) {
-      logger.log(`[media] Sin canal Slack configurado`);
-      return;
-    }
-
+    // 3. Subir el archivo binario
     const FormData = require('form-data');
     const form = new FormData();
-    form.append('channels', channel);
-    if (threadData?.thread_ts) form.append('thread_ts', threadData.thread_ts);
-    form.append('initial_comment', label);
     form.append('file', binBuf, { filename: fname, contentType: mimeType });
-
-    const r = await require('axios').post('https://slack.com/api/files.upload', form, {
-      headers: { ...form.getHeaders(), Authorization: `Bearer ${slackToken}` },
-      timeout: 30000
+    await axiosI.post(upload_url, form, {
+      headers: { ...form.getHeaders() },
+      timeout: 30000,
+      maxContentLength: 20 * 1024 * 1024
     });
 
-    if (r.data?.ok) {
-      logger.log(`[media] ${type} subido a Slack ✅`);
+    // 4. Completar upload y asociar al canal/thread
+    const completeBody = {
+      files:    [{ id: file_id, title: fname }],
+      channel_id: channel,
+      initial_comment: label
+    };
+    if (threadData?.thread_ts) completeBody.thread_ts = threadData.thread_ts;
+
+    const completeResp = await axiosI.post('https://slack.com/api/files.completeUploadExternal',
+      completeBody,
+      { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+    );
+
+    if (completeResp.data?.ok) {
+      logger.log(`[media] ${type} subido a Slack ✅ (canal: ${channel})`);
     } else {
-      logger.log(`[media] Slack upload error: ${r.data?.error}`);
+      logger.log(`[media] completeUpload error: ${completeResp.data?.error}`);
     }
   } catch (e) {
-    logger.log(`[media] uploadMediaToSlack error: ${e.message}`);
+    logger.log(`[media] uploadMediaToSlack error: ${e.response?.data?.error || e.message}`);
   }
 }
 

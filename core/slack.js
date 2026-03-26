@@ -86,24 +86,40 @@ const userNameCache       = new Map();
 const conversationLog     = new Map();
 
 // ── Sweeper: cierra automáticamente conversaciones inactivas ──────────────────
-// Corre cada 15 min. Si el operador tomó control hace >30 min → guarda y cierra.
+// Corre cada 15 min.
+// - Si el operador tomó control hace >30 min → guarda conv como human_resolved
+// - Si el bot resolvió y no hay actividad hace >60 min → guarda como bot_resolved
+const BOT_CONV_TIMEOUT_MS = 60 * 60 * 1000; // 60 min sin actividad = conv terminada
+
 setInterval(() => {
   const now = Date.now();
+
+  // Timeout handoffs activos (operador no soltó)
   for (const [phone, info] of activeConversations) {
     if (now - info.takenAt > HANDOFF_TIMEOUT_MS) {
       activeConversations.delete(phone);
-      persistHandoff(phone, null); // borrar de Redis
-      console.log(`[sweeper] Timeout auto-cierre: ${phone}`);
+      persistHandoff(phone, null);
+      console.log(`[sweeper] Timeout handoff: ${phone}`);
       const messages = conversationLog.get(phone) || [];
       if (messages.length > 0) {
         const operatorId = messages.find(m => m.operatorId)?.operatorId || null;
-        getLearning().saveConversationForReview(phone, messages, 'human_resolved', operatorId)
-          .catch(() => {});
+        getLearning().saveConversationForReview(phone, messages, 'human_resolved', operatorId).catch(() => {});
         conversationLog.delete(phone);
       }
     }
   }
-}, 15 * 60 * 1000); // cada 15 min
+
+  // Timeout conversaciones del bot (sin operador activo, inactivas)
+  for (const [phone, messages] of conversationLog) {
+    if (activeConversations.has(phone)) continue; // operador activo, no tocar
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && (now - lastMsg.ts) > BOT_CONV_TIMEOUT_MS) {
+      console.log(`[sweeper] Guardando conv bot terminada: ${phone} (${messages.length} msgs)`);
+      getLearning().saveConversationForReview(phone, messages, 'bot_resolved', null).catch(() => {});
+      conversationLog.delete(phone);
+    }
+  }
+}, 15 * 60 * 1000);
 
 // ── Redis ────────────────────────────────────────────────────────────────────
 let redisClient = null;
