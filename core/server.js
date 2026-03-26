@@ -543,42 +543,42 @@ async function handleMessage(message, value, config, business) {
 
     const activeThread = slack.getActiveConversation(from);
 
-    // Subir a Slack (siempre, en paralelo sin bloquear)
-    if (mediaUrl) {
-      uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
-        .catch(e => logger.log(`[media] uploadMediaToSlack error: ${e.message}`));
+    // Si hay operador activo → subir foto al thread y salir
+    if (activeThread) {
+      if (mediaUrl) {
+        await uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config);
+      }
+      return;
     }
 
-    // Si hay operador activo → salir (ya se subió a Slack arriba)
-    if (activeThread) return;
-
-    // Construir userText para pasar por el flujo normal de sendReply
+    // ── Analizar imagen con Claude Vision ────────────────────────────────
+    let imageDesc = null;
+    let imageBuf  = null;
     if (type === 'image' && mediaUrl) {
-      // Pre-analizar con Claude Vision y guardarlo como contexto
       try {
-        const buf64     = await meta.downloadMedia(mediaUrl);
+        imageBuf = await meta.downloadMedia(mediaUrl);
         const imgCtx    = await memory.getContext(from) || {};
         const sysPrompt = business.buildSystemPrompt(imgCtx);
-        const aiDesc    = buf64 ? await ai.analyzeImage(buf64, mimeType, sysPrompt) : null;
-        if (aiDesc) {
-          // Pasar la descripción como userText → sendReply lo envía + loguea en Slack
-          userText = `[imagen] ${aiDesc}`;
-          // Guardar en historial como si el cliente hubiera descrito la imagen
-          await memory.addMessage(from, caption || '[imagen enviada]', 'user');
-        } else {
-          userText = caption || '[imagen]';
-        }
+        imageDesc = imageBuf ? await ai.analyzeImage(imageBuf, mimeType, sysPrompt) : null;
       } catch (e) {
         logger.log(`[media] analyzeImage error: ${e.message}`);
-        userText = caption || '[imagen]';
       }
+    }
+
+    // userText para Claude: si hay descripción de la imagen, usarla
+    // El texto que se muestra en Slack como "Cliente:" será solo [imagen]
+    if (type === 'image') {
+      userText = imageDesc || caption || 'recibiste una foto';
     } else if (caption) {
       userText = caption;
     } else {
-      // Video/doc/sticker sin caption — acuse simple y loguear en Slack
       const tipoLabel = type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo';
-      userText = `[${tipoLabel} recibido]`;
+      userText = `[${tipoLabel}]`;
     }
+
+    // Guardamos mediaUrl para subir a Slack DESPUÉS de que logConversation cree el thread
+    // Lo hacemos via una variable en el scope del mensaje
+    message._pendingMediaUpload = mediaUrl ? { mediaUrl, mimeType, typeEmoji, caption, type } : null;
   } else {
     logger.log(`⚠️ Tipo no soportado: ${type}`);
     return;
@@ -621,17 +621,19 @@ async function handleMessage(message, value, config, business) {
     return;
   }
 
+  const pendingMedia = message._pendingMediaUpload || null;
+
   // Debounce: esperar 3s por si el cliente envía otro mensaje seguido
   // Los audios se procesan de inmediato (ya tomaron tiempo en transcribir)
   if (isAudio) {
-    await sendReply(from, userText, config, business);
+    await sendReply(from, userText, config, business, pendingMedia);
   } else {
-    debounceMessage(from, userText, (combinedText) => sendReply(from, combinedText, config, business));
+    debounceMessage(from, userText, (combinedText) => sendReply(from, combinedText, config, business, pendingMedia));
   }
 }
 
 // ── Generar y enviar respuesta ──────────────────────────────────────────────
-async function sendReply(from, userText, config, business) {
+async function sendReply(from, userText, config, business, pendingMedia = null) {
   const history = await memory.getHistory(from, 6);
   const context = await memory.getContext(from) || {};
 
@@ -705,7 +707,16 @@ async function sendReply(from, userText, config, business) {
   if (notifySlack) {
     await slack.notifyHandoff(from, userText, config);
   } else {
-    await slack.logConversation(from, userText, replyText, config, shopifySlackInfo);
+    // Para imágenes, mostrar "🖼️ [imagen]" como texto del cliente en Slack
+    const slackUserText = pendingMedia ? `${pendingMedia.typeEmoji} [${pendingMedia.type}]${pendingMedia.caption ? ': "' + pendingMedia.caption + '"' : ''}` : userText;
+    await slack.logConversation(from, slackUserText, replyText, config, shopifySlackInfo);
+  }
+
+  // 7. Subir imagen al thread DESPUÉS de que logConversation lo creó
+  if (pendingMedia?.mediaUrl) {
+    const { mediaUrl, mimeType, typeEmoji, caption, type } = pendingMedia;
+    uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
+      .catch(e => logger.log(`[media] upload post-log error: ${e.message}`));
   }
 }
 
