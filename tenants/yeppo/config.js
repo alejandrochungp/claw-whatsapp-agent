@@ -14,8 +14,8 @@ module.exports = {
   verifyToken:   process.env.WEBHOOK_VERIFY_TOKEN || 'yeppo_whatsapp_verify_2026',
   port:          process.env.PORT || 3001,
 
-  // Slack
-  slackChannel:  process.env.SLACK_CHANNEL_ID || process.env.SLACK_CHANNEL_WHATSAPP || '#team-servicio-al-cliente',
+  // Slack — C05FES87S9J es el canal whatsapp de Yeppo (hardcoded como fallback seguro)
+  slackChannel:  process.env.SLACK_CHANNEL_ID || process.env.SLACK_CHANNEL_WHATSAPP || 'C05FES87S9J',
 
   // Horario de atención (Santiago, Chile)
   businessHours: {

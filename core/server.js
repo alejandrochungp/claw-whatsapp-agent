@@ -318,13 +318,15 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
   const slackToken = process.env.SLACK_BOT_TOKEN;
   if (!slackToken) { logger.log('[media] Sin SLACK_BOT_TOKEN'); return; }
 
-  // Resolver channel y thread_ts
+  // Resolver channel y thread_ts (mismo fallback que config.js)
   const threadData = slack.phoneToThread.get(phone);
   const channel    = threadData?.channel
                   || process.env.SLACK_CHANNEL_ID
-                  || process.env.SLACK_CHANNEL_WHATSAPP;
+                  || process.env.SLACK_CHANNEL_WHATSAPP
+                  || config?.slackChannel
+                  || 'C05FES87S9J';  // fallback hardcoded igual que en config.js
 
-  if (!channel) { logger.log('[media] Sin canal Slack configurado'); return; }
+  logger.log(`[media] upload → channel: ${channel}, thread: ${threadData?.thread_ts || 'nuevo'}`);
 
   try {
     // 1. Descargar imagen de Meta
