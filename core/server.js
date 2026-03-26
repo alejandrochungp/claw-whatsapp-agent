@@ -92,9 +92,10 @@ function start(config, business) {
   app.post('/admin/debug-context', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone requerido' });
-    const ctx  = await memory.getContext(phone);
-    const hist = await memory.getHistory(phone, 5);
-    res.json({ context: ctx, recentHistory: hist });
+    const ctx      = await memory.getContext(phone);
+    const hist     = await memory.getHistory(phone, 5);
+    const campaign = await memory.getCampaignContext(phone);
+    res.json({ context: ctx, recentHistory: hist, campaignContext: campaign });
   });
 
   // ── POST /admin/reset-context — limpiar contexto de un número (solo pruebas) ──
