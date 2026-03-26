@@ -122,25 +122,43 @@ async function getAllOperatorMetrics() {
   } catch { return []; }
 }
 
-// ── Cargar / guardar FAQs aprendidas ─────────────────────────────────────────
+// ── Cargar / guardar FAQs aprendidas (Redis-first, filesystem fallback) ──────
 
-function loadLearnedFaqs() {
+const REDIS_FAQS_KEY = 'learned_faqs';
+
+async function loadLearnedFaqs() {
   try {
+    // Intentar desde Redis primero (persiste entre deploys)
+    const redisVal = await memory.redis?.get(REDIS_FAQS_KEY);
+    if (redisVal) return JSON.parse(redisVal);
+    // Fallback: leer desde archivo
     if (fs.existsSync(FAQS_PATH)) {
-      return JSON.parse(fs.readFileSync(FAQS_PATH, 'utf8'));
+      const faqs = JSON.parse(fs.readFileSync(FAQS_PATH, 'utf8'));
+      // Migrar a Redis si hay datos en archivo
+      if (faqs.length > 0 && memory.redis) {
+        await memory.redis.set(REDIS_FAQS_KEY, JSON.stringify(faqs));
+      }
+      return faqs;
     }
   } catch {}
   return [];
 }
 
-function saveLearnedFaq(faq) {
-  const faqs = loadLearnedFaqs();
+async function saveLearnedFaq(faq) {
+  const faqs = await loadLearnedFaqs();
   // Evitar duplicados por pregunta similar
   const exists = faqs.some(f => f.question.toLowerCase() === faq.question.toLowerCase());
   if (!exists) {
     faqs.push({ ...faq, addedAt: new Date().toISOString() });
-    fs.writeFileSync(FAQS_PATH, JSON.stringify(faqs, null, 2), 'utf8');
-    console.log(`[learning] FAQ aprendida: "${faq.question}"`);
+    // Guardar en Redis (persistente entre deploys)
+    if (memory.redis) {
+      await memory.redis.set(REDIS_FAQS_KEY, JSON.stringify(faqs));
+    }
+    // Guardar en archivo como backup
+    try { fs.writeFileSync(FAQS_PATH, JSON.stringify(faqs, null, 2), 'utf8'); } catch {}
+    console.log(`[learning] ✅ FAQ aprendida y guardada en Redis: "${faq.question.substring(0, 60)}"`);
+  } else {
+    console.log(`[learning] FAQ ya existía, ignorando duplicado`);
   }
   return faqs;
 }
@@ -148,11 +166,11 @@ function saveLearnedFaq(faq) {
 /**
  * Genera string con FAQs aprendidas para inyectar en el system prompt.
  */
-function getLearnedFaqsPrompt() {
-  const faqs = loadLearnedFaqs();
+async function getLearnedFaqsPrompt() {
+  const faqs = await loadLearnedFaqs();
   if (!faqs.length) return '';
   const lines = faqs.map(f => `P: ${f.question}\nR: ${f.answer}`).join('\n\n');
-  return `\n\n---\n\n## Respuestas aprendidas del equipo\n\n${lines}`;
+  return `\n\nRESPUESTAS APRENDIDAS DEL EQUIPO\n\n${lines}`;
 }
 
 // ── Análisis diario con Claude ────────────────────────────────────────────────

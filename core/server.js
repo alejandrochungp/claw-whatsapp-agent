@@ -1,8 +1,8 @@
-/**
- * core/server.js — Webhook Express genérico
+﻿/**
+ * core/server.js â€” Webhook Express genÃ©rico
  *
  * Recibe mensajes de Meta Cloud API y los enruta al tenant correspondiente.
- * No contiene lógica de negocio: todo lo específico viene de tenantBusiness.
+ * No contiene lÃ³gica de negocio: todo lo especÃ­fico viene de tenantBusiness.
  */
 
 const express    = require('express');
@@ -23,21 +23,21 @@ function start(config, business) {
 
   app.use(bodyParser.json());
 
-  // ── GET /webhook — verificación Meta ─────────────────────────────────────
+  // â”€â”€ GET /webhook â€” verificaciÃ³n Meta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/webhook', (req, res) => {
     const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
     if (mode === 'subscribe' && token === config.verifyToken) {
-      logger.log('✅ Webhook verificado por Meta');
+      logger.log('âœ… Webhook verificado por Meta');
       return res.status(200).send(challenge);
     }
-    logger.log(`❌ Verificación fallida (token: ${token})`);
+    logger.log(`âŒ VerificaciÃ³n fallida (token: ${token})`);
     res.sendStatus(403);
   });
 
-  // ── POST /webhook — mensajes entrantes ───────────────────────────────────
+  // â”€â”€ POST /webhook â€” mensajes entrantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/webhook', async (req, res) => {
     try {
-      res.sendStatus(200); // Responder rápido a Meta
+      res.sendStatus(200); // Responder rÃ¡pido a Meta
 
       const value = req.body?.entry?.[0]?.changes?.[0]?.value;
       if (!value) return;
@@ -53,11 +53,11 @@ function start(config, business) {
         for (const msg of value.messages) await handleMessage(msg, value, config, business);
       }
     } catch (err) {
-      logger.log(`❌ Error en webhook: ${err.message}`);
+      logger.log(`âŒ Error en webhook: ${err.message}`);
     }
   });
 
-  // ── GET /status — health check ───────────────────────────────────────────
+  // â”€â”€ GET /status â€” health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/status', (req, res) => {
     res.json({
       ok: true,
@@ -67,13 +67,13 @@ function start(config, business) {
     });
   });
 
-  // ── POST /shopify/order — webhook Shopify order_paid ────────────────────────
+  // â”€â”€ POST /shopify/order â€” webhook Shopify order_paid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/shopify/order', async (req, res) => {
-    res.sendStatus(200); // Responder rápido a Shopify
+    res.sendStatus(200); // Responder rÃ¡pido a Shopify
     try {
       const order = req.body;
       if (!order?.id) return;
-      logger.log(`[shopify] Nuevo pedido: #${order.name} — ${order.financial_status}`);
+      logger.log(`[shopify] Nuevo pedido: #${order.name} â€” ${order.financial_status}`);
       if (order.financial_status === 'paid') {
         await upsell.handleNewOrder(order, config);
       }
@@ -82,13 +82,13 @@ function start(config, business) {
     }
   });
 
-  // ── GET /admin/prompt — ver prompt activo en memoria ─────────────────────
-  app.get('/admin/prompt', (req, res) => {
-    const samplePrompt = business.buildSystemPrompt({});
+  // â”€â”€ GET /admin/prompt â€” ver prompt activo en memoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  app.get('/admin/prompt', async (req, res) => {
+    const samplePrompt = await business.buildSystemPrompt({});
     res.json({ ok: true, length: samplePrompt.length, preview: samplePrompt.slice(0, 500) });
   });
 
-  // ── POST /admin/debug-context — ver contexto Redis de un número ──────────
+  // â”€â”€ POST /admin/debug-context â€” ver contexto Redis de un nÃºmero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/admin/debug-context', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone requerido' });
@@ -98,7 +98,7 @@ function start(config, business) {
     res.json({ context: ctx, recentHistory: hist, campaignContext: campaign });
   });
 
-  // ── GET /admin/wa-template — ver estructura de un template WA ───────────
+  // â”€â”€ GET /admin/wa-template â€” ver estructura de un template WA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/admin/wa-template', async (req, res) => {
     const name = req.query.name || 'pago_confirmado_upsell';
     const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -115,13 +115,13 @@ function start(config, business) {
     }
   });
 
-  // ── GET /admin/logs — últimos logs del servidor ──────────────────────────
+  // â”€â”€ GET /admin/logs â€” Ãºltimos logs del servidor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/admin/logs', (req, res) => {
     const n = parseInt(req.query.n) || 50;
     res.json({ logs: logger.getRecentLogs(n) });
   });
 
-  // ── POST /admin/reset-thread — forzar recreación de thread Slack ────────
+  // â”€â”€ POST /admin/reset-thread â€” forzar recreaciÃ³n de thread Slack â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/admin/reset-thread', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone requerido' });
@@ -131,7 +131,7 @@ function start(config, business) {
     res.json({ ok: true, phone });
   });
 
-  // ── POST /admin/reset-context — limpiar contexto de un número (solo pruebas) ──
+  // â”€â”€ POST /admin/reset-context â€” limpiar contexto de un nÃºmero (solo pruebas) â”€â”€
   app.post('/admin/reset-context', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone requerido' });
@@ -143,36 +143,36 @@ function start(config, business) {
     res.json({ ok: true, phone });
   });
 
-  // ── POST /admin/campaign-context — registrar contexto de campaña en Redis ──
+  // â”€â”€ POST /admin/campaign-context â€” registrar contexto de campaÃ±a en Redis â”€â”€
   app.post('/admin/campaign-context', async (req, res) => {
     const { phone, campaign } = req.body;
     if (!phone || !campaign) return res.status(400).json({ error: 'phone y campaign requeridos' });
     await memory.setCampaignContext(phone, campaign);
-    logger.log(`[campaign] Contexto guardado: ${phone} → "${campaign.name}"`);
+    logger.log(`[campaign] Contexto guardado: ${phone} â†’ "${campaign.name}"`);
     res.json({ ok: true, phone });
   });
 
-  // ── POST /admin/seed-thread — inyectar thread→phone en Redis (one-time migration) ──
+  // â”€â”€ POST /admin/seed-thread â€” inyectar threadâ†’phone en Redis (one-time migration) â”€â”€
   app.post('/admin/seed-thread', async (req, res) => {
     const { phone, thread_ts, channel } = req.body;
     if (!phone || !thread_ts) return res.status(400).json({ error: 'phone y thread_ts requeridos' });
     const data = { thread_ts, channel: channel || 'C05FES87S9J', timestamp: Date.now() };
     slack.phoneToThread.set(phone, data);
     await slack.saveThreadExternal(phone, data);
-    logger.log(`[seed] thread mapeado: ${phone} → ${thread_ts}`);
+    logger.log(`[seed] thread mapeado: ${phone} â†’ ${thread_ts}`);
     res.json({ ok: true, phone, thread_ts });
   });
 
-  // ── POST /slack/events — recibir mensajes y comandos desde Slack ─────────
+  // â”€â”€ POST /slack/events â€” recibir mensajes y comandos desde Slack â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/slack/events', async (req, res) => {
     const body = req.body;
 
-    // Verificación de URL (Slack envía challenge al configurar)
+    // VerificaciÃ³n de URL (Slack envÃ­a challenge al configurar)
     if (body.type === 'url_verification') {
       return res.json({ challenge: body.challenge });
     }
 
-    res.sendStatus(200); // Responder rápido a Slack
+    res.sendStatus(200); // Responder rÃ¡pido a Slack
 
     const event = body.event;
     if (!event) return;
@@ -180,11 +180,11 @@ function start(config, business) {
     // Debug: loguear todos los eventos Slack entrantes
     logger.log(`[slack-event] type=${event.type} subtype=${event.subtype || '-'} bot_id=${event.bot_id || '-'} thread=${event.thread_ts || '-'} text="${(event.text || '').slice(0, 50)}"`);
 
-    // ── Reacción en canal de learning → aplicar aprendizaje ─────────────
+    // â”€â”€ ReacciÃ³n en canal de learning â†’ aplicar aprendizaje â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (event.type === 'reaction_added' && event.item?.channel === (process.env.SLACK_LEARNING_CHANNEL || 'C0APVLMV98Q')) {
       const reaction = event.reaction; // 'white_check_mark' o 'x'
       if (reaction === 'white_check_mark' || reaction === 'heavy_check_mark') {
-        logger.log(`[learning] ✅ Reacción aprobación en mensaje ${event.item.ts} — aplicando...`);
+        logger.log(`[learning] âœ… ReacciÃ³n aprobaciÃ³n en mensaje ${event.item.ts} â€” aplicando...`);
         learning.applyApprovedMessage(event.item.ts, event.item.channel).catch(e =>
           logger.log(`[learning] Error aplicando: ${e.message}`)
         );
@@ -206,23 +206,23 @@ function start(config, business) {
 
     const userId = event.user; // ID del operador que escribe
 
-    // ── Comando: tomar ────────────────────────────────────────────────────
+    // â”€â”€ Comando: tomar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (text === 'tomar') {
       const phone = slack.handleSlackCommand('tomar', thread_ts);
       if (phone) {
         const operatorName = await slack.sendOperatorReply(phone, null, userId, config);
-        logger.log(`👤 ${operatorName} tomó control de ${phone}`);
+        logger.log(`ðŸ‘¤ ${operatorName} tomÃ³ control de ${phone}`);
         // Actualizar header del thread
         const threadData = slack.phoneToThread.get(phone);
         if (threadData?.headerTs) {
           await slack.updateThreadHeader(phone, 'human', channel, threadData.headerTs, operatorName);
         }
-        await postSlackMessage(channel, thread_ts, `👤 *${operatorName}* tomó el control. Bot pausado. Escribe \`soltar\` cuando termines.`);
+        await postSlackMessage(channel, thread_ts, `ðŸ‘¤ *${operatorName}* tomÃ³ el control. Bot pausado. Escribe \`soltar\` cuando termines.`);
       }
       return;
     }
 
-    // ── Comando: soltar ───────────────────────────────────────────────────
+    // â”€â”€ Comando: soltar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (text === 'soltar') {
       const phone = slack.handleSlackCommand('soltar', thread_ts);
       if (phone) {
@@ -231,17 +231,17 @@ function start(config, business) {
         if (threadData?.headerTs) {
           await slack.updateThreadHeader(phone, 'resolved_human', channel, threadData.headerTs, operatorName);
         }
-        logger.log(`✅ ${operatorName} soltó ${phone} — marcado como resuelto`);
-        await postSlackMessage(channel, thread_ts, `✅ Resuelto por *${operatorName}*. Bot reactivado.`);
+        logger.log(`âœ… ${operatorName} soltÃ³ ${phone} â€” marcado como resuelto`);
+        await postSlackMessage(channel, thread_ts, `âœ… Resuelto por *${operatorName}*. Bot reactivado.`);
       }
       return;
     }
 
-    // ── Comando: urgente ──────────────────────────────────────────────────
+    // â”€â”€ Comando: urgente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (text === 'urgente' || text === '!') {
       for (const [phone, info] of slack.phoneToThread) {
         if (info.thread_ts === thread_ts) {
-          await postSlackMessage(channel, thread_ts, `🚨 <!channel> se requiere atención urgente en esta conversación (+${phone})`);
+          await postSlackMessage(channel, thread_ts, `ðŸš¨ <!channel> se requiere atenciÃ³n urgente en esta conversaciÃ³n (+${phone})`);
           if (info.headerTs) {
             await slack.updateThreadHeader(phone, 'attention', channel, info.headerTs);
           }
@@ -251,7 +251,7 @@ function start(config, business) {
       return;
     }
 
-    // ── Respuesta humana en thread → enviar al cliente con firma ──────────
+    // â”€â”€ Respuesta humana en thread â†’ enviar al cliente con firma â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     for (const [phone, info] of slack.phoneToThread) {
       if (info.thread_ts === thread_ts) {
         const activeThread = slack.getActiveConversation(phone);
@@ -260,18 +260,18 @@ function start(config, business) {
         if (activeThread || recentTake) {
           // Obtener nombre del operador y firmar el mensaje
           const operatorName = await slack.sendOperatorReply(phone, event.text, userId, config);
-          const msgToClient  = `${event.text}\n\n— ${operatorName}`;
+          const msgToClient  = `${event.text}\n\nâ€” ${operatorName}`;
           await meta.sendMessage(phone, msgToClient, config);
-          logger.log(`📤 ${operatorName} respondió a ${phone}: ${event.text}`);
+          logger.log(`ðŸ“¤ ${operatorName} respondiÃ³ a ${phone}: ${event.text}`);
         }
         break;
       }
     }
   });
 
-  // ── POST /slack/actions — botones interactivos (aprendizaje) ─────────────
+  // â”€â”€ POST /slack/actions â€” botones interactivos (aprendizaje) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/slack/actions', express.urlencoded({ extended: true }), async (req, res) => {
-    res.sendStatus(200); // Responder rápido a Slack
+    res.sendStatus(200); // Responder rÃ¡pido a Slack
     try {
       logger.log(`[slack/actions] body keys: ${Object.keys(req.body || {}).join(',') || 'EMPTY'} | raw: ${JSON.stringify(req.body).substring(0, 100)}`);
       const payload = JSON.parse(req.body.payload);
@@ -293,7 +293,7 @@ function start(config, business) {
         }
       }
 
-      // Modal de edición enviado
+      // Modal de ediciÃ³n enviado
       if (payload.type === 'view_submission' && payload.view?.callback_id === 'learning_edit_submit') {
         logger.log(`[slack/actions] view_submission learning_edit_submit`);
         await learning.handleEditSubmit(payload);
@@ -303,7 +303,7 @@ function start(config, business) {
     }
   });
 
-  // ── POST /admin/learning/inject — inyectar conversaciones de Slack ───────
+  // â”€â”€ POST /admin/learning/inject â€” inyectar conversaciones de Slack â”€â”€â”€â”€â”€â”€â”€
   app.post('/admin/learning/inject', async (req, res) => {
     const { date, conversations } = req.body;
     if (!date || !conversations?.length) {
@@ -331,7 +331,7 @@ function start(config, business) {
     }
   });
 
-  // ── POST /admin/learning/run — forzar análisis manual ────────────────────
+  // â”€â”€ POST /admin/learning/run â€” forzar anÃ¡lisis manual â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.post('/admin/learning/run', async (req, res) => {
     const { date } = req.body;
     try {
@@ -342,27 +342,27 @@ function start(config, business) {
     }
   });
 
-  // ── GET /admin/learning/kpis — métricas de operadores ────────────────────
+  // â”€â”€ GET /admin/learning/kpis â€” mÃ©tricas de operadores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/admin/learning/kpis', async (req, res) => {
     const metrics = await learning.getAllOperatorMetrics();
     res.json({ ok: true, operators: metrics });
   });
 
-  // ── GET /admin/learning/faqs — ver FAQs aprendidas ───────────────────────
+  // â”€â”€ GET /admin/learning/faqs â€” ver FAQs aprendidas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/admin/learning/faqs', (req, res) => {
     res.json({ ok: true, faqs: learning.loadLearnedFaqs() });
   });
 
   app.listen(PORT, '0.0.0.0', () => {
-    logger.log(`✅ Servidor escuchando en 0.0.0.0:${PORT}`);
-    // Pre-calentar catálogo en background al arrancar
+    logger.log(`âœ… Servidor escuchando en 0.0.0.0:${PORT}`);
+    // Pre-calentar catÃ¡logo en background al arrancar
     shopify.getProductCatalog().catch(() => {});
     // Iniciar cron de aprendizaje diario (20:00 Santiago)
     learning.startDailyCron();
   });
 }
 
-// ── Subir media de WhatsApp a Slack (nueva API v2) ──────────────────────────
+// â”€â”€ Subir media de WhatsApp a Slack (nueva API v2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mimeType, config) {
   const slackToken = process.env.SLACK_BOT_TOKEN;
   if (!slackToken) { logger.log('[media] Sin SLACK_BOT_TOKEN'); return; }
@@ -375,7 +375,7 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
                   || config?.slackChannel
                   || 'C05FES87S9J';  // fallback hardcoded igual que en config.js
 
-  logger.log(`[media] upload → channel: ${channel}, thread: ${threadData?.thread_ts || 'nuevo'}`);
+  logger.log(`[media] upload â†’ channel: ${channel}, thread: ${threadData?.thread_ts || 'nuevo'}`);
 
   try {
     // 1. Descargar imagen de Meta
@@ -385,10 +385,10 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
     const binBuf  = Buffer.from(buf64, 'base64');
     const ext     = mimeType.split('/')[1]?.split(';')[0]?.split('+')[0] || type;
     const fname   = `media_${Date.now()}.${ext}`;
-    const label   = `${typeEmoji} +${phone} envió ${type}${caption ? ': "' + caption + '"' : ''}`;
+    const label   = `${typeEmoji} +${phone} enviÃ³ ${type}${caption ? ': "' + caption + '"' : ''}`;
     const axiosI  = require('axios');
 
-    // 2. Solicitar URL de upload (nueva API Slack — params como query string, no JSON)
+    // 2. Solicitar URL de upload (nueva API Slack â€” params como query string, no JSON)
     const uploadParams = new URLSearchParams({ filename: fname, length: binBuf.length });
     const urlResp = await axiosI.post(
       `https://slack.com/api/files.getUploadURLExternal?${uploadParams}`,
@@ -397,9 +397,9 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
     );
 
     if (!urlResp.data?.ok) {
-      logger.log(`[media] getUploadURL error: ${urlResp.data?.error} — intentando análisis con Claude Vision`);
+      logger.log(`[media] getUploadURL error: ${urlResp.data?.error} â€” intentando anÃ¡lisis con Claude Vision`);
 
-      // Fallback: analizar imagen con Claude y postear descripción en Slack
+      // Fallback: analizar imagen con Claude y postear descripciÃ³n en Slack
       let slackText = label;
       if (type === 'image') {
         try {
@@ -411,11 +411,11 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
               max_tokens: 200,
               messages: [{ role: 'user', content: [
                 { type: 'image', source: { type: 'base64', media_type: mimeType, data: buf64 } },
-                { type: 'text', text: 'Describe brevemente esta imagen en 1-2 oraciones para un operador de atención al cliente.' }
+                { type: 'text', text: 'Describe brevemente esta imagen en 1-2 oraciones para un operador de atenciÃ³n al cliente.' }
               ]}]
             }, { headers: { 'x-api-key': claudeKey, 'anthropic-version': '2023-06-01' }, timeout: 20000 });
             const description = desc.data?.content?.[0]?.text || '';
-            if (description) slackText = `${label}\n> 🔍 _Descripción: ${description}_`;
+            if (description) slackText = `${label}\n> ðŸ” _DescripciÃ³n: ${description}_`;
           }
         } catch (e) {
           logger.log(`[media] Claude Vision fallback error: ${e.message}`);
@@ -458,7 +458,7 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
     );
 
     if (completeResp.data?.ok) {
-      logger.log(`[media] ${type} subido a Slack ✅ (canal: ${channel})`);
+      logger.log(`[media] ${type} subido a Slack âœ… (canal: ${channel})`);
     } else {
       logger.log(`[media] completeUpload error: ${completeResp.data?.error}`);
     }
@@ -467,7 +467,7 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
   }
 }
 
-// ── Status updates ──────────────────────────────────────────────────────────
+// â”€â”€ Status updates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const messageTracker = new Map();
 
 async function handleStatus(status, config) {
@@ -475,7 +475,7 @@ async function handleStatus(status, config) {
 
   // Loguear errores de entrega
   if (type === 'failed') {
-    logger.log(`❌ Mensaje fallido [${msgId}]: ${JSON.stringify(errors)}`);
+    logger.log(`âŒ Mensaje fallido [${msgId}]: ${JSON.stringify(errors)}`);
     return;
   }
 
@@ -488,7 +488,7 @@ async function handleStatus(status, config) {
   const token = process.env.SLACK_BOT_TOKEN;
   const axios = require('axios');
 
-  // Quitar ⬜ y poner ✅
+  // Quitar â¬œ y poner âœ…
   await axios.post('https://slack.com/api/reactions.remove',
     { channel, timestamp: ts, name: 'white_check_mark' },
     { headers: { Authorization: `Bearer ${token}` } }
@@ -502,8 +502,8 @@ async function handleStatus(status, config) {
   messageTracker.delete(msgId);
 }
 
-// ── Deduplicación de mensajes ────────────────────────────────────────────────
-const processedMessages = new Map(); // messageId → timestamp
+// â”€â”€ DeduplicaciÃ³n de mensajes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const processedMessages = new Map(); // messageId â†’ timestamp
 const DEDUP_TTL = 60 * 1000; // 60 segundos
 
 function isDuplicate(messageId) {
@@ -517,8 +517,8 @@ function isDuplicate(messageId) {
   return false;
 }
 
-// ── Debounce por usuario — espera 3s por si el cliente envía más mensajes ────
-const pendingReplies = new Map(); // phone → { timer, texts[] }
+// â”€â”€ Debounce por usuario â€” espera 3s por si el cliente envÃ­a mÃ¡s mensajes â”€â”€â”€â”€
+const pendingReplies = new Map(); // phone â†’ { timer, texts[] }
 const DEBOUNCE_MS = 3000;
 
 function debounceMessage(phone, text, handler) {
@@ -537,14 +537,14 @@ function debounceMessage(phone, text, handler) {
   }, DEBOUNCE_MS);
 }
 
-// ── Mensaje entrante ────────────────────────────────────────────────────────
+// â”€â”€ Mensaje entrante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function handleMessage(message, value, config, business) {
   const from = message.from;
   const type = message.type;
 
-  // Deduplicar — Meta puede reenviar el mismo webhook varias veces
+  // Deduplicar â€” Meta puede reenviar el mismo webhook varias veces
   if (message.id && isDuplicate(message.id)) {
-    logger.log(`⚠️ Mensaje duplicado ignorado: ${message.id}`);
+    logger.log(`âš ï¸ Mensaje duplicado ignorado: ${message.id}`);
     return;
   }
 
@@ -559,14 +559,14 @@ async function handleMessage(message, value, config, business) {
   } else if (type === 'audio') {
     const mediaId = message.audio?.id;
     if (mediaId) {
-      logger.log(`🎤 Audio recibido de [${from}] — transcribiendo...`);
+      logger.log(`ðŸŽ¤ Audio recibido de [${from}] â€” transcribiendo...`);
       const transcription = await audio.transcribeWhatsAppAudio(mediaId, config);
       if (transcription) {
         userText = transcription;
         isAudio  = true;
-        logger.log(`🎤 Transcripción: "${transcription.slice(0, 80)}"`);
+        logger.log(`ðŸŽ¤ TranscripciÃ³n: "${transcription.slice(0, 80)}"`);
       } else {
-        logger.log(`⚠️ No se pudo transcribir audio de ${from}`);
+        logger.log(`âš ï¸ No se pudo transcribir audio de ${from}`);
         return;
       }
     }
@@ -576,13 +576,13 @@ async function handleMessage(message, value, config, business) {
     const mediaInfo = mediaId ? await meta.getMediaUrl(mediaId, config) : null;
     const mimeType  = mediaInfo?.mimeType || 'application/octet-stream';
     const mediaUrl  = mediaInfo?.url || null;
-    const typeEmoji = type === 'image' ? '🖼️' : type === 'video' ? '🎥' : type === 'sticker' ? '🎭' : '📄';
+    const typeEmoji = type === 'image' ? 'ðŸ–¼ï¸' : type === 'video' ? 'ðŸŽ¥' : type === 'sticker' ? 'ðŸŽ­' : 'ðŸ“„';
 
     logger.log(`${typeEmoji} ${type} recibido de [${from}]${caption ? ` caption: "${caption}"` : ''}`);
 
     const activeThread = slack.getActiveConversation(from);
 
-    // Si hay operador activo → subir foto al thread y salir
+    // Si hay operador activo â†’ subir foto al thread y salir
     if (activeThread) {
       if (mediaUrl) {
         await uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config);
@@ -590,14 +590,14 @@ async function handleMessage(message, value, config, business) {
       return;
     }
 
-    // ── Imágenes: analizar con Claude Vision y responder directamente ────
+    // â”€â”€ ImÃ¡genes: analizar con Claude Vision y responder directamente â”€â”€â”€â”€
     if (type === 'image' && mediaUrl) {
       try {
         const imageBuf  = await meta.downloadMedia(mediaUrl);
         const imgCtx    = await memory.getContext(from) || {};
-        const sysPrompt = business.buildSystemPrompt(imgCtx);
+        const sysPrompt = await business.buildSystemPrompt(imgCtx);
         const aiReply   = imageBuf ? await ai.analyzeImage(imageBuf, mimeType, sysPrompt) : null;
-        const reply     = aiReply || (caption ? null : 'recibí tu foto! en qué te puedo ayudar?');
+        const reply     = aiReply || (caption ? null : 'recibÃ­ tu foto! en quÃ© te puedo ayudar?');
 
         if (reply) {
           await memory.addMessage(from, caption || '[imagen]', 'user');
@@ -610,7 +610,7 @@ async function handleMessage(message, value, config, business) {
           const slackLabel = `${typeEmoji} [image]${caption ? ': "' + caption + '"' : ''}`;
           await slack.logConversation(from, slackLabel, reply, config, shopifySlackInfo);
           if (mediaUrl) {
-            // Pequeño delay para asegurar que phoneToThread tiene el thread_ts nuevo
+            // PequeÃ±o delay para asegurar que phoneToThread tiene el thread_ts nuevo
             setTimeout(() => {
               uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
                 .catch(e => logger.log(`[media] upload error: ${e.message}`));
@@ -619,7 +619,7 @@ async function handleMessage(message, value, config, business) {
         }
       } catch (e) {
         logger.log(`[media] imagen error: ${e.message}`);
-        await meta.sendMessage(from, 'recibí tu foto! en qué te puedo ayudar?', config);
+        await meta.sendMessage(from, 'recibÃ­ tu foto! en quÃ© te puedo ayudar?', config);
       }
       return; // NO continuar al flujo de sendReply
     }
@@ -630,7 +630,7 @@ async function handleMessage(message, value, config, business) {
     } else {
       const tipoLabel = type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo';
       // Acuse simple + subir a Slack
-      const ack = `recibí tu ${tipoLabel}! en qué te puedo ayudar?`;
+      const ack = `recibÃ­ tu ${tipoLabel}! en quÃ© te puedo ayudar?`;
       await meta.sendMessage(from, ack, config);
       if (mediaUrl) {
         uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
@@ -639,21 +639,21 @@ async function handleMessage(message, value, config, business) {
       return;
     }
 
-    // Si llegó hasta acá (caption en video/doc), seguir al flujo normal
+    // Si llegÃ³ hasta acÃ¡ (caption en video/doc), seguir al flujo normal
     message._pendingMediaUpload = mediaUrl ? { mediaUrl, mimeType, typeEmoji, caption, type } : null;
   } else {
-    logger.log(`⚠️ Tipo no soportado: ${type}`);
+    logger.log(`âš ï¸ Tipo no soportado: ${type}`);
     return;
   }
 
-  logger.log(`📨 [${from}] ${isAudio ? '🎤 ' : ''}${userText}`);
+  logger.log(`ðŸ“¨ [${from}] ${isAudio ? 'ðŸŽ¤ ' : ''}${userText}`);
 
-  // Si envió audio, marcar en contexto para que Claude lo sepa
+  // Si enviÃ³ audio, marcar en contexto para que Claude lo sepa
   if (isAudio) {
     await memory.updateContext(from, { canSendAudio: true });
   }
 
-  // Para imágenes, el historial ya fue guardado en el bloque de imagen — no duplicar
+  // Para imÃ¡genes, el historial ya fue guardado en el bloque de imagen â€” no duplicar
   if (!userText.startsWith('[imagen]')) {
     await memory.addMessage(from, userText, 'user');
   }
@@ -664,7 +664,7 @@ async function handleMessage(message, value, config, business) {
   if (!savedContext?.shopifyChecked) {
     shopifyData = await shopify.enrichContact(from);
     if (shopifyData) {
-      logger.log(`🛍️ Cliente Shopify identificado: ${shopifyData.customer.first_name} ${shopifyData.customer.last_name || ''}`);
+      logger.log(`ðŸ›ï¸ Cliente Shopify identificado: ${shopifyData.customer.first_name} ${shopifyData.customer.last_name || ''}`);
       await memory.updateContext(from, {
         shopifyChecked: true,
         shopifyContext: shopifyData.claudeContext,
@@ -676,7 +676,7 @@ async function handleMessage(message, value, config, business) {
     }
   }
 
-  // ¿Hay agente humano activo para este número?
+  // Â¿Hay agente humano activo para este nÃºmero?
   const activeThread = slack.getActiveConversation(from);
   if (activeThread) {
     await slack.forwardToThread(from, userText, activeThread, config);
@@ -685,7 +685,7 @@ async function handleMessage(message, value, config, business) {
 
   const pendingMedia = message._pendingMediaUpload || null;
 
-  // Debounce: esperar 3s por si el cliente envía otro mensaje seguido
+  // Debounce: esperar 3s por si el cliente envÃ­a otro mensaje seguido
   // Los audios se procesan de inmediato (ya tomaron tiempo en transcribir)
   if (isAudio) {
     await sendReply(from, userText, config, business, pendingMedia);
@@ -694,7 +694,7 @@ async function handleMessage(message, value, config, business) {
   }
 }
 
-// ── Generar y enviar respuesta ──────────────────────────────────────────────
+// â”€â”€ Generar y enviar respuesta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function sendReply(from, userText, config, business, pendingMedia = null) {
   const history = await memory.getHistory(from, 6);
   const context = await memory.getContext(from) || {};
@@ -702,35 +702,35 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   let replyText = '';
   let notifySlack = false;
 
-  // 1. Lógica de negocio del tenant (reglas rápidas, sin LLM)
+  // 1. LÃ³gica de negocio del tenant (reglas rÃ¡pidas, sin LLM)
   // Pasar phone y config en contexto para upsell handler
   const contextWithMeta = { ...context, _phone: from, _config: config };
   const quickResult = await business.quickReply(userText, contextWithMeta, history);
   if (quickResult) {
     replyText    = quickResult.text;
     notifySlack  = quickResult.notifySlack || false;
-    // skipReply: el handler externo (ej. upsell) ya envía el mensaje — no hacer nada más
+    // skipReply: el handler externo (ej. upsell) ya envÃ­a el mensaje â€” no hacer nada mÃ¡s
     if (quickResult.skipReply) {
-      logger.log(`[reply] skipReply activo — respuesta delegada a handler externo`);
+      logger.log(`[reply] skipReply activo â€” respuesta delegada a handler externo`);
       return;
     }
   }
 
-  // 2. Si el tenant pide IA o no hay respuesta rápida → Claude
+  // 2. Si el tenant pide IA o no hay respuesta rÃ¡pida â†’ Claude
   if (!replyText || quickResult?.useAI) {
-    let systemPrompt = business.buildSystemPrompt(context);
+    let systemPrompt = await business.buildSystemPrompt(context);
     // Inyectar contexto Shopify al system prompt si existe
     if (context?.shopifyContext) {
       systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
     }
-    // Inyectar catálogo relevante si el cliente pregunta por productos/stock/precios
+    // Inyectar catÃ¡logo relevante si el cliente pregunta por productos/stock/precios
     if (shopify.isProductQuery(userText)) {
       try {
         const catalog  = await shopify.getProductCatalog();
         const matches  = shopify.searchCatalog(catalog, userText);
         if (matches.length) {
           const catalogText = shopify.formatCatalogForPrompt(matches);
-          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aquí, di que no lo tienes disponible actualmente.`;
+          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aquÃ­, di que no lo tienes disponible actualmente.`;
           logger.log(`[catalog] ${matches.length} productos inyectados para: "${userText.slice(0, 50)}"`);
         }
       } catch (e) {
@@ -738,18 +738,18 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
       }
     }
 
-    // Inyectar contexto de campaña si el cliente llega desde un envío masivo
+    // Inyectar contexto de campaÃ±a si el cliente llega desde un envÃ­o masivo
     const campaignCtx = await memory.getCampaignContext(from);
     if (campaignCtx) {
       const sentDate = campaignCtx.sentAt ? new Date(campaignCtx.sentAt).toLocaleDateString('es-CL') : 'recientemente';
-      systemPrompt = `${systemPrompt}\n\n---\n## Contexto de campaña\nEste cliente recibió un mensaje de campaña el ${sentDate}.\nCampaña: "${campaignCtx.name}"\nDescripción: ${campaignCtx.description || 'sin descripción'}\n${campaignCtx.extra ? `Detalle extra: ${campaignCtx.extra}` : ''}\nTen esto en cuenta al responder: el cliente probablemente escribe en respuesta a esa campaña. Responde de forma coherente con la oferta o mensaje que recibió.`;
-      logger.log(`🎯 Contexto de campaña inyectado: "${campaignCtx.name}"`);
+      systemPrompt = `${systemPrompt}\n\n---\n## Contexto de campaÃ±a\nEste cliente recibiÃ³ un mensaje de campaÃ±a el ${sentDate}.\nCampaÃ±a: "${campaignCtx.name}"\nDescripciÃ³n: ${campaignCtx.description || 'sin descripciÃ³n'}\n${campaignCtx.extra ? `Detalle extra: ${campaignCtx.extra}` : ''}\nTen esto en cuenta al responder: el cliente probablemente escribe en respuesta a esa campaÃ±a. Responde de forma coherente con la oferta o mensaje que recibiÃ³.`;
+      logger.log(`ðŸŽ¯ Contexto de campaÃ±a inyectado: "${campaignCtx.name}"`);
     }
     const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
 
     if (aiResult.response) {
       replyText = aiResult.response;
-      logger.log(`🤖 Claude respondió (costo: $${aiResult.cost?.toFixed(4) || '?'})`);
+      logger.log(`ðŸ¤– Claude respondiÃ³ (costo: $${aiResult.cost?.toFixed(4) || '?'})`);
     } else {
       replyText = aiResult.fallback || config.fallbackMessage;
     }
@@ -764,17 +764,17 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   // 5. Enviar WhatsApp
   await meta.sendMessage(from, replyText, config);
 
-  // 6. Log en Slack (supervisión) — incluir info Shopify en primer mensaje
+  // 6. Log en Slack (supervisiÃ³n) â€” incluir info Shopify en primer mensaje
   const shopifySlackInfo = context?.shopifySlackInfo || null;
   if (notifySlack) {
     await slack.notifyHandoff(from, userText, config);
   } else {
-    // Para imágenes, mostrar "🖼️ [imagen]" como texto del cliente en Slack
+    // Para imÃ¡genes, mostrar "ðŸ–¼ï¸ [imagen]" como texto del cliente en Slack
     const slackUserText = pendingMedia ? `${pendingMedia.typeEmoji} [${pendingMedia.type}]${pendingMedia.caption ? ': "' + pendingMedia.caption + '"' : ''}` : userText;
     await slack.logConversation(from, slackUserText, replyText, config, shopifySlackInfo);
   }
 
-  // 7. Subir imagen al thread DESPUÉS de que logConversation lo creó
+  // 7. Subir imagen al thread DESPUÃ‰S de que logConversation lo creÃ³
   if (pendingMedia?.mediaUrl) {
     const { mediaUrl, mimeType, typeEmoji, caption, type } = pendingMedia;
     uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
@@ -782,7 +782,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   }
 }
 
-// Delay más realista: ~50ms por carácter, mínimo 1.5s, máximo 7s + variación aleatoria
+// Delay mÃ¡s realista: ~50ms por carÃ¡cter, mÃ­nimo 1.5s, mÃ¡ximo 7s + variaciÃ³n aleatoria
 function humanDelay(len) {
   const base = Math.min(len * 50, 7000);
   const min  = 1500;
@@ -798,7 +798,7 @@ async function postSlackMessage(channel, thread_ts, text) {
   await axios.post('https://slack.com/api/chat.postMessage',
     { channel, thread_ts, text },
     { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-  ).catch(e => logger.log(`⚠️ Slack post error: ${e.message}`));
+  ).catch(e => logger.log(`âš ï¸ Slack post error: ${e.message}`));
 }
 
 module.exports = { start };

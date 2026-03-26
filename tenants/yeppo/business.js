@@ -94,7 +94,7 @@ async function quickReply(userText, context, history) {
  * Construir system prompt para Claude.
  * Puede enriquecer con datos del contexto (nombre del cliente, historial, etc.)
  */
-function buildSystemPrompt(context) {
+async function buildSystemPrompt(context) {
   let prompt = PROMPT_BASE;
 
   // Agregar base de conocimiento si está disponible
@@ -102,8 +102,8 @@ function buildSystemPrompt(context) {
     prompt += `\n\n---\n\n${KNOWLEDGE_DOC}`;
   }
 
-  // Agregar FAQs aprendidas dinámicamente
-  const learnedFaqs = learning.getLearnedFaqsPrompt();
+  // Agregar FAQs aprendidas dinámicamente (desde Redis)
+  const learnedFaqs = await learning.getLearnedFaqsPrompt();
   if (learnedFaqs) {
     prompt += learnedFaqs;
   }
