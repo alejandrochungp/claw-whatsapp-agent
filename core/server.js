@@ -356,13 +356,38 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
     }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' }, timeout: 15000 });
 
     if (!urlResp.data?.ok) {
-      logger.log(`[media] getUploadURL error: ${urlResp.data?.error}`);
-      // Fallback: postear texto indicando que hay una imagen
-      await axiosI.post('https://slack.com/api/chat.postMessage', {
-        channel,
-        thread_ts: threadData?.thread_ts,
-        text: `${label} (imagen no disponible directamente — revisar en WhatsApp)`
-      }, { headers: { Authorization: `Bearer ${slackToken}` } });
+      logger.log(`[media] getUploadURL error: ${urlResp.data?.error} — intentando análisis con Claude Vision`);
+
+      // Fallback: analizar imagen con Claude y postear descripción en Slack
+      let slackText = label;
+      if (type === 'image') {
+        try {
+          const buf64 = await meta.downloadMedia(mediaUrl);
+          if (buf64) {
+            const claudeKey = process.env.CLAUDE_API_KEY;
+            const desc = await axiosI.post('https://api.anthropic.com/v1/messages', {
+              model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
+              max_tokens: 200,
+              messages: [{ role: 'user', content: [
+                { type: 'image', source: { type: 'base64', media_type: mimeType, data: buf64 } },
+                { type: 'text', text: 'Describe brevemente esta imagen en 1-2 oraciones para un operador de atención al cliente.' }
+              ]}]
+            }, { headers: { 'x-api-key': claudeKey, 'anthropic-version': '2023-06-01' }, timeout: 20000 });
+            const description = desc.data?.content?.[0]?.text || '';
+            if (description) slackText = `${label}\n> 🔍 _Descripción: ${description}_`;
+          }
+        } catch (e) {
+          logger.log(`[media] Claude Vision fallback error: ${e.message}`);
+        }
+      }
+
+      // Postear en el thread (o crear thread si no existe)
+      const postTarget = threadData?.thread_ts
+        ? { channel, thread_ts: threadData.thread_ts, text: slackText }
+        : { channel, text: slackText };
+      await axiosI.post('https://slack.com/api/chat.postMessage', postTarget,
+        { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } }
+      ).catch(e => logger.log(`[media] Slack post error: ${e.message}`));
       return;
     }
 
