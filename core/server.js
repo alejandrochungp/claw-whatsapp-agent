@@ -349,11 +349,13 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
     const label   = `${typeEmoji} +${phone} envió ${type}${caption ? ': "' + caption + '"' : ''}`;
     const axiosI  = require('axios');
 
-    // 2. Solicitar URL de upload (nueva API Slack)
-    const urlResp = await axiosI.post('https://slack.com/api/files.getUploadURLExternal', {
-      filename: fname,
-      length:   binBuf.length
-    }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' }, timeout: 15000 });
+    // 2. Solicitar URL de upload (nueva API Slack — params como query string, no JSON)
+    const uploadParams = new URLSearchParams({ filename: fname, length: binBuf.length });
+    const urlResp = await axiosI.post(
+      `https://slack.com/api/files.getUploadURLExternal?${uploadParams}`,
+      '',
+      { headers: { Authorization: `Bearer ${slackToken}` }, timeout: 15000 }
+    );
 
     if (!urlResp.data?.ok) {
       logger.log(`[media] getUploadURL error: ${urlResp.data?.error} — intentando análisis con Claude Vision`);
