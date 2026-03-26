@@ -541,41 +541,43 @@ async function handleMessage(message, value, config, business) {
 
     logger.log(`${typeEmoji} ${type} recibido de [${from}]${caption ? ` caption: "${caption}"` : ''}`);
 
-    // ── Subir a Slack siempre (thread existente o nuevo) ──────────────────
-    if (mediaUrl) {
-      await uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config);
-    }
-
     const activeThread = slack.getActiveConversation(from);
 
-    // Si hay operador activo → solo reenviar a Slack y salir
+    // Subir a Slack (siempre, en paralelo sin bloquear)
+    if (mediaUrl) {
+      uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
+        .catch(e => logger.log(`[media] uploadMediaToSlack error: ${e.message}`));
+    }
+
+    // Si hay operador activo → salir (ya se subió a Slack arriba)
     if (activeThread) return;
 
-    // Bot responde: imagen con Claude Vision, resto acuse genérico
+    // Construir userText para pasar por el flujo normal de sendReply
     if (type === 'image' && mediaUrl) {
+      // Pre-analizar con Claude Vision y guardarlo como contexto
       try {
-        const buf64      = await meta.downloadMedia(mediaUrl);
-        const imgContext = await memory.getContext(from) || {};
-        const sysPrompt  = business.buildSystemPrompt(imgContext);
-        const aiReply    = buf64 ? await ai.analyzeImage(buf64, mimeType, sysPrompt) : null;
-        const reply      = aiReply || (caption ? null : 'recibimos tu foto 📸 en qué te puedo ayudar?');
-        if (reply) {
-          await meta.sendMessage(from, reply, config);
-          await memory.addMessage(from, caption || '[imagen]', 'user');
-          await memory.addMessage(from, reply, 'assistant');
+        const buf64     = await meta.downloadMedia(mediaUrl);
+        const imgCtx    = await memory.getContext(from) || {};
+        const sysPrompt = business.buildSystemPrompt(imgCtx);
+        const aiDesc    = buf64 ? await ai.analyzeImage(buf64, mimeType, sysPrompt) : null;
+        if (aiDesc) {
+          // Pasar la descripción como userText → sendReply lo envía + loguea en Slack
+          userText = `[imagen] ${aiDesc}`;
+          // Guardar en historial como si el cliente hubiera descrito la imagen
+          await memory.addMessage(from, caption || '[imagen enviada]', 'user');
+        } else {
+          userText = caption || '[imagen]';
         }
       } catch (e) {
-        logger.log(`[media] Error analizando imagen: ${e.message}`);
-        await meta.sendMessage(from, 'recibimos tu foto 📸 en qué te puedo ayudar?', config);
+        logger.log(`[media] analyzeImage error: ${e.message}`);
+        userText = caption || '[imagen]';
       }
-      if (!caption) return;
-      userText = caption; // Si hay caption, seguir para que Claude responda también al texto
     } else if (caption) {
       userText = caption;
     } else {
+      // Video/doc/sticker sin caption — acuse simple y loguear en Slack
       const tipoLabel = type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo';
-      await meta.sendMessage(from, `recibimos tu ${tipoLabel} 📎 en qué te puedo ayudar?`, config);
-      return;
+      userText = `[${tipoLabel} recibido]`;
     }
   } else {
     logger.log(`⚠️ Tipo no soportado: ${type}`);
@@ -589,7 +591,10 @@ async function handleMessage(message, value, config, business) {
     await memory.updateContext(from, { canSendAudio: true });
   }
 
-  await memory.addMessage(from, userText, 'user');
+  // Para imágenes, el historial ya fue guardado en el bloque de imagen — no duplicar
+  if (!userText.startsWith('[imagen]')) {
+    await memory.addMessage(from, userText, 'user');
+  }
 
   // Enriquecer con datos de Shopify (primera vez o si no hay contexto guardado)
   let shopifyData = null;
