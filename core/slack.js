@@ -30,6 +30,54 @@ const HANDOFF_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sin actividad → bot retom
 const phoneToThread       = new Map();
 // phone → { thread_ts, takenAt }
 const activeConversations = new Map();
+
+// ── Persistir handoff en Redis para sobrevivir reinicios ──────────────────────
+let _redis = null;
+async function getRedis() {
+  if (_redis) return _redis;
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  try {
+    const { createClient } = require('redis');
+    _redis = createClient({ url });
+    _redis.on('error', () => {});
+    await _redis.connect();
+    return _redis;
+  } catch { return null; }
+}
+
+async function persistHandoff(phone, data) {
+  const r = await getRedis();
+  if (!r) return;
+  try {
+    if (data) {
+      await r.setEx(`handoff:${phone}`, 4 * 3600, JSON.stringify(data)); // TTL 4h
+    } else {
+      await r.del(`handoff:${phone}`);
+    }
+  } catch {}
+}
+
+async function loadHandoffsFromRedis() {
+  const r = await getRedis();
+  if (!r) return;
+  try {
+    const keys = await r.keys('handoff:*');
+    for (const k of keys) {
+      const raw = await r.get(k);
+      if (!raw) continue;
+      const phone = k.replace('handoff:', '');
+      const data  = JSON.parse(raw);
+      activeConversations.set(phone, data);
+      console.log(`[slack] Handoff restaurado desde Redis: ${phone}`);
+    }
+  } catch (e) {
+    console.error('[slack] Error cargando handoffs:', e.message);
+  }
+}
+
+// Cargar handoffs al arrancar (después de que Redis esté listo)
+setTimeout(() => loadHandoffsFromRedis().catch(() => {}), 5000);
 // phone → timestamp del último "tomar" (para manejar race conditions)
 const recentTakes         = new Map();
 // userId → displayName (cache)
@@ -44,6 +92,7 @@ setInterval(() => {
   for (const [phone, info] of activeConversations) {
     if (now - info.takenAt > HANDOFF_TIMEOUT_MS) {
       activeConversations.delete(phone);
+      persistHandoff(phone, null); // borrar de Redis
       console.log(`[sweeper] Timeout auto-cierre: ${phone}`);
       const messages = conversationLog.get(phone) || [];
       if (messages.length > 0) {
@@ -313,6 +362,7 @@ function getActiveConversation(phone) {
 
   if (Date.now() - info.takenAt > HANDOFF_TIMEOUT_MS) {
     activeConversations.delete(phone);
+    persistHandoff(phone, null); // borrar de Redis
     console.log(`🤖 Timeout handoff ${phone} → bot retoma`);
     // Guardar conversación para aprendizaje aunque no hayan soltado
     const messages = conversationLog.get(phone) || [];
@@ -334,8 +384,10 @@ function handleSlackCommand(command, thread_ts) {
   if (command === 'tomar') {
     for (const [phone, info] of phoneToThread) {
       if (info.thread_ts === thread_ts) {
-        activeConversations.set(phone, { thread_ts, takenAt: Date.now() });
+        const handoffData = { thread_ts, takenAt: Date.now() };
+        activeConversations.set(phone, handoffData);
         recentTakes.set(phone, Date.now());
+        persistHandoff(phone, handoffData); // guardar en Redis
         return phone;
       }
     }
@@ -345,6 +397,7 @@ function handleSlackCommand(command, thread_ts) {
     for (const [phone, info] of activeConversations) {
       if (info.thread_ts === thread_ts) {
         activeConversations.delete(phone);
+        persistHandoff(phone, null); // borrar de Redis
         // Guardar conversación completa para análisis de aprendizaje
         const messages = conversationLog.get(phone) || [];
         if (messages.length > 0) {
