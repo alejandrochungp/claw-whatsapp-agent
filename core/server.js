@@ -98,6 +98,23 @@ function start(config, business) {
     res.json({ context: ctx, recentHistory: hist, campaignContext: campaign });
   });
 
+  // ── GET /admin/wa-template — ver estructura de un template WA ───────────
+  app.get('/admin/wa-template', async (req, res) => {
+    const name = req.query.name || 'pago_confirmado_upsell';
+    const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const wabaId  = '790101577482960';
+    try {
+      const axios = require('axios');
+      const r = await axios.get(`https://graph.facebook.com/v19.0/${wabaId}/message_templates`, {
+        params: { name, fields: 'name,status,components' },
+        headers: { Authorization: `Bearer ${waToken}` }
+      });
+      res.json({ ok: true, template: r.data.data?.[0] || null });
+    } catch (e) {
+      res.json({ ok: false, error: e.response?.data || e.message });
+    }
+  });
+
   // ── GET /admin/logs — últimos logs del servidor ──────────────────────────
   app.get('/admin/logs', (req, res) => {
     const n = parseInt(req.query.n) || 50;
