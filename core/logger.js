@@ -6,13 +6,21 @@ const fs   = require('fs');
 const path = require('path');
 
 const LOG_FILE = process.env.LOG_FILE ? path.resolve(process.env.LOG_FILE) : null;
+const recentLogs = [];
+const MAX_LOGS = 200;
 
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
+  recentLogs.push(line);
+  if (recentLogs.length > MAX_LOGS) recentLogs.shift();
   if (LOG_FILE) {
     try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch (_) {}
   }
 }
 
-module.exports = { log };
+function getRecentLogs(n = 50) {
+  return recentLogs.slice(-n);
+}
+
+module.exports = { log, getRecentLogs };

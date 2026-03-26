@@ -98,6 +98,12 @@ function start(config, business) {
     res.json({ context: ctx, recentHistory: hist, campaignContext: campaign });
   });
 
+  // ── GET /admin/logs — últimos logs del servidor ──────────────────────────
+  app.get('/admin/logs', (req, res) => {
+    const n = parseInt(req.query.n) || 50;
+    res.json({ logs: logger.getRecentLogs(n) });
+  });
+
   // ── POST /admin/reset-thread — forzar recreación de thread Slack ────────
   app.post('/admin/reset-thread', async (req, res) => {
     const { phone } = req.body;
@@ -571,8 +577,11 @@ async function handleMessage(message, value, config, business) {
           const slackLabel = `${typeEmoji} [image]${caption ? ': "' + caption + '"' : ''}`;
           await slack.logConversation(from, slackLabel, reply, config, shopifySlackInfo);
           if (mediaUrl) {
-            uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
-              .catch(e => logger.log(`[media] upload error: ${e.message}`));
+            // Pequeño delay para asegurar que phoneToThread tiene el thread_ts nuevo
+            setTimeout(() => {
+              uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
+                .catch(e => logger.log(`[media] upload error: ${e.message}`));
+            }, 1500);
           }
         }
       } catch (e) {
