@@ -551,33 +551,53 @@ async function handleMessage(message, value, config, business) {
       return;
     }
 
-    // ── Analizar imagen con Claude Vision ────────────────────────────────
-    let imageDesc = null;
-    let imageBuf  = null;
+    // ── Imágenes: analizar con Claude Vision y responder directamente ────
     if (type === 'image' && mediaUrl) {
       try {
-        imageBuf = await meta.downloadMedia(mediaUrl);
+        const imageBuf  = await meta.downloadMedia(mediaUrl);
         const imgCtx    = await memory.getContext(from) || {};
         const sysPrompt = business.buildSystemPrompt(imgCtx);
-        imageDesc = imageBuf ? await ai.analyzeImage(imageBuf, mimeType, sysPrompt) : null;
+        const aiReply   = imageBuf ? await ai.analyzeImage(imageBuf, mimeType, sysPrompt) : null;
+        const reply     = aiReply || (caption ? null : 'recibí tu foto! en qué te puedo ayudar?');
+
+        if (reply) {
+          await memory.addMessage(from, caption || '[imagen]', 'user');
+          await memory.addMessage(from, reply, 'bot');
+          await humanDelay(reply.length);
+          await meta.sendMessage(from, reply, config);
+
+          // Log en Slack: primero el texto, luego sube la imagen al thread creado
+          const shopifySlackInfo = imgCtx?.shopifySlackInfo || null;
+          const slackLabel = `${typeEmoji} [image]${caption ? ': "' + caption + '"' : ''}`;
+          await slack.logConversation(from, slackLabel, reply, config, shopifySlackInfo);
+          if (mediaUrl) {
+            uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
+              .catch(e => logger.log(`[media] upload error: ${e.message}`));
+          }
+        }
       } catch (e) {
-        logger.log(`[media] analyzeImage error: ${e.message}`);
+        logger.log(`[media] imagen error: ${e.message}`);
+        await meta.sendMessage(from, 'recibí tu foto! en qué te puedo ayudar?', config);
       }
+      return; // NO continuar al flujo de sendReply
     }
 
-    // userText para Claude: si hay descripción de la imagen, usarla
-    // El texto que se muestra en Slack como "Cliente:" será solo [imagen]
-    if (type === 'image') {
-      userText = imageDesc || caption || 'recibiste una foto';
-    } else if (caption) {
+    // Otros tipos de media (video, doc, sticker): usar caption o acuse simple
+    if (caption) {
       userText = caption;
     } else {
       const tipoLabel = type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo';
-      userText = `[${tipoLabel}]`;
+      // Acuse simple + subir a Slack
+      const ack = `recibí tu ${tipoLabel}! en qué te puedo ayudar?`;
+      await meta.sendMessage(from, ack, config);
+      if (mediaUrl) {
+        uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config)
+          .catch(e => logger.log(`[media] upload error: ${e.message}`));
+      }
+      return;
     }
 
-    // Guardamos mediaUrl para subir a Slack DESPUÉS de que logConversation cree el thread
-    // Lo hacemos via una variable en el scope del mensaje
+    // Si llegó hasta acá (caption en video/doc), seguir al flujo normal
     message._pendingMediaUpload = mediaUrl ? { mediaUrl, mimeType, typeEmoji, caption, type } : null;
   } else {
     logger.log(`⚠️ Tipo no soportado: ${type}`);
