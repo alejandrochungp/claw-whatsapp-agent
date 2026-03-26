@@ -491,6 +491,86 @@ async function runNow(dateStr) {
   return analysis;
 }
 
+// ── Aplicar aprendizaje desde reacción en Slack ─────────────────────────────
+// Se llama cuando alguien reacciona ✅ a un mensaje de sugerencia en el canal de learning
+async function applyApprovedMessage(messageTs, channelId) {
+  const slackToken = process.env.SLACK_BOT_TOKEN;
+  if (!slackToken) return;
+
+  try {
+    // 1. Obtener el mensaje específico
+    const r = await axios.get('https://slack.com/api/conversations.replies', {
+      params: { channel: channelId, ts: messageTs, limit: 1, inclusive: true },
+      headers: { Authorization: `Bearer ${slackToken}` }
+    });
+
+    if (!r.data.ok || !r.data.messages?.length) {
+      console.log('[learning] No se pudo obtener el mensaje:', r.data.error);
+      return;
+    }
+
+    const msg = r.data.messages[0];
+
+    // Solo procesar si es un mensaje de sugerencia (tiene el formato esperado)
+    const respuestaMatch = msg.text?.match(/\*Respuesta sugerida para el bot:\*\s*\n_(.+?)_/s);
+    const situacionMatch = msg.text?.match(/\*Situación:\*\s*([^\n]+)/);
+    if (!respuestaMatch) {
+      console.log('[learning] Mensaje no tiene formato de sugerencia, ignorando');
+      return;
+    }
+
+    const situacion = situacionMatch?.[1]?.trim() || 'Sin descripción';
+    const respuesta = respuestaMatch[1].trim();
+
+    // 2. Agregar al prompt.md
+    const promptPath = path.join(__dirname, '..', 'tenants', process.env.TENANT || 'yeppo', 'prompt.md');
+    let prompt = fs.readFileSync(promptPath, 'utf8');
+
+    const LEARNING_MARKER = 'APRENDIZAJES DEL EQUIPO';
+    const newEntry = `Situación: ${situacion}\nRespuesta: ${respuesta}\n\n`;
+
+    if (prompt.includes(LEARNING_MARKER)) {
+      // Insertar antes del final de la sección
+      const idx = prompt.lastIndexOf(newEntry.substring(0, 20));
+      if (idx !== -1) {
+        console.log('[learning] Esta sugerencia ya estaba en el prompt, ignorando');
+        return;
+      }
+      prompt = prompt.replace(
+        /(APRENDIZAJES DEL EQUIPO[\s\S]*?)(\s*$)/,
+        (_, section) => section + newEntry
+      );
+    } else {
+      prompt += `\n\nAPRENDIZAJES DEL EQUIPO\n\nEstas son respuestas reales del equipo aprobadas para situaciones específicas:\n\n${newEntry}`;
+    }
+
+    fs.writeFileSync(promptPath, prompt, 'utf8');
+    console.log(`[learning] ✅ Aprendizaje agregado al prompt: ${situacion.substring(0, 60)}`);
+
+    // 3. Push a GitHub
+    try {
+      const { execSync } = require('child_process');
+      const repoRoot = path.join(__dirname, '..');
+      execSync(`git -C "${repoRoot}" add tenants/${process.env.TENANT || 'yeppo'}/prompt.md`, { stdio: 'pipe' });
+      execSync(`git -C "${repoRoot}" commit -m "learning: aprendizaje aprobado via reacción Slack"`, { stdio: 'pipe' });
+      execSync(`git -C "${repoRoot}" push`, { stdio: 'pipe' });
+      console.log('[learning] Pusheado a GitHub ✅');
+    } catch (e) {
+      console.log('[learning] Push manual necesario');
+    }
+
+    // 4. Confirmar en Slack con emoji ✍️ en el mensaje
+    await axios.post('https://slack.com/api/reactions.add', {
+      channel: channelId,
+      timestamp: messageTs,
+      name: 'pencil'
+    }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } }).catch(() => {});
+
+  } catch (e) {
+    console.error('[learning] applyApprovedMessage error:', e.message);
+  }
+}
+
 module.exports = {
   saveConversationForReview,
   getLearnedFaqsPrompt,
@@ -501,5 +581,6 @@ module.exports = {
   getAllOperatorMetrics,
   incrementOperatorMetric,
   startDailyCron,
-  runNow
+  runNow,
+  applyApprovedMessage
 };

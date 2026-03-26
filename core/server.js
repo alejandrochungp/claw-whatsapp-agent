@@ -180,6 +180,18 @@ function start(config, business) {
     // Debug: loguear todos los eventos Slack entrantes
     logger.log(`[slack-event] type=${event.type} subtype=${event.subtype || '-'} bot_id=${event.bot_id || '-'} thread=${event.thread_ts || '-'} text="${(event.text || '').slice(0, 50)}"`);
 
+    // ── Reacción en canal de learning → aplicar aprendizaje ─────────────
+    if (event.type === 'reaction_added' && event.item?.channel === (process.env.SLACK_LEARNING_CHANNEL || 'C0APVLMV98Q')) {
+      const reaction = event.reaction; // 'white_check_mark' o 'x'
+      if (reaction === 'white_check_mark' || reaction === 'heavy_check_mark') {
+        logger.log(`[learning] ✅ Reacción aprobación en mensaje ${event.item.ts} — aplicando...`);
+        learning.applyApprovedMessage(event.item.ts, event.item.channel).catch(e =>
+          logger.log(`[learning] Error aplicando: ${e.message}`)
+        );
+      }
+      return;
+    }
+
     // Solo procesar mensajes de texto en canales (no del propio bot)
     if (event.type !== 'message' || event.bot_id || event.subtype) return;
 
