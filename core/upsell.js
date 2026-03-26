@@ -328,6 +328,53 @@ Verificar que el complemento se incluya en el despacho del pedido original.`;
   logger.log(`[upsell] ✅ Notificación enviada a #logistics`);
 }
 
+// ── Notificar pago completo del complemento upsell ───────────────────────────
+async function notifyPaymentComplete(phone, order, pendingUpsell, config) {
+  try {
+    const axios     = require('axios');
+    const slackToken = process.env.SLACK_BOT_TOKEN;
+    const nombre    = order.customer?.first_name || '';
+    const complemento = pendingUpsell.match?.complemento || 'complemento';
+    const precio    = pendingUpsell.match?.precio || 0;
+
+    // Notificar #logistics
+    const logisticsMsg = `✅ *Pago de complemento confirmado*
+
+*Cliente:* ${nombre ? nombre + ' — ' : ''}+${phone}
+*Pedido:* ${order.name}
+*Complemento pagado:* ${complemento} ($${Math.round(precio).toLocaleString('es-CL')})
+
+El pedido ya incluye el complemento. Despachar todo junto.`;
+
+    if (slackToken) {
+      await axios.post('https://slack.com/api/chat.postMessage', {
+        channel: LOGISTICS_CHANNEL,
+        text: logisticsMsg
+      }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } })
+      .catch(e => logger.log(`[upsell] Error notif logistics pago: ${e.message}`));
+
+      // También notificar en el thread del cliente en el canal principal
+      const threadData = slack.phoneToThread.get(phone);
+      const mainChannel = process.env.SLACK_CHANNEL_ID || process.env.SLACK_CHANNEL_WHATSAPP || 'C05FES87S9J';
+      if (threadData?.thread_ts) {
+        await axios.post('https://slack.com/api/chat.postMessage', {
+          channel: threadData.channel || mainChannel,
+          thread_ts: threadData.thread_ts,
+          text: `✅ *Pago del complemento confirmado* — ${complemento} ($${Math.round(precio).toLocaleString('es-CL')})\nDespachar todo junto con pedido ${order.name}.`
+        }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } })
+        .catch(() => {});
+      }
+    }
+
+    // Mensaje al cliente confirmando
+    await meta.sendMessage(phone, `listo! el pago quedó confirmado 🎉 agregamos el ${nombreLimpio(complemento)} a tu pedido y lo despachamos todo junto. cualquier duda me avisas!`, config);
+
+    logger.log(`[upsell] ✅ Pago complemento confirmado para ${phone} — ${complemento}`);
+  } catch (e) {
+    logger.log(`[upsell] Error notifyPaymentComplete: ${e.message}`);
+  }
+}
+
 // ── Contexto de la conversación en Slack ─────────────────────────────────────
 async function createUpsellThread(phone, order, match, config) {
   const nombre     = order.customer?.first_name || '';
@@ -365,6 +412,29 @@ async function handleNewOrder(order, config) {
     const phone = extractPhone(order);
     if (!phone) {
       logger.log(`[upsell] Pedido #${order.name} sin teléfono — omitiendo`);
+      return;
+    }
+
+    const memory = require('./memory');
+
+    // ── Ignorar si es un pago de complemento upsell ya aceptado ──────────
+    // Cuando el cliente paga el link del complemento, Shopify dispara otro
+    // webhook paid para el mismo pedido editado. Lo detectamos así:
+    // 1. El pedido tiene nota o tag de upsell, o
+    // 2. Ya no hay upsell pendiente para este cliente (ya lo aceptó/rechazó)
+    //    y el pedido tiene más de 1 line_item con el mismo orderId que el upsell
+    const tags = (order.tags || '').toLowerCase();
+    if (tags.includes('upsell-paid') || tags.includes('upsell_paid')) {
+      logger.log(`[upsell] Pedido #${order.name} — pago de upsell ya procesado, ignorando`);
+      return;
+    }
+
+    // Si hay un upsell ACEPTADO para este número Y el orderId coincide → es el webhook de pago del complemento
+    const pendingUpsell = await memory.getUpsellPending(phone);
+    if (pendingUpsell && pendingUpsell.status === 'accepted' && String(pendingUpsell.orderId) === String(order.id)) {
+      logger.log(`[upsell] Pedido #${order.name} — pago de complemento confirmado → notificando`);
+      await notifyPaymentComplete(phone, order, pendingUpsell, config);
+      await memory.clearUpsellPending(phone);
       return;
     }
 
@@ -449,11 +519,14 @@ async function handleUpsellAccepted(phone, order, match, config) {
 
     await meta.sendMessage(phone, msgCliente, config);
 
-    // 4. Limpiar upsell pendiente
+    // 4. Marcar como aceptado (no borrar — necesitamos el orderId para detectar el webhook de pago)
     const memory = require('./memory');
-    await memory.clearUpsellPending(phone);
+    const existing = await memory.getUpsellPending(phone);
+    if (existing) {
+      await memory.setUpsellPending(phone, { ...existing, status: 'accepted' });
+    }
 
-    logger.log(`[upsell] ✅ Flujo completo para ${phone}`);
+    logger.log(`[upsell] ✅ Flujo completo para ${phone} — esperando pago del complemento`);
   } catch (err) {
     logger.log(`[upsell] Error handleUpsellAccepted: ${err.message}`);
   }
