@@ -406,10 +406,10 @@ async function handleNewOrder(order, config) {
         {
           type: 'body',
           parameters: [
-            { type: 'text', text: nombre || 'ahí' },
-            { type: 'text', text: productoLimpio },
-            { type: 'text', text: complementoLimpio },
-            { type: 'text', text: precioStr ? `$${Math.round(match.precioComplemento).toLocaleString('es-CL')}` : 'precio especial' }
+            { type: 'text', text: nombre || 'ahí' },           // {{1}} nombre
+            { type: 'text', text: productoLimpio },             // {{2}} producto comprado
+            { type: 'text', text: complementoLimpio },          // {{3}} complemento
+            { type: 'text', text: match.par.razon || 'se complementan perfecto' } // {{4}} razón
           ]
         }
       ]);
