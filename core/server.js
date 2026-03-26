@@ -98,6 +98,16 @@ function start(config, business) {
     res.json({ context: ctx, recentHistory: hist, campaignContext: campaign });
   });
 
+  // ── POST /admin/reset-thread — forzar recreación de thread Slack ────────
+  app.post('/admin/reset-thread', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone requerido' });
+    slack.phoneToThread.delete(phone);
+    await slack.deleteThreadFromRedis(phone);
+    logger.log(`[admin] Thread Slack reseteado para ${phone}`);
+    res.json({ ok: true, phone });
+  });
+
   // ── POST /admin/reset-context — limpiar contexto de un número (solo pruebas) ──
   app.post('/admin/reset-context', async (req, res) => {
     const { phone } = req.body;

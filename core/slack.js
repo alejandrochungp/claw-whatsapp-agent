@@ -46,6 +46,12 @@ async function getRedis() {
   } catch { return null; }
 }
 
+async function deleteThreadFromRedis(phone) {
+  const r = await getRedis();
+  if (!r) return;
+  try { await r.del(`slack:thread:${phone}`); } catch {}
+}
+
 async function persistHandoff(phone, data) {
   const r = await getRedis();
   if (!r) return;
@@ -241,11 +247,18 @@ async function logConversation(phone, userText, botText, config, shopifyInfo = n
   conversationLog.get(phone).push({ role: 'bot', text: botText, ts: Date.now() });
 
   if (phoneToThread.has(phone)) {
-    await slackPost({
+    const r = await slackPost({
       channel,
       thread_ts: phoneToThread.get(phone).thread_ts,
       text: formatted
     });
+    // Si el thread fue eliminado en Slack, recrearlo
+    if (r && !r.ok && (r.error === 'thread_not_found' || r.error === 'channel_not_found' || r.error === 'message_not_found')) {
+      console.log(`[slack] Thread eliminado para ${phone} (${r.error}), recreando...`);
+      phoneToThread.delete(phone);
+      await deleteThreadFromRedis(phone);
+      await logConversation(phone, userText, botText, config, shopifyInfo); // recursivo, ahora sin thread
+    }
   } else {
     // Nuevo thread
     const phoneLabel = `+${phone}`;
@@ -443,6 +456,7 @@ module.exports = {
   getRecentTake,
   handleSlackCommand,
   saveThreadExternal: saveThread,
+  deleteThreadFromRedis,
   phoneToThread,
   activeConversations
 };
