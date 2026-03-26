@@ -102,7 +102,7 @@ function start(config, business) {
   app.get('/admin/wa-template', async (req, res) => {
     const name = req.query.name || 'pago_confirmado_upsell';
     const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
-    const wabaId  = '790101577482960';
+    const wabaId  = process.env.WHATSAPP_WABA_ID || process.env.WABA_ID || '790101577482960';
     try {
       const axios = require('axios');
       const r = await axios.get(`https://graph.facebook.com/v19.0/${wabaId}/message_templates`, {
