@@ -278,6 +278,56 @@ function start(config, business) {
   });
 }
 
+// ── Subir media de WhatsApp a Slack ─────────────────────────────────────────
+async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mimeType, config) {
+  const slackToken = process.env.SLACK_BOT_TOKEN;
+  if (!slackToken) return;
+
+  try {
+    const buf64  = await meta.downloadMedia(mediaUrl);
+    if (!buf64) {
+      logger.log(`[media] No se pudo descargar ${type} de ${phone}`);
+      return;
+    }
+
+    const binBuf = Buffer.from(buf64, 'base64');
+    const ext    = mimeType.split('/')[1]?.split(';')[0]?.split('+')[0] || type;
+    const fname  = `media_${Date.now()}.${ext}`;
+    const label  = `${typeEmoji} *+${phone}* envió ${type}${caption ? `: "${caption}"` : ''}`;
+
+    // Resolver channel y thread_ts
+    const threadData = slack.phoneToThread.get(phone);
+    const channel    = threadData?.channel
+                    || process.env.SLACK_CHANNEL_ID
+                    || process.env.SLACK_CHANNEL_WHATSAPP;
+
+    if (!channel) {
+      logger.log(`[media] Sin canal Slack configurado`);
+      return;
+    }
+
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('channels', channel);
+    if (threadData?.thread_ts) form.append('thread_ts', threadData.thread_ts);
+    form.append('initial_comment', label);
+    form.append('file', binBuf, { filename: fname, contentType: mimeType });
+
+    const r = await require('axios').post('https://slack.com/api/files.upload', form, {
+      headers: { ...form.getHeaders(), Authorization: `Bearer ${slackToken}` },
+      timeout: 30000
+    });
+
+    if (r.data?.ok) {
+      logger.log(`[media] ${type} subido a Slack ✅`);
+    } else {
+      logger.log(`[media] Slack upload error: ${r.data?.error}`);
+    }
+  } catch (e) {
+    logger.log(`[media] uploadMediaToSlack error: ${e.message}`);
+  }
+}
+
 // ── Status updates ──────────────────────────────────────────────────────────
 const messageTracker = new Map();
 
@@ -382,89 +432,47 @@ async function handleMessage(message, value, config, business) {
       }
     }
   } else if (type === 'image' || type === 'document' || type === 'video' || type === 'sticker') {
-    // Obtener URL del media y reenviarlo a Slack + intentar análisis con Claude
-    const mediaId      = message[type]?.id;
-    const caption      = message[type]?.caption || '';
-    const mediaInfo    = mediaId ? await meta.getMediaUrl(mediaId, config) : null;
-    const mimeType     = mediaInfo?.mimeType || type;
-    const mediaUrl     = mediaInfo?.url || null;
-    const typeEmoji    = type === 'image' ? '🖼️' : type === 'video' ? '🎥' : type === 'sticker' ? '🎭' : '📄';
+    const mediaId   = message[type]?.id;
+    const caption   = message[type]?.caption || '';
+    const mediaInfo = mediaId ? await meta.getMediaUrl(mediaId, config) : null;
+    const mimeType  = mediaInfo?.mimeType || 'application/octet-stream';
+    const mediaUrl  = mediaInfo?.url || null;
+    const typeEmoji = type === 'image' ? '🖼️' : type === 'video' ? '🎥' : type === 'sticker' ? '🎭' : '📄';
 
     logger.log(`${typeEmoji} ${type} recibido de [${from}]${caption ? ` caption: "${caption}"` : ''}`);
 
-    // Reenviar a Slack si hay un thread activo
-    const activeThread = slack.getActiveConversation(from);
-    const existingThread = slack.phoneToThread.get(from);
-    const targetThread = activeThread || existingThread?.thread_ts;
+    // ── Subir a Slack siempre (thread existente o nuevo) ──────────────────
+    if (mediaUrl) {
+      await uploadMediaToSlack(from, type, typeEmoji, caption, mediaUrl, mimeType, config);
+    }
 
-    if (targetThread && mediaUrl) {
-      const token   = process.env.WHATSAPP_ACCESS_TOKEN;
-      const channel = process.env.SLACK_CHANNEL_ID;
-      const label   = `${typeEmoji} *+${from}* envió ${type}${caption ? `: "${caption}"` : ''}`;
+    const activeThread = slack.getActiveConversation(from);
+
+    // Si hay operador activo → solo reenviar a Slack y salir
+    if (activeThread) return;
+
+    // Bot responde: imagen con Claude Vision, resto acuse genérico
+    if (type === 'image' && mediaUrl) {
       try {
-        // Descargar y subir a Slack
-        const buf = await meta.downloadMedia(mediaUrl);
-        if (buf) {
-          const binBuf  = Buffer.from(buf, 'base64');
-          const ext     = mimeType.split('/')[1]?.split(';')[0] || type;
-          const fname   = `media_${Date.now()}.${ext}`;
-          const axios   = require('axios');
-          const FormData = require('form-data');
-          const form    = new FormData();
-          form.append('channels', channel);
-          form.append('thread_ts', targetThread);
-          form.append('initial_comment', label);
-          form.append('file', binBuf, { filename: fname, contentType: mimeType });
-          await axios.post('https://slack.com/api/files.upload', form, {
-            headers: { ...form.getHeaders(), Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` },
-            timeout: 30000
-          }).catch(e => logger.log(`[media] Slack upload error: ${e.message}`));
-        } else {
-          // Fallback: postear solo el link (solo visible con token Meta)
-          await slack.forwardToThread(from, `${typeEmoji} [${type}]${caption ? ` "${caption}"` : ''} (no se pudo descargar)`, targetThread, config);
+        const buf64   = await meta.downloadMedia(mediaUrl);
+        const aiReply = buf64 ? await ai.analyzeImage(buf64, mimeType, config) : null;
+        const reply   = aiReply || (caption ? null : 'recibimos tu foto 📸 en qué te puedo ayudar?');
+        if (reply) {
+          await meta.sendMessage(from, reply, config);
+          await memory.addMessage(from, caption || '[imagen]', 'user');
+          await memory.addMessage(from, reply, 'assistant');
         }
       } catch (e) {
-        logger.log(`[media] Error procesando ${type}: ${e.message}`);
+        logger.log(`[media] Error analizando imagen: ${e.message}`);
+        await meta.sendMessage(from, 'recibimos tu foto 📸 en qué te puedo ayudar?', config);
       }
-    }
-
-    // Si hay operador activo, reenviar y terminar (no pasar a Claude)
-    if (activeThread) {
-      if (!mediaUrl) {
-        await slack.forwardToThread(from, `${typeEmoji} [${type}]${caption ? ` "${caption}"` : ''}`, activeThread, config);
-      }
-      return;
-    }
-
-    // Si hay caption, usarla como userText para que Claude pueda responder
-    if (caption) {
-      userText = `[${type}] ${caption}`;
-    } else if (type === 'image') {
-      // Intentar describir imagen con Claude Vision si hay mediaUrl
-      if (mediaUrl) {
-        try {
-          const buf64   = await meta.downloadMedia(mediaUrl);
-          const aiReply = buf64
-            ? await ai.analyzeImage(buf64, mimeType, config)
-            : null;
-          if (aiReply) {
-            await meta.sendMessage(from, aiReply, config);
-            await memory.addMessage(from, '[imagen enviada]', 'user');
-            await memory.addMessage(from, aiReply, 'assistant');
-          } else {
-            await meta.sendMessage(from, '¡Recibimos tu foto! 📸 ¿En qué te podemos ayudar?', config);
-          }
-        } catch (e) {
-          logger.log(`[media] Error analizando imagen: ${e.message}`);
-          await meta.sendMessage(from, '¡Recibimos tu foto! 📸 ¿En qué te podemos ayudar?', config);
-        }
-      } else {
-        await meta.sendMessage(from, '¡Recibimos tu foto! 📸 ¿En qué te podemos ayudar?', config);
-      }
-      return;
+      if (!caption) return;
+      userText = caption; // Si hay caption, seguir para que Claude responda también al texto
+    } else if (caption) {
+      userText = caption;
     } else {
-      // Video, doc, sticker sin caption → acuse genérico
-      await meta.sendMessage(from, `¡Recibimos tu ${type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo'}! 📎 ¿En qué te podemos ayudar?`, config);
+      const tipoLabel = type === 'document' ? 'documento' : type === 'video' ? 'video' : 'archivo';
+      await meta.sendMessage(from, `recibimos tu ${tipoLabel} 📎 en qué te puedo ayudar?`, config);
       return;
     }
   } else {
