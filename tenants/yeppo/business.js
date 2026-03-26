@@ -8,9 +8,10 @@
  *   buildSystemPrompt(context)             → string
  */
 
-const fs     = require('fs');
-const path   = require('path');
-const upsell = require('../../core/upsell');
+const fs       = require('fs');
+const path     = require('path');
+const upsell   = require('../../core/upsell');
+const learning = require('../../core/learning');
 
 // Cargar prompt base + base de conocimiento
 const PROMPT_BASE = fs.readFileSync(path.join(__dirname, 'prompt.md'), 'utf8');
@@ -99,6 +100,12 @@ function buildSystemPrompt(context) {
   // Agregar base de conocimiento si está disponible
   if (KNOWLEDGE_DOC) {
     prompt += `\n\n---\n\n${KNOWLEDGE_DOC}`;
+  }
+
+  // Agregar FAQs aprendidas dinámicamente
+  const learnedFaqs = learning.getLearnedFaqsPrompt();
+  if (learnedFaqs) {
+    prompt += learnedFaqs;
   }
 
   // Personalizar con datos del cliente si los tenemos

@@ -16,6 +16,13 @@
 
 const axios = require('axios');
 
+// Importación diferida para evitar dependencia circular
+let _learning = null;
+function getLearning() {
+  if (!_learning) _learning = require('./learning');
+  return _learning;
+}
+
 const SLACK_TOKEN        = process.env.SLACK_BOT_TOKEN;
 const HANDOFF_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sin actividad → bot retoma
 
@@ -27,6 +34,8 @@ const activeConversations = new Map();
 const recentTakes         = new Map();
 // userId → displayName (cache)
 const userNameCache       = new Map();
+// phone → [ { role, text, ts, operatorId? } ] — log temporal para learning
+const conversationLog     = new Map();
 
 // ── Redis ────────────────────────────────────────────────────────────────────
 let redisClient = null;
@@ -142,6 +151,11 @@ async function logConversation(phone, userText, botText, config, shopifyInfo = n
 
   const formatted = `👤 *Cliente:* ${userText}\n🤖 *Bot:* ${botText}`;
 
+  // Registrar en log temporal para sistema de aprendizaje
+  if (!conversationLog.has(phone)) conversationLog.set(phone, []);
+  conversationLog.get(phone).push({ role: 'client', text: userText, ts: Date.now() });
+  conversationLog.get(phone).push({ role: 'bot', text: botText, ts: Date.now() });
+
   if (phoneToThread.has(phone)) {
     await slackPost({
       channel,
@@ -221,6 +235,14 @@ async function markResolvedByBot(phone, config) {
     thread_ts: existing.thread_ts,
     text: '🟢 Conversación resuelta por el bot.'
   });
+
+  // Guardar también conversaciones exitosas del bot para aprendizaje
+  const messages = conversationLog.get(phone) || [];
+  if (messages.length > 0) {
+    getLearning().saveConversationForReview(phone, messages, 'bot_resolved', null)
+      .catch(() => {});
+    conversationLog.delete(phone);
+  }
 }
 
 // ── Reenviar mensaje al thread cuando humano tiene control ───────────────────
@@ -233,6 +255,10 @@ async function forwardToThread(phone, userText, thread_ts, config) {
     thread_ts,
     takenAt: activeConversations.get(phone)?.takenAt || Date.now()
   });
+
+  // Registrar mensaje del cliente en log de aprendizaje
+  if (!conversationLog.has(phone)) conversationLog.set(phone, []);
+  conversationLog.get(phone).push({ role: 'client', text: userText, ts: Date.now() });
 }
 
 // ── Enviar respuesta del operador al cliente con su nombre ────────────────────
@@ -250,6 +276,11 @@ async function sendOperatorReply(phone, text, userId, config) {
       text: `📤 *${operatorName}:* ${text}`
     });
   }
+
+  // Registrar respuesta del operador en log de aprendizaje
+  if (!conversationLog.has(phone)) conversationLog.set(phone, []);
+  conversationLog.get(phone).push({ role: 'human', text, ts: Date.now(), operatorId: userId });
+  await getLearning().incrementOperatorMetric(userId, 'total_takeovers');
 
   // Devolver el nombre para que server.js firme el mensaje al cliente
   return operatorName;
@@ -287,6 +318,14 @@ function handleSlackCommand(command, thread_ts) {
     for (const [phone, info] of activeConversations) {
       if (info.thread_ts === thread_ts) {
         activeConversations.delete(phone);
+        // Guardar conversación completa para análisis de aprendizaje
+        const messages = conversationLog.get(phone) || [];
+        if (messages.length > 0) {
+          const operatorId = messages.find(m => m.operatorId)?.operatorId || null;
+          getLearning().saveConversationForReview(phone, messages, 'human_resolved', operatorId)
+            .catch(e => console.error('[learning] Error guardando conv:', e.message));
+          conversationLog.delete(phone); // Limpiar log temporal
+        }
         return phone;
       }
     }

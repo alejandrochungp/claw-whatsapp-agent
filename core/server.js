@@ -15,6 +15,7 @@ const logger     = require('./logger');
 const shopify    = require('./shopify');
 const audio      = require('./audio');
 const upsell     = require('./upsell');
+const learning   = require('./learning');
 
 function start(config, business) {
   const app  = express();
@@ -216,10 +217,64 @@ function start(config, business) {
     }
   });
 
+  // ── POST /slack/actions — botones interactivos (aprendizaje) ─────────────
+  app.post('/slack/actions', express.urlencoded({ extended: true }), async (req, res) => {
+    res.sendStatus(200); // Responder rápido a Slack
+    try {
+      const payload = JSON.parse(req.body.payload);
+
+      // Botones de aprendizaje (Aprobar/Editar/Rechazar)
+      if (payload.type === 'block_actions') {
+        for (const action of payload.actions || []) {
+          if (action.action_id?.startsWith('learning_')) {
+            action.trigger_id = payload.trigger_id;
+            action.user       = payload.user;
+            await learning.handleSlackAction(
+              action,
+              payload.container?.channel_id || payload.channel?.id,
+              payload.container?.message_ts || payload.message?.ts
+            );
+          }
+        }
+      }
+
+      // Modal de edición enviado
+      if (payload.type === 'view_submission' && payload.view?.callback_id === 'learning_edit_submit') {
+        await learning.handleEditSubmit(payload);
+      }
+    } catch (e) {
+      logger.log(`[slack/actions] Error: ${e.message}`);
+    }
+  });
+
+  // ── POST /admin/learning/run — forzar análisis manual ────────────────────
+  app.post('/admin/learning/run', async (req, res) => {
+    const { date } = req.body;
+    try {
+      const result = await learning.runNow(date);
+      res.json({ ok: true, suggestions: result?.suggestions?.length || 0 });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── GET /admin/learning/kpis — métricas de operadores ────────────────────
+  app.get('/admin/learning/kpis', async (req, res) => {
+    const metrics = await learning.getAllOperatorMetrics();
+    res.json({ ok: true, operators: metrics });
+  });
+
+  // ── GET /admin/learning/faqs — ver FAQs aprendidas ───────────────────────
+  app.get('/admin/learning/faqs', (req, res) => {
+    res.json({ ok: true, faqs: learning.loadLearnedFaqs() });
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(`✅ Servidor escuchando en 0.0.0.0:${PORT}`);
     // Pre-calentar catálogo en background al arrancar
     shopify.getProductCatalog().catch(() => {});
+    // Iniciar cron de aprendizaje diario (20:00 Santiago)
+    learning.startDailyCron();
   });
 }
 
