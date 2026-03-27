@@ -701,7 +701,7 @@ async function handleMessage(message, value, config, business) {
   if (isAudio) {
     await sendReply(from, userText, config, business, pendingMedia);
   } else {
-    debounceMessage(from, userText, (combinedText) => sendReply(from, combinedText, config, business, pendingMedia));
+    await sendReply(from, userText, config, business, pendingMedia); // fix: debounceMessage era undefined
   }
 }
 
