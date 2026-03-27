@@ -409,6 +409,12 @@ Escribe \`tomar\` para tomar control o espera la respuesta del cliente.`;
 // ── Handler principal ────────────────────────────────────────────────────────
 async function handleNewOrder(order, config) {
   try {
+    // Solo pedidos online (web), no POS/tienda fisica
+    if (order.source_name !== 'web') {
+      logger.log(`[upsell] Pedido #${order.name} es POS/tienda - omitiendo`);
+      return;
+    }
+
     const phone = extractPhone(order);
     if (!phone) {
       logger.log(`[upsell] Pedido #${order.name} sin teléfono — omitiendo`);
