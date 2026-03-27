@@ -29,6 +29,10 @@ console.log(`🚀 claw-whatsapp-agent arrancando con tenant: ${TENANT}`);
 console.log(`📱 Número: ${tenantConfig.businessPhone}`);
 console.log(`💬 Slack: ${tenantConfig.slackChannel}`);
 
-// Arrancar servidor con tenant inyectado
+// Esperar Redis antes de arrancar (evita perder historial al reiniciar)
+const memory = require('./core/memory');
 const server = require('./core/server');
-server.start(tenantConfig, tenantBusiness);
+
+memory.waitForRedis(5000).then(() => {
+  server.start(tenantConfig, tenantBusiness);
+});

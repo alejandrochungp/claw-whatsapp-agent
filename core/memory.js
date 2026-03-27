@@ -203,4 +203,19 @@ async function clearUpsellPending(phone) {
   }
 }
 
-module.exports = { addMessage, getHistory, getContext, updateContext, isReturning, setCampaignContext, getCampaignContext, setUpsellPending, getUpsellPending, clearUpsellPending };
+// Esperar a que Redis conecte, con timeout
+function waitForRedis(timeoutMs = 5000) {
+  if (useRedis) return Promise.resolve(); // ya conectado
+  return new Promise(resolve => {
+    const start = Date.now();
+    const check = setInterval(() => {
+      if (useRedis || Date.now() - start > timeoutMs) {
+        clearInterval(check);
+        if (!useRedis) console.log('[memory] Redis no disponible tras espera, arrancando con RAM');
+        resolve();
+      }
+    }, 100);
+  });
+}
+
+module.exports = { addMessage, getHistory, getContext, updateContext, isReturning, setCampaignContext, getCampaignContext, setUpsellPending, getUpsellPending, clearUpsellPending, waitForRedis, get redis() { return redisClient; } };
