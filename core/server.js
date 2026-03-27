@@ -35,6 +35,35 @@ function start(config, business) {
   });
 
   // â”€â”€ POST /webhook â€” mensajes entrantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  // -- Debounce por numero: agrupa mensajes rapidos del mismo cliente --------
+  const messageQueues   = new Map(); // phone -> [msgs]
+  const debounceTimers  = new Map(); // phone -> timer
+  const DEBOUNCE_MS     = 2500;      // esperar 2.5s despues del ultimo mensaje
+
+  async function flushQueue(phone, value) {
+    const msgs = messageQueues.get(phone) || [];
+    messageQueues.delete(phone);
+    debounceTimers.delete(phone);
+    if (!msgs.length) return;
+
+    if (msgs.length === 1) {
+      await handleMessage(msgs[0], value, config, business);
+    } else {
+      // Varios mensajes de texto: concatenar y procesar como uno solo
+      const textMsgs = msgs.filter(m => m.type === 'text' && m.text?.body);
+      const nonText  = msgs.filter(m => m.type !== 'text' || !m.text?.body);
+      if (textMsgs.length > 1 && nonText.length === 0) {
+        const combined = { ...msgs[msgs.length - 1] };
+        combined.text = { body: textMsgs.map(m => m.text.body.trim()).join('\n') };
+        logger.log('[' + phone + '] ' + msgs.length + ' mensajes agrupados: "' + combined.text.body.substring(0, 80) + '"');
+        await handleMessage(combined, value, config, business);
+      } else {
+        // Mix de tipos: procesar por separado
+        for (const msg of msgs) await handleMessage(msg, value, config, business);
+      }
+    }
+  }
   app.post('/webhook', async (req, res) => {
     try {
       res.sendStatus(200); // Responder rÃ¡pido a Meta
@@ -517,25 +546,7 @@ function isDuplicate(messageId) {
   return false;
 }
 
-// â”€â”€ Debounce por usuario â€” espera 3s por si el cliente envÃ­a mÃ¡s mensajes â”€â”€â”€â”€
-const pendingReplies = new Map(); // phone â†’ { timer, texts[] }
-const DEBOUNCE_MS = 3000;
 
-function debounceMessage(phone, text, handler) {
-  if (pendingReplies.has(phone)) {
-    const pending = pendingReplies.get(phone);
-    clearTimeout(pending.timer);
-    pending.texts.push(text);
-  } else {
-    pendingReplies.set(phone, { texts: [text], timer: null });
-  }
-  const pending = pendingReplies.get(phone);
-  pending.timer = setTimeout(async () => {
-    pendingReplies.delete(phone);
-    const combined = pending.texts.join(' ... ');
-    await handler(combined);
-  }, DEBOUNCE_MS);
-}
 
 // â”€â”€ Mensaje entrante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function handleMessage(message, value, config, business) {
