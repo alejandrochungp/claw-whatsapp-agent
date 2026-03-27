@@ -72,3 +72,4 @@ GET /status
 ```
 
 Retorna `{ ok: true, tenant: "yeppo", phone: "+56...", uptime: 123 }`
+
