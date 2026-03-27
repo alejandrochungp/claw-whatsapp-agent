@@ -21,7 +21,8 @@ function start(config, business) {
   const app  = express();
   const PORT = process.env.PORT || config.port || 3000;
 
-  app.use(bodyParser.json());
+  app.use(bodyParser.json({ type: 'application/json' }));
+  app.use((req, res, next) => { res.setHeader('Content-Type', 'application/json; charset=utf-8'); next(); });
 
   // â”€â”€ GET /webhook â€” verificaciÃ³n Meta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.get('/webhook', (req, res) => {
