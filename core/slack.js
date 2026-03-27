@@ -167,7 +167,8 @@ initRedis().catch(() => {});
 
 function slackPost(payload) {
   if (!SLACK_TOKEN) return Promise.resolve(null);
-  return axios.post('https://slack.com/api/chat.postMessage', payload, {
+  const body0 = Buffer.from(JSON.stringify(payload), 'utf8');
+  return axios.post('https://slack.com/api/chat.postMessage', body0, {
     headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json; charset=utf-8' }
   }).then(r => r.data).catch(err => {
     console.error('❌ Slack error:', err.message);
@@ -177,7 +178,8 @@ function slackPost(payload) {
 
 function slackUpdate(payload) {
   if (!SLACK_TOKEN) return Promise.resolve(null);
-  return axios.post('https://slack.com/api/chat.update', payload, {
+  const body1 = Buffer.from(JSON.stringify(payload), 'utf8');
+  return axios.post('https://slack.com/api/chat.update', body1, {
     headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json; charset=utf-8' }
   }).then(r => r.data).catch(() => null);
 }
