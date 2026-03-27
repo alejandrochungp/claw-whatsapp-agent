@@ -168,7 +168,7 @@ initRedis().catch(() => {});
 function slackPost(payload) {
   if (!SLACK_TOKEN) return Promise.resolve(null);
   return axios.post('https://slack.com/api/chat.postMessage', payload, {
-    headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json' }
+    headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json; charset=utf-8' }
   }).then(r => r.data).catch(err => {
     console.error('❌ Slack error:', err.message);
     return null;
@@ -178,7 +178,7 @@ function slackPost(payload) {
 function slackUpdate(payload) {
   if (!SLACK_TOKEN) return Promise.resolve(null);
   return axios.post('https://slack.com/api/chat.update', payload, {
-    headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json' }
+    headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json; charset=utf-8' }
   }).then(r => r.data).catch(() => null);
 }
 
@@ -201,7 +201,8 @@ async function getUserName(userId) {
     const firstName = name.split(' ')[0];
     userNameCache.set(userId, firstName);
     return firstName;
-  } catch {
+  } catch (e) {
+    console.error('[slack] getUserName error:', e.message);
     return 'Operador';
   }
 }
