@@ -186,6 +186,19 @@ function start(config, business) {
     res.json({ ok: true, phone });
   });
 
+  // POST /admin/refresh-catalog - forzar recarga del catalogo Shopify
+  app.post('/admin/refresh-catalog', async (req, res) => {
+    try {
+      const { invalidateCatalog, getProductCatalog } = require('./shopify');
+      await invalidateCatalog();
+      const catalog = await getProductCatalog();
+      logger.log('[admin] Catalogo recargado: ' + catalog.length + ' productos');
+      res.json({ ok: true, products: catalog.length });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // â”€â”€ POST /admin/campaign-context â€” registrar contexto de campaÃ±a en Redis â”€â”€
   app.post('/admin/campaign-context', async (req, res) => {
     const { phone, campaign } = req.body;
