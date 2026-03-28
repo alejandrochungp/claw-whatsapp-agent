@@ -350,7 +350,20 @@ function formatCatalogForPrompt(products) {
 
 // ── Detectar si el mensaje pregunta por productos/stock/precios ───────────────
 function isProductQuery(text) {
-  return /\b(tienen|hay|stock|precio|cuánto cuesta|cuanto vale|disponible|busco|tienes|existe|venden|producto|cuánto está|cuanto esta)\b/i.test(text);
+  const t = (text || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quitar tildes para comparar
+
+  // Palabras clave de precio
+  const precioKw = ['precio', 'costo', 'valor', 'vale', 'cuesta', 'cobran', 'cuanto', 'cuánto',
+    'tarifa', 'monto', 'importe', 'rate', 'sale', 'oferta', 'descuento', 'promo'];
+
+  // Palabras clave de disponibilidad / producto
+  const prodKw = ['stock', 'disponible', 'disponibilidad', 'tienen', 'tienes', 'hay', 'existe',
+    'venden', 'busco', 'producto', 'catalogo', 'catalogo', 'quiero', 'necesito',
+    'me gustaria', 'podrian', 'podrian', 'quisiera'];
+
+  const all = [...precioKw, ...prodKw];
+  return all.some(kw => t.includes(kw));
 }
 
 async function invalidateCatalog() {
