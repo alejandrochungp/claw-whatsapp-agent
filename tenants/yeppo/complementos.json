@@ -1,6 +1,4 @@
 {
-  "version": "2026-03-26",
-  "nota": "Productos frecuentemente comprados juntos — basado en historial real de Shopify (2000 pedidos)",
   "pares": [
     {
       "producto": "COLLAGEN NIGHT WRAPPING MASK",
@@ -225,6 +223,1602 @@
       "precio": 0,
       "razon": "sistema Keratin Bond completo — keratina y humectación de shampoo a punta",
       "frecuencia": 2
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 16
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 16
+    },
+    {
+      "producto": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "complemento": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantId": 45303900340373,
+      "precio": null,
+      "frecuencia": 13
+    },
+    {
+      "producto": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "complemento": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "variantId": 45303883137173,
+      "precio": null,
+      "frecuencia": 13
+    },
+    {
+      "producto": "Catch Me Patch 33pcs (Sin Clean Touch)",
+      "complemento": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantId": 45303900340373,
+      "precio": null,
+      "frecuencia": 10
+    },
+    {
+      "producto": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "complemento": "Catch Me Patch 33pcs (Sin Clean Touch)",
+      "variantId": 44019391889557,
+      "precio": null,
+      "frecuencia": 10
+    },
+    {
+      "producto": "Rich Perfume Shampoo (2 Fragancias)",
+      "complemento": "Rich Perfume Treatment (3 Fragancias)",
+      "variantId": 45501208854677,
+      "precio": null,
+      "frecuencia": 9
+    },
+    {
+      "producto": "Rich Perfume Treatment (3 Fragancias)",
+      "complemento": "Rich Perfume Shampoo (2 Fragancias)",
+      "variantId": 45501193257109,
+      "precio": null,
+      "frecuencia": 9
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantId": 46324582547605,
+      "precio": null,
+      "frecuencia": 9
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 9
+    },
+    {
+      "producto": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "complemento": "Ki Gold Premium Treatment (2 Tamaños)",
+      "variantId": 46324233863317,
+      "precio": null,
+      "frecuencia": 7
+    },
+    {
+      "producto": "Ki Gold Premium Treatment (2 Tamaños)",
+      "complemento": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "variantId": 46324233011349,
+      "precio": null,
+      "frecuencia": 7
+    },
+    {
+      "producto": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "complemento": "Teatree CICA 80 Toner",
+      "variantId": 44018255069333,
+      "precio": null,
+      "frecuencia": 7
+    },
+    {
+      "producto": "Advanced Repair Ampoule Shampoo (2 Tamaños y Refill)",
+      "complemento": "Advanced Repair Ampoule Conditioner (2 Tamaños)",
+      "variantId": 44026285719701,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Advanced Repair Ampoule Conditioner (2 Tamaños)",
+      "complemento": "Advanced Repair Ampoule Shampoo (2 Tamaños y Refill)",
+      "variantId": 44026287095957,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Vita Niacinamide Dark Spot Serum Mask 20ml",
+      "complemento": "Birch Juice Moisturizing Double Gel Mask",
+      "variantId": 46739737575573,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Birch Juice Moisturizing Double Gel Mask",
+      "complemento": "Vita Niacinamide Dark Spot Serum Mask 20ml",
+      "variantId": 46497225769109,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Vitamin C Boosting Serum 30ml",
+      "variantId": 46497676689557,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Vitamin C Boosting Serum 30ml",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "complemento": "Teatree CICA 60 Moisturizer",
+      "variantId": 44018258935957,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Teatree CICA 60 Moisturizer",
+      "complemento": "Teatree CICA 80 Toner",
+      "variantId": 44018255069333,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Retinol Vitamin C Vitamin E Sheet Mask",
+      "complemento": "Collagen EGF Peptide Sheet Mask",
+      "variantId": 46343745601685,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Collagen EGF Peptide Sheet Mask",
+      "complemento": "Retinol Vitamin C Vitamin E Sheet Mask",
+      "variantId": 46331186839701,
+      "precio": null,
+      "frecuencia": 6
+    },
+    {
+      "producto": "Catch Me Patch 33pcs (Sin Clean Touch)",
+      "complemento": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "variantId": 45303883137173,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "complemento": "Catch Me Patch 33pcs (Sin Clean Touch)",
+      "variantId": 44019391889557,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Dear Flora Cherry Blossom Shampoo (1.5L)",
+      "complemento": "Dear Flora Cherry Blossom Rinse (1.5L)",
+      "variantId": 46331901804693,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Dear Flora Cherry Blossom Rinse (1.5L)",
+      "complemento": "Dear Flora Cherry Blossom Shampoo (1.5L)",
+      "variantId": 46331895120021,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "complemento": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "variantId": 46741809266837,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantId": 46324582547605,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "complemento": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "variantId": 46756485857429,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "complemento": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantId": 46324582547605,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "complemento": "PDRN Pink Collagen Capsule Cream",
+      "variantId": 46324603453589,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantId": 45630996185237,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Glutathione Niacinamide Sheet Mask",
+      "complemento": "Collagen EGF Peptide Sheet Mask",
+      "variantId": 46343745601685,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Collagen EGF Peptide Sheet Mask",
+      "complemento": "Glutathione Niacinamide Sheet Mask",
+      "variantId": 46330997670037,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Shampoo (2 Tamaños)",
+      "complemento": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantId": 46324234518677,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "complemento": "DlaeSoo Hair Loss Care Shampoo (2 Tamaños)",
+      "variantId": 46324114096277,
+      "precio": null,
+      "frecuencia": 5
+    },
+    {
+      "producto": "Hair Clinic Moisture Treatment 300ml",
+      "complemento": "Ultra Hair Serum (5 Fragrancias)",
+      "variantId": 46612386152597,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Ultra Hair Serum (5 Fragrancias)",
+      "complemento": "Hair Clinic Moisture Treatment 300ml",
+      "variantId": 44018982682773,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Bean Essence (2 tamaños)",
+      "complemento": "Bean Cleansing Oil (2 Tamaños)",
+      "variantId": 46124946161813,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Bean Cleansing Oil (2 Tamaños)",
+      "complemento": "Bean Essence (2 tamaños)",
+      "variantId": 46121508929685,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "variantId": 44018295275669,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Advanced Snail 92 All In One Cream",
+      "complemento": "Advanced Snail 96 Mucin Power Essence",
+      "variantId": 44019263111317,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Miniatura Cica Vitamin K Barrier Cream 15ml",
+      "complemento": "Miniatura Delicate Daily Moisturizer 15ml",
+      "variantId": 45423435022485,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Miniatura Delicate Daily Moisturizer 15ml",
+      "complemento": "Miniatura Cica Vitamin K Barrier Cream 15ml",
+      "variantId": 45423513895061,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "complemento": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "variantId": 46741809266837,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "complemento": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "variantId": 46756485857429,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Hair Clinic Moisture Treatment 300ml",
+      "complemento": "Hair Clinic Damage Treatment 300ml",
+      "variantId": 44019414827157,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Hair Clinic Damage Treatment 300ml",
+      "complemento": "Hair Clinic Moisture Treatment 300ml",
+      "variantId": 44018982682773,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Collagen Reedle Shot 100 2Step Mask",
+      "complemento": "Vita-Light Reedle Shot® 100 2Step Hydrogel Mask",
+      "variantId": 45988604248213,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Vita-Light Reedle Shot® 100 2Step Hydrogel Mask",
+      "complemento": "Collagen Reedle Shot 100 2Step Mask",
+      "variantId": 45988586094741,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Catch Me Patch 22pcs (Sin Clean Touch)",
+      "complemento": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantId": 45303900340373,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "complemento": "Catch Me Patch 22pcs (Sin Clean Touch)",
+      "variantId": 44914971574421,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Honey & Macadamia Shampoo (7 Fragancias)",
+      "complemento": "Honey & Macadamia Treatment (6 Aromas y Tamaños)",
+      "variantId": 46125985169557,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Honey & Macadamia Treatment (6 Aromas y Tamaños)",
+      "complemento": "Honey & Macadamia Shampoo (7 Fragancias)",
+      "variantId": 46125921829013,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantId": 45630996185237,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Vitamin C Boosting Serum 30ml",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "Vitamin C Boosting Serum 30ml",
+      "variantId": 46497676689557,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "PDRN Pink Collagen Capsule Cream",
+      "variantId": 46324603453589,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "PDRN Pink Collagen Capsule Cream",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "My Lash Serum",
+      "variantId": 44018031067285,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Vitalizing Nutrition Hair Pack 120ml",
+      "complemento": "Vitalizing Nutrition Hair Pack with Hair Cap 35g",
+      "variantId": 44019331760277,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Vitalizing Nutrition Hair Pack with Hair Cap 35g",
+      "complemento": "Vitalizing Nutrition Hair Pack 120ml",
+      "variantId": 44019325829269,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "complemento": "DlaeSoo Intensive Nourishing Pack 200ml",
+      "variantId": 44019347914901,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "DlaeSoo Intensive Nourishing Pack 200ml",
+      "complemento": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantId": 46324234518677,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Macadamia Balancing & Moisture Double Deep Cleansing Oil",
+      "complemento": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantId": 44018565644437,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "complemento": "Macadamia Balancing & Moisture Double Deep Cleansing Oil",
+      "variantId": 44018020253845,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Vitalizing Nutrition Scalp Pack For Hair Loss 145ml",
+      "complemento": "Vitalizing Nutrition Hair Pack 120ml",
+      "variantId": 44019325829269,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Vitalizing Nutrition Hair Pack 120ml",
+      "complemento": "Vitalizing Nutrition Scalp Pack For Hair Loss 145ml",
+      "variantId": 44019321438357,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "complemento": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantId": 45994345627797,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "complemento": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantId": 45630996185237,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Glutathione Niacinamide Sheet Mask",
+      "complemento": "Retinol Vitamin C Vitamin E Sheet Mask",
+      "variantId": 46331186839701,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "Retinol Vitamin C Vitamin E Sheet Mask",
+      "complemento": "Glutathione Niacinamide Sheet Mask",
+      "variantId": 46330997670037,
+      "precio": null,
+      "frecuencia": 4
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Madagascar Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++ 50ml",
+      "variantId": 45621228896405,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++ 50ml",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "variantId": 46497316733077,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "complemento": "Madagascar Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++ 50ml",
+      "variantId": 45621228896405,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++ 50ml",
+      "complemento": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "variantId": 46497316733077,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "Big Delicate Daily Moisturizer (220ml)",
+      "variantId": 44018563022997,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Big Delicate Daily Moisturizer (220ml)",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Bean Cream (2 Tamaños)",
+      "complemento": "Bean Cleansing Oil (2 Tamaños)",
+      "variantId": 46124946161813,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Bean Cleansing Oil (2 Tamaños)",
+      "complemento": "Bean Cream (2 Tamaños)",
+      "variantId": 46121577250965,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Bean Essence (2 tamaños)",
+      "complemento": "Bean Cream (2 Tamaños)",
+      "variantId": 46121577250965,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Bean Cream (2 Tamaños)",
+      "complemento": "Bean Essence (2 tamaños)",
+      "variantId": 46121508929685,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Collagen Jelly Cream (2 Tamaños)",
+      "complemento": "PDRN Pink Peptide Serum",
+      "variantId": 46961578967189,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Pink Peptide Serum",
+      "complemento": "Collagen Jelly Cream (2 Tamaños)",
+      "variantId": 46498093301909,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "DEEP VITA C CAPSULE CREAM",
+      "complemento": "PDRN Pink Peptide Serum",
+      "variantId": 46961578967189,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Pink Peptide Serum",
+      "complemento": "DEEP VITA C CAPSULE CREAM",
+      "variantId": 46125274136725,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "COLLAGEN NIGHT WRAPPING MASK",
+      "variantId": 46125160464533,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "COLLAGEN NIGHT WRAPPING MASK",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "My Lash Serum",
+      "complemento": "Macadamia Balancing & Moisture Double Deep Cleansing Oil",
+      "variantId": 44018020253845,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Macadamia Balancing & Moisture Double Deep Cleansing Oil",
+      "complemento": "My Lash Serum",
+      "variantId": 44018031067285,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Dark Spot Correcting Glow Serum",
+      "complemento": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "variantId": 44018295275669,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "complemento": "Dark Spot Correcting Glow Serum",
+      "variantId": 46125573472405,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "PDRN Pink Collagen Capsule Cream",
+      "variantId": 46324603453589,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Pink Collagen Capsule Cream",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "My Lash Serum",
+      "complemento": "Retinol Intense Daily Mask",
+      "variantId": 45779126583445,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Retinol Intense Daily Mask",
+      "complemento": "My Lash Serum",
+      "variantId": 44018031067285,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Madagascar Centella Light Cleansing Oil",
+      "variantId": 45309811884181,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Centella Light Cleansing Oil",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantId": 45303900340373,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "SEOUL 1988 Eye Cream : Retinal Liposome 4% + Fermented Bean",
+      "variantId": 46616416125077,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "SEOUL 1988 Eye Cream : Retinal Liposome 4% + Fermented Bean",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "complemento": "Mugwort Calming Mask",
+      "variantId": 44017902682261,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Mugwort Calming Mask",
+      "complemento": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "variantId": 45303883137173,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Keratin Bond Silky Moisture Shampoo (2 Tamaños)",
+      "complemento": "Keratin Bond Silky Moisture Conditioner (2 Tamaños)",
+      "variantId": 44026286178453,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Keratin Bond Silky Moisture Conditioner (2 Tamaños)",
+      "complemento": "Keratin Bond Silky Moisture Shampoo (2 Tamaños)",
+      "variantId": 44026286768277,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Collagen Reedle Shot 100 2Step Mask",
+      "complemento": "Hydrop Reedle Shot 100 hL 2Step Hydrogel Mask",
+      "variantId": 45988614471829,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Hydrop Reedle Shot 100 hL 2Step Hydrogel Mask",
+      "complemento": "Collagen Reedle Shot 100 2Step Mask",
+      "variantId": 45988586094741,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Cica Daily Soothing Mask (30 mascarillas)",
+      "variantId": 45988574789781,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Cica Daily Soothing Mask (30 mascarillas)",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "complemento": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantId": 44018565644437,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "complemento": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantId": 45303900340373,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "SEOUL 1988 Serum : Retinal Liposome 2% + Black Ginseng",
+      "variantId": 46616230068373,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "SEOUL 1988 Serum : Retinal Liposome 2% + Black Ginseng",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "complemento": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantId": 44018565644437,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "complemento": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantId": 45630996185237,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Long Active Eyelash Serum",
+      "complemento": "Birch Juice Moisturizing Double Gel Mask",
+      "variantId": 46739737575573,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Double Gel Mask",
+      "complemento": "Long Active Eyelash Serum",
+      "variantId": 44018078843029,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Long Active Eyelash Serum",
+      "complemento": "Vita Niacinamide Dark Spot Serum Mask 20ml",
+      "variantId": 46497225769109,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vita Niacinamide Dark Spot Serum Mask 20ml",
+      "complemento": "Long Active Eyelash Serum",
+      "variantId": 44018078843029,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "complemento": "No. 9 NAD Bio Lifting-sil Full Face Pack Sheet",
+      "variantId": 46741814837397,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "No. 9 NAD Bio Lifting-sil Full Face Pack Sheet",
+      "complemento": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "variantId": 46756485857429,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Advanced Volume Ampoule Shampoo (2 Tamaños)",
+      "complemento": "Hair Clinic Damage Treatment 300ml",
+      "variantId": 44019414827157,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Hair Clinic Damage Treatment 300ml",
+      "complemento": "Advanced Volume Ampoule Shampoo (2 Tamaños)",
+      "variantId": 44026286407829,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "1025 Dokdo Mascarilla Gel",
+      "complemento": "Birch Juice Moisturizing Double Gel Mask",
+      "variantId": 46739737575573,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Double Gel Mask",
+      "complemento": "1025 Dokdo Mascarilla Gel",
+      "variantId": 44018089394325,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "My Lash Serum",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "My Lash Serum",
+      "variantId": 44018031067285,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "complemento": "PDRN Capsule Cream 100",
+      "variantId": 46961666031765,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Capsule Cream 100",
+      "complemento": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "variantId": 46741809266837,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Exosome Shot Pore Serum 2000 30ml",
+      "variantId": 46497470087317,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Exosome Shot Pore Serum 2000 30ml",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "PDRN Pink Peptide Serum",
+      "variantId": 46961578967189,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Pink Peptide Serum",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Rich Perfume Shampoo (2 Fragancias)",
+      "complemento": "Rich Perfume Bruma para el Cabello (3 Fragancias)",
+      "variantId": 45503900975253,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Rich Perfume Bruma para el Cabello (3 Fragancias)",
+      "complemento": "Rich Perfume Shampoo (2 Fragancias)",
+      "variantId": 45501193257109,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Honey&Macadamia Shampoo Refill 400ml (2 Fragancias)",
+      "complemento": "Natural Caffeine Scalp Shampoo Anticaida (3 Fragancias)",
+      "variantId": 44018037293205,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Natural Caffeine Scalp Shampoo Anticaida (3 Fragancias)",
+      "complemento": "Honey&Macadamia Shampoo Refill 400ml (2 Fragancias)",
+      "variantId": 45176504090773,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Collagen Reedle Shot 100 2Step Mask",
+      "complemento": "Reti-A Reedle Shot® 100 2STEP Hydrogel Mask",
+      "variantId": 45988611522709,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Reti-A Reedle Shot® 100 2STEP Hydrogel Mask",
+      "complemento": "Collagen Reedle Shot 100 2Step Mask",
+      "variantId": 45988586094741,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Centella Ampoule (3 Tamaños)",
+      "complemento": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantId": 45994345627797,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "complemento": "Madagascar Centella Ampoule (3 Tamaños)",
+      "variantId": 45620190347413,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Mugwort Calming Mask",
+      "complemento": "Soybean Nourishing Mask",
+      "variantId": 44017903829141,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Soybean Nourishing Mask",
+      "complemento": "Mugwort Calming Mask",
+      "variantId": 44017902682261,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "complemento": "Bálsamo: Luv Beam Cheek (11 Colores)",
+      "variantId": 44026254786709,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Bálsamo: Luv Beam Cheek (11 Colores)",
+      "complemento": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "variantId": 44018464784533,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitalizing Nutrition Hair Pack 120ml",
+      "complemento": "Rich Perfume Bruma para el Cabello (3 Fragancias)",
+      "variantId": 45503900975253,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Rich Perfume Bruma para el Cabello (3 Fragancias)",
+      "complemento": "Vitalizing Nutrition Hair Pack 120ml",
+      "variantId": 44019325829269,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Hair Clinic Damage Treatment 300ml",
+      "complemento": "Ultra Hair Serum (5 Fragrancias)",
+      "variantId": 46612386152597,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Ultra Hair Serum (5 Fragrancias)",
+      "complemento": "Hair Clinic Damage Treatment 300ml",
+      "variantId": 44019414827157,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Centella Asiatica Calming Mask",
+      "complemento": "Birch Juice Moisturizing Double Gel Mask",
+      "variantId": 46739737575573,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Double Gel Mask",
+      "complemento": "Centella Asiatica Calming Mask",
+      "variantId": 44017965105301,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Acne Pimple Master Patch",
+      "complemento": "Clear Fit Master Patch",
+      "variantId": 45642659070101,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Clear Fit Master Patch",
+      "complemento": "Acne Pimple Master Patch",
+      "variantId": 44019234078869,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Puri Pore No Sebum Pact",
+      "complemento": "AM9 to PM9 Infinite Mascara (2 tipos)",
+      "variantId": 44026258096277,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "AM9 to PM9 Infinite Mascara (2 tipos)",
+      "complemento": "Puri Pore No Sebum Pact",
+      "variantId": 44017972412565,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "complemento": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantId": 45630996185237,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "complemento": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "variantId": 44018295275669,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantId": 45994920509589,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitamin C Boosting Serum 30ml",
+      "complemento": "Niacinamide 10 TXA 4 Serum",
+      "variantId": 45496153407637,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Niacinamide 10 TXA 4 Serum",
+      "complemento": "Vitamin C Boosting Serum 30ml",
+      "variantId": 46497676689557,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Hyaluronic Acid Aqua Gel Cream",
+      "complemento": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "variantId": 44018464784533,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "complemento": "Hyaluronic Acid Aqua Gel Cream",
+      "variantId": 44773337825429,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "complemento": "PDRN Pink Peptide Serum",
+      "variantId": 46961578967189,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Pink Peptide Serum",
+      "complemento": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "variantId": 46497316733077,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "1025 Dokdo Mascarilla Gel",
+      "complemento": "Soybean Nourishing Mask",
+      "variantId": 44017903829141,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Soybean Nourishing Mask",
+      "complemento": "1025 Dokdo Mascarilla Gel",
+      "variantId": 44018089394325,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Mugwort Calming Mask",
+      "complemento": "Birch Juice Moisturizing Double Gel Mask",
+      "variantId": 46739737575573,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Double Gel Mask",
+      "complemento": "Mugwort Calming Mask",
+      "variantId": 44017902682261,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Retinol Intense Reactivating Mask",
+      "complemento": "Collagen Reedle Shot 100 2Step Mask",
+      "variantId": 45988586094741,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Collagen Reedle Shot 100 2Step Mask",
+      "complemento": "Retinol Intense Reactivating Mask",
+      "variantId": 44019157696661,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Zero Pore Pad 2.0",
+      "variantId": 46497453277333,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Zero Pore Pad 2.0",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "complemento": "Vitalizing Nutrition Hair Pack 120ml",
+      "variantId": 44019325829269,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitalizing Nutrition Hair Pack 120ml",
+      "complemento": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "variantId": 46324233011349,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "variantId": 46497316733077,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Crema de Tratamiento - Keramide Heat Protection 200ml",
+      "complemento": "Advanced Volume Ampoule Shampoo (2 Tamaños)",
+      "variantId": 44026286407829,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Advanced Volume Ampoule Shampoo (2 Tamaños)",
+      "complemento": "Crema de Tratamiento - Keramide Heat Protection 200ml",
+      "variantId": 44018971312277,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitalizing Shampoo (3 tamaños)",
+      "complemento": "Vitalizing Treatment (3 tamaños)",
+      "variantId": 44019315605653,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitalizing Treatment (3 tamaños)",
+      "complemento": "Vitalizing Shampoo (3 tamaños)",
+      "variantId": 44019309936789,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "complemento": "Wonder Releaf Centella Serum Unscented (2 Tamaños)",
+      "variantId": 46611992936597,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Wonder Releaf Centella Serum Unscented (2 Tamaños)",
+      "complemento": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "variantId": 44018295275669,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Dokdo Toner",
+      "complemento": "Birch Juice Moisturizing Sun Screen",
+      "variantId": 44017985486997,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Birch Juice Moisturizing Sun Screen",
+      "complemento": "Dokdo Toner",
+      "variantId": 44026209435797,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Shampoo (2 Tamaños)",
+      "complemento": "DlaeSoo Intensive Nourishing Pack 200ml",
+      "variantId": 44019347914901,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "DlaeSoo Intensive Nourishing Pack 200ml",
+      "complemento": "DlaeSoo Hair Loss Care Shampoo (2 Tamaños)",
+      "variantId": 46324114096277,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Ki Gold Premium Treatment (2 Tamaños)",
+      "complemento": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantId": 46324234518677,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "complemento": "Ki Gold Premium Treatment (2 Tamaños)",
+      "variantId": 46324233863317,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "complemento": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantId": 46324234518677,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "complemento": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "variantId": 46324233011349,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "My Lash Serum",
+      "complemento": "SEOUL 1988 Eye Cream : Retinal Liposome 4% + Fermented Bean",
+      "variantId": 46616416125077,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "SEOUL 1988 Eye Cream : Retinal Liposome 4% + Fermented Bean",
+      "complemento": "My Lash Serum",
+      "variantId": 44018031067285,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "147 Barrier Cream 50ml",
+      "variantId": 46497645887637,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "147 Barrier Cream 50ml",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantId": 45994345627797,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "345 Relief Cream (50ml)",
+      "complemento": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "variantId": 44018464784533,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "complemento": "345 Relief Cream (50ml)",
+      "variantId": 46331858583701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Vitalizing Nutrition Hair Pack with Hair Cap 35g",
+      "complemento": "Retinol Intense Reactivating Mask",
+      "variantId": 44019157696661,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Retinol Intense Reactivating Mask",
+      "complemento": "Vitalizing Nutrition Hair Pack with Hair Cap 35g",
+      "variantId": 44019331760277,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Milky Piggy Carbonated Bubble Clay Pack",
+      "complemento": "PDRN Pink Peptide Serum",
+      "variantId": 46961578967189,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "PDRN Pink Peptide Serum",
+      "complemento": "Milky Piggy Carbonated Bubble Clay Pack",
+      "variantId": 45785641287829,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Retinol Intense Daily Mask",
+      "complemento": "Cica Daily Soothing Mask (30 mascarillas)",
+      "variantId": 45988574789781,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Cica Daily Soothing Mask (30 mascarillas)",
+      "complemento": "Retinol Intense Daily Mask",
+      "variantId": 45779126583445,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Retinol Intense Reactivating Mask",
+      "complemento": "Reti-A Reedle Shot® 100 2STEP Hydrogel Mask",
+      "variantId": 45988611522709,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Reti-A Reedle Shot® 100 2STEP Hydrogel Mask",
+      "complemento": "Retinol Intense Reactivating Mask",
+      "variantId": 44019157696661,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "complemento": "Heartleaf Pore Control Cleansing Oil (2 Tamaños)",
+      "variantId": 45500733456533,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Heartleaf Pore Control Cleansing Oil (2 Tamaños)",
+      "complemento": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "variantId": 45495934615701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "complemento": "Heartleaf 70% Daily Lotion (2 Tamaños)",
+      "variantId": 46497795309717,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Heartleaf 70% Daily Lotion (2 Tamaños)",
+      "complemento": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "variantId": 45495934615701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "complemento": "Bifida Biome Ampoule Toner (2 Tamaños)",
+      "variantId": 45637079498901,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Bifida Biome Ampoule Toner (2 Tamaños)",
+      "complemento": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "variantId": 45495934615701,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Acne Pimple Master Patch",
+      "complemento": "1025 Dokdo Mascarilla Gel",
+      "variantId": 44018089394325,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "1025 Dokdo Mascarilla Gel",
+      "complemento": "Acne Pimple Master Patch",
+      "variantId": 44019234078869,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Collagen EGF Peptide Facial Cream 55ml",
+      "complemento": "Collagen EGF Peptide Sheet Mask",
+      "variantId": 46343745601685,
+      "precio": null,
+      "frecuencia": 3
+    },
+    {
+      "producto": "Collagen EGF Peptide Sheet Mask",
+      "complemento": "Collagen EGF Peptide Facial Cream 55ml",
+      "variantId": 46331276165269,
+      "precio": null,
+      "frecuencia": 3
     }
   ]
 }
