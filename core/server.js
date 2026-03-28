@@ -762,9 +762,9 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
       systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
     }
     // Inyectar catÃ¡logo relevante si el cliente pregunta por productos/stock/precios
-    if (shopify.isProductQuery(userText)) {
-      try {
-        const catalog  = await shopify.getProductCatalog();
+    // Buscar siempre en catálogo — Claude decide si usar la info o no
+    {
+    try {
         // Buscar por texto del cliente; si no hay match, usar historial reciente o top 5
         let matches = shopify.searchCatalog(catalog, userText);
         if (!matches.length) {
@@ -772,7 +772,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
           const recentText = recentHist.map(m => m.content || '').join(' ');
           if (recentText) matches = shopify.searchCatalog(catalog, recentText, 3);
         }
-        if (!matches.length) matches = catalog.slice(0, 5); // fallback top 5
+        // (sin fallback — solo inyectar si hay match relevante)
         if (matches.length) {
           const catalogText = shopify.formatCatalogForPrompt(matches);
           systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aquÃ­, di que no lo tienes disponible actualmente.`;
