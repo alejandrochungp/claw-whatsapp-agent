@@ -227,6 +227,7 @@ async function fetchCatalogFromShopify() {
       products.push({
         id:    p.id,
         title: p.title,
+        handle: p.handle || '',
         type:  p.product_type || '',
         tags:  p.tags || '',
         price: parseFloat(bestVariant.price || 0),
@@ -298,7 +299,8 @@ function formatCatalogForPrompt(products) {
     const precio = `$${Math.round(p.price).toLocaleString('es-CL')}`;
     const stock  = p.stock ? '✅' : '❌ sin stock';
     const variant = p.variantTitle ? ` (${p.variantTitle})` : '';
-    return `• ${p.title}${variant} — ${precio} — ${stock}`;
+    const link    = p.handle ? ` — https://yeppo.cl/products/${p.handle}` : '';
+    return `• ${p.title}${variant} — ${precio} — ${stock}${link}`;
   });
   return lines.join('\n');
 }
