@@ -209,7 +209,7 @@ async function fetchCatalogFromShopify() {
   const products = [];
   let page = 1;
   let pageInfo = null;
-  let path = '/products.json?limit=250&status=active&fields=id,title,product_type,tags,variants';
+  let path = '/products.json?limit=250&status=active&fields=id,title,handle,product_type,tags,variants,body_html';
 
   // Paginar hasta traer todos
   while (true) {
@@ -224,10 +224,15 @@ async function fetchCatalogFromShopify() {
 
       if (!bestVariant) continue;
 
+      // Limpiar HTML de la descripción
+      const rawDesc = p.body_html || '';
+      const description = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+
       products.push({
         id:    p.id,
         title: p.title,
         handle: p.handle || '',
+        description,
         type:  p.product_type || '',
         tags:  p.tags || '',
         price: parseFloat(bestVariant.price || 0),
@@ -299,8 +304,9 @@ function formatCatalogForPrompt(products) {
     const precio = `$${Math.round(p.price).toLocaleString('es-CL')}`;
     const stock  = p.stock ? '✅' : '❌ sin stock';
     const variant = p.variantTitle ? ` (${p.variantTitle})` : '';
-    const link    = p.handle ? ` — https://yeppo.cl/products/${p.handle}` : '';
-    return `• ${p.title}${variant} — ${precio} — ${stock}${link}`;
+    const link    = p.handle ? `https://yeppo.cl/products/${p.handle}` : '';
+    const desc    = p.description ? `\n  ${p.description}` : '';
+    return `• ${p.title}${variant} — ${precio} — ${stock}${link ? ` — ${link}` : ''}${desc}`;
   });
   return lines.join('\n');
 }
@@ -310,4 +316,14 @@ function isProductQuery(text) {
   return /\b(tienen|hay|stock|precio|cuánto cuesta|cuanto vale|disponible|busco|tienes|existe|venden|producto|cuánto está|cuanto esta)\b/i.test(text);
 }
 
-module.exports = { enrichContact, getProductCatalog, searchCatalog, formatCatalogForPrompt, isProductQuery };
+async function invalidateCatalog() {
+  const redis = await getRedis();
+  if (redis) {
+    try { await redis.del(CATALOG_KEY); } catch {}
+  } else {
+    catalogRam = null;
+    catalogRamTs = 0;
+  }
+}
+
+module.exports = { enrichContact, getProductCatalog, searchCatalog, formatCatalogForPrompt, isProductQuery, invalidateCatalog };

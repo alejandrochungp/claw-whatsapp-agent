@@ -1,4 +1,4 @@
-﻿/**
+/**
  * core/server.js â€” Webhook Express genÃ©rico
  *
  * Recibe mensajes de Meta Cloud API y los enruta al tenant correspondiente.
@@ -159,6 +159,19 @@ function start(config, business) {
     await slack.deleteThreadFromRedis(phone);
     logger.log(`[admin] Thread Slack reseteado para ${phone}`);
     res.json({ ok: true, phone });
+
+  // POST /admin/refresh-catalog
+  app.post('/admin/refresh-catalog', async (req, res) => {
+    try {
+      const { invalidateCatalog, getProductCatalog } = require('./shopify');
+      await invalidateCatalog();
+      const catalog = await getProductCatalog();
+      logger.log('[admin] Catalogo recargado: ' + catalog.length + ' productos');
+      res.json({ ok: true, products: catalog.length });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
   });
 
   // â”€â”€ POST /admin/reset-context â€” limpiar contexto de un nÃºmero (solo pruebas) â”€â”€
