@@ -209,11 +209,12 @@ async function fetchCatalogFromShopify() {
   const products = [];
   let page = 1;
   let pageInfo = null;
-  let path = '/products.json?limit=250&status=active&fields=id,title,handle,product_type,tags,variants,body_html';
+  let path = '/products.json?limit=250&status=active&fields=id,title,handle,body_html,product_type,tags,variants';
 
   // Paginar hasta traer todos
   while (true) {
     const r = await shopifyGet(path);
+    console.log('[shopify] fetch productos - status keys:', r ? Object.keys(r) : 'null', 'count:', r?.products?.length);
     if (!r?.products?.length) break;
 
     for (const p of r.products) {
@@ -245,7 +246,7 @@ async function fetchCatalogFromShopify() {
     if (r.products.length < 250) break;
     // Usar el last ID como cursor
     const lastId = r.products[r.products.length - 1].id;
-    path = `/products.json?limit=250&status=active&fields=id,title,product_type,tags,variants&since_id=${lastId}`;
+    path = `/products.json?limit=250&status=active&fields=id,title,handle,body_html,product_type,tags,variants&since_id=${lastId}`;
   }
 
   return products;
