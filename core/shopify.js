@@ -65,6 +65,32 @@ function shopifyGet(path) {
   });
 }
 
+// Versión que devuelve body + headers (para paginación con Link)
+function shopifyGetWithHeaders(path) {
+  return new Promise((resolve) => {
+    if (!TOKEN) return resolve({ body: null, linkHeader: null });
+
+    const req = https.request({
+      hostname: SHOP,
+      path:     `/admin/api/${API}${path}`,
+      method:   'GET',
+      headers:  { 'X-Shopify-Access-Token': TOKEN }
+    }, (res) => {
+      let data = '';
+      const linkHeader = res.headers['link'] || null;
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve({ body: JSON.parse(data), linkHeader }); }
+        catch { resolve({ body: null, linkHeader }); }
+      });
+    });
+
+    req.on('error', () => resolve({ body: null, linkHeader: null }));
+    req.setTimeout(10000, () => { req.destroy(); resolve({ body: null, linkHeader: null }); });
+    req.end();
+  });
+}
+
 // ── Verificar que el teléfono del cliente realmente coincide ─────────────────
 function phonesMatch(searchPhone, customerPhone) {
   if (!customerPhone) return false;
@@ -212,9 +238,9 @@ async function fetchCatalogFromShopify() {
   let path = '/products.json?limit=250&status=active&fields=id,title,handle,body_html,product_type,tags,variants';
 
   // Paginar hasta traer todos
-  while (true) {
-    const r = await shopifyGet(path);
-    console.log('[shopify] fetch productos - status keys:', r ? Object.keys(r) : 'null', 'count:', r?.products?.length);
+  while (path) {
+    const { body: r, linkHeader } = await shopifyGetWithHeaders(path);
+    console.log('[shopify] fetch productos - count:', r?.products?.length, 'link:', linkHeader ? 'sí' : 'no');
     if (!r?.products?.length) break;
 
     for (const p of r.products) {
@@ -242,11 +268,21 @@ async function fetchCatalogFromShopify() {
       });
     }
 
-    // Shopify paginación por cursor — si hay menos de 250 resultados, terminó
-    if (r.products.length < 250) break;
-    // Usar el last ID como cursor
-    const lastId = r.products[r.products.length - 1].id;
-    path = `/products.json?limit=250&status=active&fields=id,title,handle,body_html,product_type,tags,variants&since_id=${lastId}`;
+    // Paginación via header Link de Shopify
+    path = null;
+    if (linkHeader) {
+      // Buscar rel="next" en el header Link
+      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      if (nextMatch) {
+        // Extraer solo el path desde la URL completa
+        try {
+          const url = new URL(nextMatch[1]);
+          path = url.pathname + url.search;
+          // Quitar el prefijo /admin/api/VERSION ya que shopifyGetWithHeaders lo agrega
+          path = path.replace(`/admin/api/${API}`, '');
+        } catch { path = null; }
+      }
+    }
   }
 
   return products;
