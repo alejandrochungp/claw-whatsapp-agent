@@ -761,6 +761,18 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
     if (context?.shopifyContext) {
       systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
     }
+
+    // Inyectar contexto de upsell pendiente para que Claude maneje respuestas ambiguas
+    const upsellCtx = await memory.getUpsellPending(from);
+    if (upsellCtx) {
+      const upPrecio = upsellCtx.match && upsellCtx.match.precio
+        ? ('$' + Math.round(upsellCtx.match.precio).toLocaleString('es-CL'))
+        : 'ver en tienda';
+      const upProducto = (upsellCtx.match && upsellCtx.match.producto) || 'producto';
+      const upComplemento = (upsellCtx.match && upsellCtx.match.complemento) || 'complemento';
+      systemPrompt += `\n\n---\n## Oferta pendiente de complemento\nEste cliente acaba de comprar "${upProducto}" y le ofreciste agregar "${upComplemento}" por ${upPrecio}.\nSu respuesta no fue un si/no claro — puede estar preguntando el precio, condiciones u otra duda.\nResponde esa duda con informacion real del catalogo si la tienes, y al final preguntale si desea agregarlo.\nCuando confirme explicitamente, el sistema lo procesa de forma automatica.`;
+      logger.log('[upsell] Contexto inyectado en Claude para respuesta ambigua');
+    }
     // Inyectar catÃ¡logo relevante si el cliente pregunta por productos/stock/precios
     // Buscar siempre en catálogo — Claude decide si usar la info o no
     {
