@@ -25,21 +25,9 @@ const KNOWLEDGE_DOC = fs.existsSync(KNOWLEDGE_DOC_PATH)
  * Devuelve null si no aplica ninguna → core usará IA.
  */
 async function quickReply(userText, context, history) {
-  const text  = userText.toLowerCase().trim();
-  const isNew = history.length <= 1;
+  const text = userText.toLowerCase().trim();
 
-  // ── Saludo ───────────────────────────────────────────────────────────────
-  if (/^(hola|hi|buenas|buenos días|buenas tardes|buenas noches|saludos)$/.test(text)) {
-    if (!isNew) {
-      return { text: 'Hola de nuevo! en qué te puedo ayudar?' };
-    }
-    return {
-      text: 'Hola! Bienvenido a Yeppo 👋\n\nEn qué te puedo ayudar?',
-      useAI: false
-    };
-  }
-
-  // ── Respuesta a upsell pendiente ─────────────────────────────────────────
+  // ── Upsell pendiente — lógica de negocio que REQUIERE código, no solo texto ──
   const memory = require('../../core/memory');
   const upsellPending = await memory.getUpsellPending(context._phone);
   if (upsellPending) {
@@ -59,20 +47,11 @@ async function quickReply(userText, context, history) {
 
     if (rechaza) {
       await memory.clearUpsellPending(context._phone);
-      return { text: 'sin problema! si en algún momento lo necesitas, avisame 😊' };
+      return { text: null, useAI: true }; // Claude responde naturalmente al rechazo
     }
-    // Si no es clara la respuesta → dejar que la IA maneje con contexto de upsell
   }
 
-  // ── Pedir humano ─────────────────────────────────────────────────────────
-  if (/humano|persona|equipo|hablar con alguien|asesor/.test(text)) {
-    return {
-      text: 'Claro, te conecto con el equipo. En unos minutos te responden por acá.',
-      notifySlack: true
-    };
-  }
-
-  // ── Todo lo demás → IA (horario, ubicación, productos, etc.) ─────────────
+  // ── Todo lo demás → Claude con contexto completo ─────────────────────────
   return null;
 }
 
