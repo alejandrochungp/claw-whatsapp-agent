@@ -483,14 +483,15 @@ async function handleNewOrder(order, config) {
             { type: 'text', text: nombre || 'ahí' },           // {{1}} nombre
             { type: 'text', text: productoLimpio },             // {{2}} producto comprado
             { type: 'text', text: complementoLimpio },          // {{3}} complemento
-            { type: 'text', text: match.par.razon || 'se complementan perfecto' } // {{4}} razón
+            { type: 'text', text: (match.par.razon && match.par.razon !== 'undefined') ? match.par.razon : 'se complementan perfecto' } // {{4}} razón
           ]
         }
       ]);
 
       // Fallback a texto libre si el template falla (ej: cliente dentro de ventana 24h)
       if (!templateResult) {
-        const msg = `${saludo} tu pedido ya está confirmado!\n\nllevaste el ${productoLimpio} — muchas clientas lo combinan con el ${complementoLimpio}${precioStr} porque ${match.par.razon}\n\nsi quieres te lo agregamos antes del despacho, te lo enviamos todo junto sin costo adicional. avisame si te interesa!`;
+        const razon = (match.par.razon && match.par.razon !== 'undefined') ? match.par.razon : 'se complementan perfecto';
+        const msg = `${saludo} tu pedido ya está confirmado!\n\nllevaste el ${productoLimpio} — muchas clientas lo combinan con el ${complementoLimpio}${precioStr} porque ${razon}\n\nsi quieres te lo agregamos antes del despacho, te lo enviamos todo junto sin costo adicional. avisame si te interesa!`;
         await meta.sendMessage(phone, msg, config);
       }
       logger.log(`[upsell] ✅ Mensaje enviado a ${phone}`);
