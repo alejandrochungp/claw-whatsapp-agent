@@ -72,21 +72,7 @@ async function quickReply(userText, context, history) {
     };
   }
 
-  // ── Horario ──────────────────────────────────────────────────────────────
-  if (/horario|cuando abren|hora|atienden/.test(text)) {
-    return {
-      text: 'Atendemos lunes a viernes de 10:00 a 18:00 (Santiago).\n\nSi es fuera de horario, igual déjanos tu mensaje y te respondemos en cuanto abramos.'
-    };
-  }
-
-  // ── Ubicación ────────────────────────────────────────────────────────────
-  if (/donde están|dirección|ubicación|local|tienda|patronato/.test(text)) {
-    return {
-      text: 'Estamos en el barrio Patronato, Santiago.\n\nSi necesitas la dirección exacta o cómo llegar, escríbenos y te ayudamos!'
-    };
-  }
-
-  // ── Todo lo demás → IA ───────────────────────────────────────────────────
+  // ── Todo lo demás → IA (horario, ubicación, productos, etc.) ─────────────
   return null;
 }
 

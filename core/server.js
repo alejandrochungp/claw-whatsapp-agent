@@ -811,6 +811,14 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
 
   // 6. Log en Slack (supervisiÃ³n) â€” incluir info Shopify en primer mensaje
   const shopifySlackInfo = context?.shopifySlackInfo || null;
+
+  // Detectar si Claude decidio derivar al equipo (handoff implicito)
+  const handoffPhrases = ['te paso con el equipo', 'le paso este caso', 'nuestro equipo te', 'equipo te va a', 'equipo te contactar', 'revisar con el equipo', 'consultar con el equipo', 'dejame consultar', 'te comunicar'];
+  if (!notifySlack && replyText && handoffPhrases.some(p => replyText.toLowerCase().includes(p))) {
+    notifySlack = true;
+    logger.log('[handoff] Claude derivo a operador automaticamente');
+  }
+
   if (notifySlack) {
     await slack.notifyHandoff(from, userText, config);
   } else {
