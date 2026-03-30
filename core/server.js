@@ -301,15 +301,17 @@ function start(config, business) {
     if (text === 'tomar') {
       let phone = slack.handleSlackCommand('tomar', thread_ts);
 
-      // Fallback: si el thread no está en RAM (ej: restart), leer el mensaje
-      // padre desde Slack y extraer el teléfono del header
+      // Fallback: si el thread no está en RAM (ej: restart), leer el primer
+      // mensaje del thread (el header) usando conversations.replies
       if (!phone) {
         try {
-          const parentRes = await axios.get(
-            `https://slack.com/api/conversations.history?channel=${channel}&latest=${thread_ts}&inclusive=true&limit=1`,
+          const repliesRes = await axios.get(
+            `https://slack.com/api/conversations.replies?channel=${channel}&ts=${thread_ts}&limit=1`,
             { headers: { Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` } }
           );
-          const parentMsg = parentRes.data?.messages?.[0];
+          // El primer mensaje de replies ES el padre (el header con el teléfono)
+          const parentMsg = repliesRes.data?.messages?.[0];
+          logger.log(`[tomar] Mensaje padre: ${parentMsg?.text?.substring(0, 100)}`);
           const match = parentMsg?.text?.match(/\+?(569\d{8})/);
           if (match) {
             phone = match[1];
@@ -320,6 +322,8 @@ function start(config, business) {
             const handoffData = { thread_ts, takenAt: Date.now() };
             slack.activeConversations.set(phone, handoffData);
             logger.log(`[tomar] Thread reconstruido desde Slack para ${phone}`);
+          } else {
+            logger.log(`[tomar] No se encontró teléfono en el header del thread`);
           }
         } catch (e) {
           logger.log(`[tomar] Error recuperando thread padre: ${e.message}`);
@@ -348,11 +352,11 @@ function start(config, business) {
       // Fallback: reconstruir desde Slack si no está en RAM
       if (!phone) {
         try {
-          const parentRes = await axios.get(
-            `https://slack.com/api/conversations.history?channel=${channel}&latest=${thread_ts}&inclusive=true&limit=1`,
+          const repliesRes = await axios.get(
+            `https://slack.com/api/conversations.replies?channel=${channel}&ts=${thread_ts}&limit=1`,
             { headers: { Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` } }
           );
-          const parentMsg = parentRes.data?.messages?.[0];
+          const parentMsg = repliesRes.data?.messages?.[0];
           const match = parentMsg?.text?.match(/\+?(569\d{8})/);
           if (match) {
             phone = match[1];
