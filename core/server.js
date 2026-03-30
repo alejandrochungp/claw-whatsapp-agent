@@ -340,6 +340,38 @@ function start(config, business) {
           await slack.updateThreadHeader(phone, 'human', channel, threadData.headerTs, operatorName);
         }
         await postSlackMessage(channel, thread_ts, `👤 *${operatorName}* tomó el control. Bot pausado. Escribe \`soltar\` cuando termines.`);
+
+        // ── Verificar ventana de 24h Meta ───────────────────────────────────
+        // Si el último mensaje del cliente fue hace >23h, Meta no permite texto libre
+        // → enviar template de reactivación automáticamente
+        try {
+          const history = await memory.getHistory(phone, 20);
+          const lastClientMsg = history ? [...history].reverse().find(m => m.role === 'user' || m.role === 'client') : null;
+          const horasSinActividad = lastClientMsg?.ts
+            ? (Date.now() - lastClientMsg.ts) / (1000 * 60 * 60)
+            : 999;
+
+          if (horasSinActividad > 23) {
+            logger.log(`[tomar] Ventana 24h expirada para ${phone} (${Math.round(horasSinActividad)}h) → enviando template reactivación`);
+            // Obtener nombre del cliente desde contexto o Shopify
+            const ctx = await memory.getContext(phone);
+            const nombre = ctx?.name || ctx?.firstName || 'ahí';
+            // Enviar template de reactivación
+            const templateResult = await meta.sendTemplate(phone, 'atencion_cliente_yeppo', 'es', [
+              { type: 'body', parameters: [{ type: 'text', text: nombre }] }
+            ]);
+            if (templateResult) {
+              await memory.addMessage(phone, `[template enviado] Hola ${nombre}, el equipo de Yeppo está aquí para atenderte.`, 'bot');
+              await postSlackMessage(channel, thread_ts, `📨 Ventana de 24h expirada (${Math.round(horasSinActividad)}h sin actividad) — se envió template de reactivación al cliente. Ya puedes continuar la conversación.`);
+            } else {
+              await postSlackMessage(channel, thread_ts, `⚠️ Ventana de 24h expirada (${Math.round(horasSinActividad)}h). El template de reactivación no se pudo enviar — puede que aún esté pendiente de aprobación por Meta.`);
+            }
+          }
+        } catch (e) {
+          logger.log(`[tomar] Error verificando ventana 24h: ${e.message}`);
+        }
+        // ───────────────────────────────────────────────────────────────────
+
       } else {
         await postSlackMessage(channel, thread_ts, `⚠️ No se pudo identificar la conversación. Asegúrate de escribir \`tomar\` en el thread del cliente.`);
       }
