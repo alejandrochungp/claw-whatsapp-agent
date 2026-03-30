@@ -434,11 +434,26 @@ function start(config, business) {
         const recentTake   = slack.getRecentTake(phone);
 
         if (activeThread || recentTake) {
-          // Obtener nombre del operador y firmar el mensaje
-          const operatorName = await slack.sendOperatorReply(phone, event.text, userId, config);
-          const msgToClient  = `${event.text}\n\nâ€" ${operatorName}`;
-          await meta.sendMessage(phone, msgToClient, config);
-          logger.log(`ðŸ"¤ ${operatorName} respondiÃ³ a ${phone}: ${event.text}`);
+          // Verificar ventana de 24h antes de enviar
+          const history = await memory.getHistory(phone, 20);
+          const lastClientMsg = history ? [...history].reverse().find(m => m.role === 'user' || m.role === 'client') : null;
+          const horasSinRespuesta = lastClientMsg?.ts
+            ? (Date.now() - lastClientMsg.ts) / (1000 * 60 * 60)
+            : 999;
+
+          if (horasSinRespuesta > 23) {
+            // Ventana cerrada — no intentar enviar, avisar al operador
+            await postSlackMessage(channel, thread_ts,
+              `⏳ *Ventana de 24h cerrada* — la clienta aún no ha respondido al template de reactivación. En cuanto responda, podrás escribirle normalmente.`
+            );
+            logger.log(`[operador] Mensaje bloqueado para ${phone} — ventana 24h cerrada (${Math.round(horasSinRespuesta)}h)`);
+          } else {
+            // Ventana abierta — enviar normalmente
+            const operatorName = await slack.sendOperatorReply(phone, event.text, userId, config);
+            const msgToClient  = `${event.text}\n\n— ${operatorName}`;
+            await meta.sendMessage(phone, msgToClient, config);
+            logger.log(`📤 ${operatorName} respondió a ${phone}: ${event.text}`);
+          }
         }
         break;
       }
