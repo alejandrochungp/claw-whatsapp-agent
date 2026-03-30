@@ -46,8 +46,27 @@ async function quickReply(userText, context, history) {
     }
 
     if (rechaza) {
-      await memory.clearUpsellPending(context._phone);
-      return { text: null, useAI: true }; // Claude responde naturalmente al rechazo
+      if (upsellPending.status === 'accepted') {
+        // Cliente rechaza DESPUÉS de haber aceptado (ej: respondió "no" al reminder de 2h)
+        // → hay que revertir el pedido en Shopify inmediatamente
+        const orderMock = { id: upsellPending.orderId, name: upsellPending.orderName, total_price: '0', customer: {} };
+        const matchMock = {
+          item: { title: upsellPending.match?.producto },
+          par:  { complemento: upsellPending.match?.complemento, razon: '', variantId: upsellPending.match?.variantId },
+          precioComplemento: upsellPending.match?.precio || 0
+        };
+        upsell.revertUpsell(context._phone, orderMock, matchMock, context._config, 'rejected').catch(() => {});
+        // revertUpsell ya limpia el pending, manda mensaje al cliente y notifica Slack
+        return { text: null, useAI: false, skipReply: true };
+      } else {
+        // Rechazo inicial (antes de aceptar) → solo limpiar, Claude responde naturalmente
+        await memory.clearUpsellPending(context._phone);
+        await require('../../core/upsell-stats').trackEvent('rejected', context._phone, {
+          complemento: upsellPending.match?.complemento,
+          orderName: upsellPending.orderName
+        });
+        return { text: null, useAI: true };
+      }
     }
   }
 

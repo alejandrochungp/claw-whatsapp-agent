@@ -501,7 +501,8 @@ async function sendUpsellReminder(phone, order, match, config) {
 }
 
 // ── Revertir upsell por falta de pago ────────────────────────────────────────
-async function revertUpsell(phone, order, match, config) {
+// reason: 'timeout' (default) | 'rejected' (cliente canceló explícitamente)
+async function revertUpsell(phone, order, match, config, reason = 'timeout') {
   try {
     await stats.trackEvent('reverted', phone, {
       complemento: match.par?.complemento || match.match?.complemento,
@@ -580,8 +581,10 @@ async function revertUpsell(phone, order, match, config) {
       .catch(e => logger.log(`[upsell-revert] Slack error: ${e.message}`));
     }
 
-    // 5. Mensaje al cliente
-    const msgCliente = `hola! revisamos tu pedido ${order.name} y como no se completó el pago del ${complementoLimpio}, lo dejamos como estaba originalmente. no te preocupes, tu pedido sigue en proceso normal. si quieres agregarlo en otra ocasión, escríbenos cuando quieras!`;
+    // 5. Mensaje al cliente (distinto según la razón)
+    const msgCliente = reason === 'rejected'
+      ? `sin problema! sacamos el ${complementoLimpio} del pedido ${order.name}. tu pedido sigue en proceso normal 🙂 si en otro momento lo quieres agregar, avisame!`
+      : `hola! revisamos tu pedido ${order.name} y como no se completó el pago del ${complementoLimpio}, lo dejamos como estaba originalmente. no te preocupes, tu pedido sigue en proceso normal. si quieres agregarlo en otra ocasión, escríbenos cuando quieras!`;
     await meta.sendMessage(phone, msgCliente, config);
     await memory.addMessage(phone, msgCliente, 'bot');
 
