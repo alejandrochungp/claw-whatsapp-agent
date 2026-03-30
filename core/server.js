@@ -299,31 +299,79 @@ function start(config, business) {
 
     // â"€â"€ Comando: tomar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (text === 'tomar') {
-      const phone = slack.handleSlackCommand('tomar', thread_ts);
+      let phone = slack.handleSlackCommand('tomar', thread_ts);
+
+      // Fallback: si el thread no está en RAM (ej: restart), leer el mensaje
+      // padre desde Slack y extraer el teléfono del header
+      if (!phone) {
+        try {
+          const parentRes = await axios.get(
+            `https://slack.com/api/conversations.history?channel=${channel}&latest=${thread_ts}&inclusive=true&limit=1`,
+            { headers: { Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` } }
+          );
+          const parentMsg = parentRes.data?.messages?.[0];
+          const match = parentMsg?.text?.match(/\+?(569\d{8})/);
+          if (match) {
+            phone = match[1];
+            // Reconstruir entrada en phoneToThread para que el resto del sistema funcione
+            const threadData = { thread_ts, headerTs: thread_ts, headerBase: `📱 *+${phone}*`, channel, timestamp: Date.now() };
+            slack.phoneToThread.set(phone, threadData);
+            // Registrar el handoff
+            const handoffData = { thread_ts, takenAt: Date.now() };
+            slack.activeConversations.set(phone, handoffData);
+            logger.log(`[tomar] Thread reconstruido desde Slack para ${phone}`);
+          }
+        } catch (e) {
+          logger.log(`[tomar] Error recuperando thread padre: ${e.message}`);
+        }
+      }
+
       if (phone) {
         const operatorName = await slack.sendOperatorReply(phone, null, userId, config);
-        logger.log(`ðŸ'¤ ${operatorName} tomÃ³ control de ${phone}`);
+        logger.log(`👤 ${operatorName} tomó control de ${phone}`);
         // Actualizar header del thread
         const threadData = slack.phoneToThread.get(phone);
         if (threadData?.headerTs) {
           await slack.updateThreadHeader(phone, 'human', channel, threadData.headerTs, operatorName);
         }
-        await postSlackMessage(channel, thread_ts, `ðŸ'¤ *${operatorName}* tomÃ³ el control. Bot pausado. Escribe \`soltar\` cuando termines.`);
+        await postSlackMessage(channel, thread_ts, `👤 *${operatorName}* tomó el control. Bot pausado. Escribe \`soltar\` cuando termines.`);
+      } else {
+        await postSlackMessage(channel, thread_ts, `⚠️ No se pudo identificar la conversación. Asegúrate de escribir \`tomar\` en el thread del cliente.`);
       }
       return;
     }
 
     // â"€â"€ Comando: soltar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     if (text === 'soltar') {
-      const phone = slack.handleSlackCommand('soltar', thread_ts);
+      let phone = slack.handleSlackCommand('soltar', thread_ts);
+
+      // Fallback: reconstruir desde Slack si no está en RAM
+      if (!phone) {
+        try {
+          const parentRes = await axios.get(
+            `https://slack.com/api/conversations.history?channel=${channel}&latest=${thread_ts}&inclusive=true&limit=1`,
+            { headers: { Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` } }
+          );
+          const parentMsg = parentRes.data?.messages?.[0];
+          const match = parentMsg?.text?.match(/\+?(569\d{8})/);
+          if (match) {
+            phone = match[1];
+            slack.activeConversations.delete(phone);
+            logger.log(`[soltar] Handoff liberado desde fallback para ${phone}`);
+          }
+        } catch (e) {
+          logger.log(`[soltar] Error recuperando thread padre: ${e.message}`);
+        }
+      }
+
       if (phone) {
         const operatorName = await slack.sendOperatorReply(phone, null, userId, config);
         const threadData   = slack.phoneToThread.get(phone);
         if (threadData?.headerTs) {
           await slack.updateThreadHeader(phone, 'resolved_human', channel, threadData.headerTs, operatorName);
         }
-        logger.log(`âœ… ${operatorName} soltÃ³ ${phone} â€" marcado como resuelto`);
-        await postSlackMessage(channel, thread_ts, `âœ… Resuelto por *${operatorName}*. Bot reactivado.`);
+        logger.log(`✅ ${operatorName} soltó ${phone} — marcado como resuelto`);
+        await postSlackMessage(channel, thread_ts, `✅ Resuelto por *${operatorName}*. Bot reactivado.`);
       }
       return;
     }
