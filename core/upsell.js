@@ -18,7 +18,7 @@ const stats     = require('./upsell-stats');
 
 const UPSELL_DELAY_MS   = process.env.UPSELL_TEST_MODE === 'true' ? 5000 : 15 * 60 * 1000;
 const LOGISTICS_CHANNEL = 'C03L5HDQ0Q5';
-const COMERCIAL_CHANNEL = 'C08DXMRJ6CD';
+const ATENCION_CHANNEL  = 'C05FES87S9J'; // #team-servicio-al-cliente
 // No recomendar si el complemento sube el ticket en más de este %
 const MAX_UPSELL_PCT    = 0.5; // 50% del total del pedido
 
@@ -570,11 +570,11 @@ async function revertUpsell(phone, order, match, config) {
       logger.log(`[upsell-revert] ⚠️ Line item no encontrado en pedido ${order.name} para variantId ${variantId}`);
     }
 
-    // 4. Notificar Slack #team-comercial
+    // 4. Notificar Slack #team-servicio-al-cliente
     const slackToken = process.env.SLACK_BOT_TOKEN;
     if (slackToken) {
       await axios.post('https://slack.com/api/chat.postMessage', {
-        channel: COMERCIAL_CHANNEL,
+        channel: ATENCION_CHANNEL,
         text: `⚠️ Upsell revertido — sin pago\nPedido: ${order.name}\nCliente: +${phone}\nComplemento removido: ${complementoLimpio}`
       }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } })
       .catch(e => logger.log(`[upsell-revert] Slack error: ${e.message}`));
