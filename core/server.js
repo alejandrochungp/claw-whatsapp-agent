@@ -7,6 +7,7 @@
 
 const express    = require('express');
 const bodyParser = require('body-parser');
+const axios      = require('axios');
 const memory     = require('./memory');
 const slack      = require('./slack');
 const ai         = require('./ai');
