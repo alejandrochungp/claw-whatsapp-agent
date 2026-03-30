@@ -14,11 +14,23 @@ const logger    = require('./logger');
 const slack     = require('./slack');
 const https     = require('https');
 const complementos = require('../tenants/yeppo/complementos.json');
+const stats     = require('./upsell-stats');
 
 const UPSELL_DELAY_MS   = process.env.UPSELL_TEST_MODE === 'true' ? 5000 : 15 * 60 * 1000;
 const LOGISTICS_CHANNEL = 'C03L5HDQ0Q5';
+const COMERCIAL_CHANNEL = 'C08DXMRJ6CD';
 // No recomendar si el complemento sube el ticket en más de este %
 const MAX_UPSELL_PCT    = 0.5; // 50% del total del pedido
+
+const REMINDER_AFTER_MS = 2 * 60 * 60 * 1000;  // 2 horas después de aceptar
+const REVERT_AFTER_MS   = 5 * 60 * 60 * 1000;  // 5 horas después de aceptar (si no paga)
+
+// Hora Chile: no enviar reminders entre 23:00 y 09:00
+function isQuietHours() {
+  const hour = new Date().toLocaleString('en-US', { timeZone: 'America/Santiago', hour: 'numeric', hour12: false });
+  const h = parseInt(hour);
+  return h >= 23 || h < 9;
+}
 
 // ── Shopify REST helper ──────────────────────────────────────────────────────
 function shopifyRequest(method, path, body) {
@@ -331,6 +343,13 @@ Verificar que el complemento se incluya en el despacho del pedido original.`;
 // ── Notificar pago completo del complemento upsell ───────────────────────────
 async function notifyPaymentComplete(phone, order, pendingUpsell, config) {
   try {
+    // Track evento de pago confirmado
+    await stats.trackEvent('paid', phone, {
+      complemento: pendingUpsell.match?.complemento,
+      precio: pendingUpsell.match?.precio,
+      orderName: order.name
+    });
+
     const axios     = require('axios');
     const slackToken = process.env.SLACK_BOT_TOKEN;
     const nombre    = order.customer?.first_name || '';
@@ -403,6 +422,175 @@ Escribe \`tomar\` para tomar control o espera la respuesta del cliente.`;
     slack.phoneToThread.set(phone, threadData);
     await slack.saveThreadExternal(phone, threadData);
     logger.log(`[upsell] Thread Slack creado para ${phone}`);
+  }
+}
+
+// ── Programar reminder y reversión si no paga ────────────────────────────────
+function scheduleUpsellFollowup(phone, order, match, config) {
+  // Reminder a las 2 horas
+  setTimeout(async () => {
+    try {
+      const memory = require('./memory');
+      const pending = await memory.getUpsellPending(phone);
+      if (!pending || pending.status !== 'accepted') return; // ya pagó o fue cancelado
+
+      if (isQuietHours()) {
+        // Postponer al siguiente 09:00 Chile
+        const now = new Date();
+        const next9 = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+        next9.setHours(9, 0, 0, 0);
+        if (next9 <= now) next9.setDate(next9.getDate() + 1);
+        const delay = next9 - now;
+        logger.log(`[upsell-followup] Quiet hours — postponiendo reminder ${Math.round(delay/60000)}min`);
+        setTimeout(() => sendUpsellReminder(phone, order, match, config).catch(e => logger.log(`[upsell-followup] reminder error: ${e.message}`)), delay);
+      } else {
+        await sendUpsellReminder(phone, order, match, config);
+      }
+    } catch (e) {
+      logger.log(`[upsell-followup] Error en reminder timeout: ${e.message}`);
+    }
+  }, REMINDER_AFTER_MS);
+
+  // Reversión a las 5 horas
+  setTimeout(async () => {
+    try {
+      const memory = require('./memory');
+      const pending = await memory.getUpsellPending(phone);
+      if (!pending || pending.status !== 'accepted') return; // ya pagó o fue cancelado
+      await revertUpsell(phone, order, match, config);
+    } catch (e) {
+      logger.log(`[upsell-followup] Error en revert timeout: ${e.message}`);
+    }
+  }, REVERT_AFTER_MS);
+
+  logger.log(`[upsell-followup] Followup programado para ${phone} — reminder en 2h, revert en 5h`);
+}
+
+// ── Enviar reminder de pago pendiente ────────────────────────────────────────
+async function sendUpsellReminder(phone, order, match, config) {
+  try {
+    await stats.trackEvent('reminded', phone, {});
+
+    const memory = require('./memory');
+    const complementoLimpio = nombreLimpio(match.par?.complemento || match.match?.complemento || 'el complemento');
+    const msg = `hola! te escribimos porque quedó pendiente el pago del ${complementoLimpio} que agregamos a tu pedido ${order.name}.\n\nsi ya no lo quieres, sin problema, lo sacamos. si quieres continuar, revisa el email que te enviamos — tiene el link de pago para completar.\n\ncualquier cosa me avisas!`;
+
+    await meta.sendMessage(phone, msg, config);
+    await memory.addMessage(phone, msg, 'bot');
+
+    // Postear en thread de Slack del cliente
+    const slackToken = process.env.SLACK_BOT_TOKEN;
+    const axios = require('axios');
+    if (slackToken) {
+      const threadData = slack.phoneToThread.get(phone);
+      const mainChannel = process.env.SLACK_CHANNEL_ID || process.env.SLACK_CHANNEL_WHATSAPP || 'C05FES87S9J';
+      if (threadData?.thread_ts) {
+        await axios.post('https://slack.com/api/chat.postMessage', {
+          channel: threadData.channel || mainChannel,
+          thread_ts: threadData.thread_ts,
+          text: `⏰ Reminder de pago enviado al cliente (+${phone}) — ${complementoLimpio} pendiente de pago en ${order.name}.`
+        }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } })
+        .catch(e => logger.log(`[upsell-reminder] Slack thread error: ${e.message}`));
+      }
+    }
+
+    logger.log(`[upsell-reminder] ✅ Reminder enviado a ${phone} — ${order.name}`);
+  } catch (e) {
+    logger.log(`[upsell-reminder] Error: ${e.message}`);
+  }
+}
+
+// ── Revertir upsell por falta de pago ────────────────────────────────────────
+async function revertUpsell(phone, order, match, config) {
+  try {
+    await stats.trackEvent('reverted', phone, {
+      complemento: match.par?.complemento || match.match?.complemento,
+      orderName: order.name
+    });
+
+    const variantId = match.par?.variantId || match.match?.variantId;
+    const complementoLimpio = nombreLimpio(match.par?.complemento || match.match?.complemento || 'el complemento');
+    const memory = require('./memory');
+    const axios = require('axios');
+
+    // 1. Obtener line_items actuales del pedido
+    const orderData = await shopifyRequest('GET', `/orders/${order.id}.json?fields=id,name,line_items`);
+    const lineItems = orderData?.order?.line_items || [];
+
+    // 2. Buscar el line item del complemento
+    const lineItem = lineItems.find(li => String(li.variant_id) === String(variantId));
+
+    if (lineItem) {
+      const orderGid = `gid://shopify/Order/${order.id}`;
+
+      // 3a. Iniciar edición
+      const beginResult = await shopifyGraphQL(`
+        mutation orderEditBegin($id: ID!) {
+          orderEditBegin(id: $id) {
+            calculatedOrder { id }
+            userErrors { field message }
+          }
+        }
+      `, { id: orderGid });
+
+      const calcOrderId = beginResult?.data?.orderEditBegin?.calculatedOrder?.id;
+      const beginErrors = beginResult?.data?.orderEditBegin?.userErrors;
+      if (beginErrors?.length) throw new Error(beginErrors.map(e => e.message).join(', '));
+      if (!calcOrderId) throw new Error('No se obtuvo calculatedOrder ID para revertir');
+
+      // 3b. Poner cantidad en 0
+      const lineItemGid = `gid://shopify/CalculatedLineItem/${lineItem.id}`;
+      const setQtyResult = await shopifyGraphQL(`
+        mutation orderEditSetQuantity($id: ID!, $lineItemId: ID!, $quantity: Int!) {
+          orderEditSetQuantity(id: $id, lineItemId: $lineItemId, quantity: $quantity) {
+            calculatedOrder { id }
+            userErrors { field message }
+          }
+        }
+      `, { id: calcOrderId, lineItemId: lineItemGid, quantity: 0 });
+
+      const setQtyErrors = setQtyResult?.data?.orderEditSetQuantity?.userErrors;
+      if (setQtyErrors?.length) throw new Error(setQtyErrors.map(e => e.message).join(', '));
+
+      // 3c. Confirmar edición
+      const commitResult = await shopifyGraphQL(`
+        mutation orderEditCommit($id: ID!, $staffNote: String) {
+          orderEditCommit(id: $id, notifyCustomer: false, staffNote: $staffNote) {
+            order { id name }
+            userErrors { field message }
+          }
+        }
+      `, { id: calcOrderId, staffNote: 'Upsell revertido — sin pago' });
+
+      const commitErrors = commitResult?.data?.orderEditCommit?.userErrors;
+      if (commitErrors?.length) throw new Error(commitErrors.map(e => e.message).join(', '));
+
+      logger.log(`[upsell-revert] ✅ Complemento removido del pedido ${order.name}`);
+    } else {
+      logger.log(`[upsell-revert] ⚠️ Line item no encontrado en pedido ${order.name} para variantId ${variantId}`);
+    }
+
+    // 4. Notificar Slack #team-comercial
+    const slackToken = process.env.SLACK_BOT_TOKEN;
+    if (slackToken) {
+      await axios.post('https://slack.com/api/chat.postMessage', {
+        channel: COMERCIAL_CHANNEL,
+        text: `⚠️ Upsell revertido — sin pago\nPedido: ${order.name}\nCliente: +${phone}\nComplemento removido: ${complementoLimpio}`
+      }, { headers: { Authorization: `Bearer ${slackToken}`, 'Content-Type': 'application/json' } })
+      .catch(e => logger.log(`[upsell-revert] Slack error: ${e.message}`));
+    }
+
+    // 5. Mensaje al cliente
+    const msgCliente = `hola! revisamos tu pedido ${order.name} y como no se completó el pago del ${complementoLimpio}, lo dejamos como estaba originalmente. no te preocupes, tu pedido sigue en proceso normal. si quieres agregarlo en otra ocasión, escríbenos cuando quieras!`;
+    await meta.sendMessage(phone, msgCliente, config);
+    await memory.addMessage(phone, msgCliente, 'bot');
+
+    // 6. Limpiar estado
+    await memory.clearUpsellPending(phone);
+
+    logger.log(`[upsell-revert] ✅ Revertido completamente para ${phone} — ${order.name}`);
+  } catch (e) {
+    logger.log(`[upsell-revert] Error: ${e.message}`);
   }
 }
 
@@ -494,6 +682,19 @@ async function handleNewOrder(order, config) {
         const msg = `${saludo} tu pedido ya está confirmado!\n\nllevaste el ${productoLimpio} — muchas clientas lo combinan con el ${complementoLimpio}${precioStr} porque ${razon}\n\nsi quieres te lo agregamos antes del despacho, te lo enviamos todo junto sin costo adicional. avisame si te interesa!`;
         await meta.sendMessage(phone, msg, config);
       }
+
+      // Log en historial
+      const templateText = `[upsell enviado] ${saludo} te ofrecimos agregar ${complementoLimpio} a tu pedido — te interesa?`;
+      await memory.addMessage(phone, templateText, 'bot');
+
+      // Track evento de estadísticas
+      await stats.trackEvent('sent', phone, {
+        complemento: match.par.complemento,
+        precio: match.precioComplemento,
+        producto: match.item.title,
+        orderName: order.name
+      });
+
       logger.log(`[upsell] ✅ Mensaje enviado a ${phone}`);
     }, UPSELL_DELAY_MS);
 
@@ -507,6 +708,13 @@ async function handleNewOrder(order, config) {
 async function handleUpsellAccepted(phone, order, match, config) {
   try {
     logger.log(`[upsell] Cliente ${phone} aceptó upsell — creando draft order`);
+
+    // Track evento aceptado
+    await stats.trackEvent('accepted', phone, {
+      complemento: match.par?.complemento,
+      precio: match.precioComplemento,
+      orderName: order.name
+    });
 
     // 1. Modificar pedido original agregando el complemento
     const edit = await editOrder(order, match);
@@ -524,12 +732,18 @@ async function handleUpsellAccepted(phone, order, match, config) {
 
     await meta.sendMessage(phone, msgCliente, config);
 
-    // 4. Marcar como aceptado (no borrar — necesitamos el orderId para detectar el webhook de pago)
+    // Log en historial
     const memory = require('./memory');
+    await memory.addMessage(phone, msgCliente, 'bot');
+
+    // 4. Marcar como aceptado (no borrar — necesitamos el orderId para detectar el webhook de pago)
     const existing = await memory.getUpsellPending(phone);
     if (existing) {
       await memory.setUpsellPending(phone, { ...existing, status: 'accepted' });
     }
+
+    // 5. Programar reminder y reversión por falta de pago
+    scheduleUpsellFollowup(phone, order, match, config);
 
     logger.log(`[upsell] ✅ Flujo completo para ${phone} — esperando pago del complemento`);
   } catch (err) {
@@ -537,4 +751,4 @@ async function handleUpsellAccepted(phone, order, match, config) {
   }
 }
 
-module.exports = { handleNewOrder, handleUpsellAccepted };
+module.exports = { handleNewOrder, handleUpsellAccepted, sendUpsellReminder, revertUpsell };
