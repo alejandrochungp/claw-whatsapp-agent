@@ -18,6 +18,10 @@ const audio      = require('./audio');
 const upsell     = require('./upsell');
 const learning   = require('./learning');
 
+// Catálogo Shopify en memoria del módulo — se precalienta al arrancar y
+// se actualiza vía /admin/refresh-catalog. Se comparte en todas las llamadas.
+let catalog = [];
+
 function start(config, business) {
   const app  = express();
   const PORT = process.env.PORT || config.port || 3000;
@@ -161,18 +165,7 @@ function start(config, business) {
     logger.log(`[admin] Thread Slack reseteado para ${phone}`);
     res.json({ ok: true, phone });
 
-  // POST /admin/refresh-catalog
-  app.post('/admin/refresh-catalog', async (req, res) => {
-    try {
-      const { invalidateCatalog, getProductCatalog } = require('./shopify');
-      await invalidateCatalog();
-      const catalog = await getProductCatalog();
-      logger.log('[admin] Catalogo recargado: ' + catalog.length + ' productos');
-      res.json({ ok: true, products: catalog.length });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
+  // (refresh-catalog duplicado removido — ver abajo)
   });
 
   // ── POST /admin/upsell/test-reminder ─────────────────────────────────────────
@@ -222,12 +215,11 @@ function start(config, business) {
     res.json({ ok: true, phone });
   });
 
-  // POST /admin/refresh-catalog - forzar recarga del catalogo Shopify
+  // POST /admin/refresh-catalog - forzar recarga del catalogo Shopify (actualiza var del módulo)
   app.post('/admin/refresh-catalog', async (req, res) => {
     try {
-      const { invalidateCatalog, getProductCatalog } = require('./shopify');
-      await invalidateCatalog();
-      const catalog = await getProductCatalog();
+      await shopify.invalidateCatalog();
+      catalog = await shopify.getProductCatalog();
       logger.log('[admin] Catalogo recargado: ' + catalog.length + ' productos');
       res.json({ ok: true, products: catalog.length });
     } catch (e) {
@@ -546,8 +538,11 @@ function start(config, business) {
 
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(`âœ… Servidor escuchando en 0.0.0.0:${PORT}`);
-    // Pre-calentar catÃ¡logo en background al arrancar
-    shopify.getProductCatalog().catch(() => {});
+    // Pre-calentar catÃ¡logo en background al arrancar y guardar en módulo
+    shopify.getProductCatalog().then(c => {
+      catalog = c || [];
+      logger.log(`[catalog] Precalentado: ${catalog.length} productos`);
+    }).catch(e => logger.log(`[catalog] Error precalentando: ${e.message}`));
     // Iniciar cron de aprendizaje diario (20:00 Santiago)
     learning.startDailyCron();
     // Cron diario de estadísticas upsell (09:00 Lun-Vie Santiago)
