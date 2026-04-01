@@ -183,14 +183,15 @@ async function updateSkinProfile(phone, skinData) {
     // Mapear campos a propiedades Klaviyo (naming consistente con "Tipo Piel" existente)
     const properties = {};
 
-    if (skinData.tipoPiel)          properties['Tipo Piel']             = skinData.tipoPiel;
-    if (skinData.preocupaciones)    properties['Preocupaciones Piel']   = Array.isArray(skinData.preocupaciones)
-                                                                            ? skinData.preocupaciones.join(', ')
-                                                                            : skinData.preocupaciones;
-    if (skinData.edad)              properties['Edad Aprox']            = skinData.edad;
-    if (skinData.productosActuales) properties['Productos Actuales']    = skinData.productosActuales;
-    if (skinData.alergias)          properties['Alergias']              = skinData.alergias;
-    if (skinData.rutina)            properties['Rutina Skincare']       = skinData.rutina;
+    // Naming exacto de campos existentes en Klaviyo
+    if (skinData.tipoPiel)          properties['Tipo Piel']        = skinData.tipoPiel;
+    if (skinData.preocupaciones)    properties['Preocupacion']     = Array.isArray(skinData.preocupaciones)
+                                                                       ? skinData.preocupaciones.join(', ')
+                                                                       : skinData.preocupaciones;
+    if (skinData.edad)              properties['Birth Year']       = skinData.edad;
+    if (skinData.productosActuales) properties['Productos Actuales'] = skinData.productosActuales;
+    if (skinData.alergias)          properties['Alergias']         = skinData.alergias;
+    if (skinData.rutina)            properties['Rutina Skincare']  = skinData.rutina;
 
     // Timestamp de última actualización por el bot
     properties['skin_profile_updated_at'] = new Date().toISOString();
@@ -216,12 +217,12 @@ async function getSkinProfile(phone) {
     const props = profile.attributes.properties;
     const skin = {};
 
-    if (props['Tipo Piel'])           skin.tipoPiel          = props['Tipo Piel'];
-    if (props['Preocupaciones Piel']) skin.preocupaciones    = props['Preocupaciones Piel'];
-    if (props['Edad Aprox'])          skin.edad              = props['Edad Aprox'];
-    if (props['Productos Actuales'])  skin.productosActuales = props['Productos Actuales'];
-    if (props['Alergias'])            skin.alergias          = props['Alergias'];
-    if (props['Rutina Skincare'])     skin.rutina            = props['Rutina Skincare'];
+    if (props['Tipo Piel'])          skin.tipoPiel          = props['Tipo Piel'];
+    if (props['Preocupacion'])       skin.preocupaciones    = props['Preocupacion'];
+    if (props['Birth Year'])         skin.edad              = props['Birth Year'];
+    if (props['Productos Actuales']) skin.productosActuales = props['Productos Actuales'];
+    if (props['Alergias'])           skin.alergias          = props['Alergias'];
+    if (props['Rutina Skincare'])    skin.rutina            = props['Rutina Skincare'];
 
     return Object.keys(skin).length ? skin : null;
   } catch (e) {
