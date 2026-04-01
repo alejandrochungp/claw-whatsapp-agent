@@ -889,101 +889,117 @@ async function handleMessage(message, value, config, business) {
 // Detecta si el cliente mencionó su tipo de piel, edad, preocupaciones, etc.
 // Si hay info nueva, la guarda en Klaviyo de forma asíncrona (no bloquea).
 
-const SKIN_KEYWORDS = {
-  tipoPiel: [
-    // Acepta: "piel grasa", "piel es grasa", "piel muy grasa", "tengo piel grasa"
-    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(grasa|aceitosa|brillante)/i,   value: 'Grasa' },
-    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(seca|reseca|tirante)/i,         value: 'Seca' },
-    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(mixta|combinada)/i,             value: 'Mixta' },
-    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(normal)/i,                      value: 'Normal' },
-    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(sensible|irritable|reactiva)/i, value: 'Sensible' },
-    { match: /zona\s*T\s*(?:es\s+|un\s+poco\s+)?(grasa|aceitosa)/i,                value: 'Mixta' },
-    { match: /tengo\s+la\s+piel\s+(grasa|seca|mixta|normal|sensible)/i,            value: null }, // handled below
-  ],
-  preocupaciones: [
-    { match: /acn[eé]|granitos|espinillas/i,           value: 'acné' },
-    { match: /manchas|hiperpigmentac|melasma/i,        value: 'manchas' },
-    { match: /arrugas|l[ií]neas\s+de\s+expresi[oó]n/i, value: 'arrugas' },
-    { match: /poros\s*(abiertos|dilatados|grandes)/i,  value: 'poros dilatados' },
-    { match: /rojez|ros[aá]cea|enrojecimiento/i,        value: 'rojez' },
-    { match: /deshidrat|falta\s+de\s+hidrat/i,         value: 'deshidratación' },
-    { match: /ojeras/i,                                value: 'ojeras' },
-    { match: /brillo|muy\s+graso|demasiado\s+graso/i,  value: 'exceso de sebo' },
-  ],
-  edad: [
-    { match: /tengo\s+(\d{2})\s+a[ñn]o/i, group: 1 },
-    { match: /soy\s+de\s+(\d{4})/i,        group: 1 },
-    { match: /(\d{2})\s+a[ñn]/i,           group: 1 },
-  ],
-  alergias: [
-    { match: /al[eé]rgic[ao]\s+a[l]?\s+(.{3,40})/i,   group: 1 },
-    { match: /me\s+cae\s+mal\s+(?:el\s+|la\s+)?(.{3,40})/i, group: 1 },
-    { match: /no\s+puedo\s+usar\s+(?:el\s+|la\s+)?(.{3,40})/i, group: 1 },
-    { match: /me\s+irrita\s+(?:el\s+|la\s+)?(.{3,40})/i,    group: 1 },
-  ]
+// ─── Vocabulario controlado para Klaviyo ──────────────────────────────────────
+// Valores predefinidos — SOLO estos valores se guardan en Klaviyo.
+// Modificar aquí para agregar/quitar valores de segmentación.
+
+const SKIN_VOCAB = {
+  tipoPiel:       ['Grasa', 'Seca', 'Mixta', 'Normal', 'Sensible'],
+  preocupaciones: ['Poros', 'Pigmentacion', 'Rojeces', 'Granos', 'Arrugas', 'Sebo', 'Ojeras'],
 };
 
-async function extractAndSaveSkinProfile(phone, userText, botReply, context) {
+// Prompt que le pasamos a Claude para extraer datos estructurados de la conversación.
+// Retorna JSON con campos estrictamente dentro del vocabulario controlado.
+function buildSkinExtractionPrompt(conversation) {
+  return `Analiza esta conversación de skincare y extrae datos del cliente si están presentes.
+
+VOCABULARIO CONTROLADO — usa SOLO estos valores exactos:
+- tipoPiel: ${SKIN_VOCAB.tipoPiel.join(' | ')} (o null si no se menciona)
+- preocupaciones: array con valores de [${SKIN_VOCAB.preocupaciones.join(', ')}] (solo los que se mencionan)
+- birthYear: año de nacimiento como número entero (inferir desde edad si la dice, ej: "tengo 32 años" → ${new Date().getFullYear() - 32})
+- alergias: texto libre corto (máx 60 chars) con ingredientes/productos que le caen mal, o null
+
+IMPORTANTE:
+- Si la conversación NO menciona datos de piel, responde: {}
+- Infiere inteligentemente: "zona T grasa" → tipoPiel: "Mixta", "granitos" → preocupaciones: ["Granos"]
+- Si hay duda, omite el campo (no adivines)
+- Responde SOLO JSON válido, sin explicación
+
+CONVERSACIÓN:
+${conversation}
+
+JSON:`;
+}
+
+// Llama a Claude para extraer el perfil de piel de la conversación completa.
+// Se ejecuta de forma asíncrona al final de cada mensaje (no bloquea la respuesta).
+
+async function extractAndSaveSkinProfile(phone, userText, botReply, context, config) {
   if (!userText || userText.length < 5) return;
 
-  const combined = `${userText} ${botReply || ''}`;
-  const extracted = {};
+  // Solo procesar si la conversación tiene contenido de piel relevante
+  // (chequeo rápido para no gastar tokens en conversaciones de pedidos/envíos)
+  const combined = `${userText} ${botReply || ''}`.toLowerCase();
+  const hasSkinSignal = /piel|acn[eé]|granos|manch|hidrat|bloqueador|serum|crema|rutina|tónico|contorno|espuma|limpiador|protector|ojeras|poros|arrugas|sebo|rojez|sensible|pigment/.test(combined);
+  if (!hasSkinSignal) return;
 
-  // Tipo de piel — incluye "tengo la piel X" con mapeo dinámico
-  const TIPO_MAP = { grasa: 'Grasa', aceitosa: 'Grasa', brillante: 'Grasa',
-                     seca: 'Seca', reseca: 'Seca', tirante: 'Seca',
-                     mixta: 'Mixta', combinada: 'Mixta', normal: 'Normal',
-                     sensible: 'Sensible', irritable: 'Sensible', reactiva: 'Sensible' };
+  // Obtener historial completo para análisis contextual
+  const history = await memory.getHistory(phone, 20);
+  if (!history.length) return;
 
-  const directMatch = combined.match(/tengo\s+(?:la\s+)?piel\s+(?:muy\s+|bastante\s+)?(\w+)/i);
-  if (directMatch && TIPO_MAP[directMatch[1].toLowerCase()]) {
-    extracted.tipoPiel = TIPO_MAP[directMatch[1].toLowerCase()];
-  }
-  if (!extracted.tipoPiel) {
-    for (const { match, value } of SKIN_KEYWORDS.tipoPiel) {
-      if (value && match.test(combined)) { extracted.tipoPiel = value; break; }
-    }
-  }
+  const conversation = history.map(m =>
+    `${m.role === 'user' ? 'Cliente' : 'Bot'}: ${m.text}`
+  ).join('\n');
 
-  // Preocupaciones (puede haber varias)
-  const preoc = [];
-  for (const { match, value } of SKIN_KEYWORDS.preocupaciones) {
-    if (match.test(combined)) preoc.push(value);
-  }
-  if (preoc.length) extracted.preocupaciones = preoc.join(', ');
+  // Llamar a Claude para extracción inteligente
+  let extracted = {};
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const claudeKey = process.env.CLAUDE_API_KEY || config?.claudeApiKey;
+    if (!claudeKey) return;
 
-  // Edad
-  for (const { match, group } of SKIN_KEYWORDS.edad) {
-    const m = combined.match(match);
-    if (m && m[group]) {
-      const n = parseInt(m[group]);
-      if (n >= 14 && n <= 90) { extracted.edad = String(n); break; }
-    }
-  }
+    const client = new Anthropic({ apiKey: claudeKey });
+    const response = await client.messages.create({
+      model: 'claude-3-haiku-20240307', // modelo más barato para extracción
+      max_tokens: 200,
+      messages: [{ role: 'user', content: buildSkinExtractionPrompt(conversation) }]
+    });
 
-  // Alergias
-  for (const { match, group } of SKIN_KEYWORDS.alergias) {
-    const m = combined.match(match);
-    if (m && m[group]) { extracted.alergias = m[group].trim().slice(0, 80); break; }
+    const raw = response.content[0]?.text?.trim();
+    if (!raw || raw === '{}') return;
+
+    extracted = JSON.parse(raw);
+  } catch (e) {
+    logger.log(`[klaviyo] Error extracción Claude: ${e.message}`);
+    return;
   }
 
-  if (!Object.keys(extracted).length) return; // nada nuevo
+  if (!Object.keys(extracted).length) return;
 
-  // No sobreescribir si ya tenemos ese dato en contexto
+  // Validar contra vocabulario controlado — descartar valores no permitidos
+  const clean = {};
+  if (extracted.tipoPiel && SKIN_VOCAB.tipoPiel.includes(extracted.tipoPiel)) {
+    clean.tipoPiel = extracted.tipoPiel;
+  }
+  if (Array.isArray(extracted.preocupaciones)) {
+    const validPreoc = extracted.preocupaciones.filter(p => SKIN_VOCAB.preocupaciones.includes(p));
+    if (validPreoc.length) clean.preocupaciones = validPreoc.join(', ');
+  }
+  if (extracted.birthYear && Number.isInteger(extracted.birthYear) &&
+      extracted.birthYear >= 1940 && extracted.birthYear <= new Date().getFullYear() - 13) {
+    clean.edad = String(extracted.birthYear);
+  }
+  if (extracted.alergias && typeof extracted.alergias === 'string') {
+    clean.alergias = extracted.alergias.slice(0, 60);
+  }
+
+  if (!Object.keys(clean).length) return;
+
+  // No sobreescribir datos ya guardados en esta sesión
   const existing = context?.skinProfile || {};
   const toUpdate = {};
-  for (const [k, v] of Object.entries(extracted)) {
+  for (const [k, v] of Object.entries(clean)) {
     if (!existing[k]) toUpdate[k] = v;
   }
-
   if (!Object.keys(toUpdate).length) return;
 
   logger.log(`[klaviyo] 🧴 Perfil de piel detectado para ${phone}: ${JSON.stringify(toUpdate)}`);
   const ok = await klaviyo.updateSkinProfile(phone, toUpdate);
   if (ok) {
     logger.log(`[klaviyo] ✅ Perfil guardado en Klaviyo para ${phone}`);
+    await memory.updateContext(phone, { skinProfile: { ...existing, ...toUpdate } });
   } else {
-    logger.log(`[klaviyo] ⚠️ No se encontró perfil Klaviyo para ${phone} (sin teléfono registrado?)`);
+    logger.log(`[klaviyo] ⚠️ Sin perfil Klaviyo para ${phone}`);
   }
 
   // Actualizar contexto local para no volver a preguntar en esta sesión
@@ -1156,8 +1172,8 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   // 3. Guardar en memoria
   await memory.addMessage(from, replyText, 'bot');
 
-  // 3b. Extraer perfil de piel si el cliente lo mencionó — guardar en Klaviyo async
-  extractAndSaveSkinProfile(from, userText, replyText, context).catch(() => {});
+  // 3b. Extraer perfil de piel via Claude (vocabulario controlado) — async, no bloquea
+  extractAndSaveSkinProfile(from, userText, replyText, context, config).catch(() => {});
 
   // 4. Delay humano
   await humanDelay(replyText.length);
