@@ -369,11 +369,31 @@ async function sendOperatorReply(phone, text, userId, config) {
   // NO hacer slackPost aquí — el mensaje del operador ya aparece en Slack
   // porque ellos lo escribieron ahí. Postear aquí crea duplicado.
 
-  // Registrar en log de aprendizaje (solo si hay texto real)
+  // ── FIX 2: Keepalive — extender handoff timeout cuando el operador escribe ─
+  // Esto evita que el bot retome la conversación si el operador sigue activo.
+  const existing = activeConversations.get(phone);
+  if (existing) {
+    const updated = { ...existing, takenAt: Date.now() }; // resetear timer
+    activeConversations.set(phone, updated);
+    await persistHandoff(phone, updated);
+  }
+
+  // Registrar en log de aprendizaje y también en memoria del bot
+  // FIX MEMORIA: guardar respuestas del operador en el historial Redis
+  // para que cuando el bot retome, tenga contexto de lo que dijo el humano.
   if (text) {
     if (!conversationLog.has(phone)) conversationLog.set(phone, []);
     conversationLog.get(phone).push({ role: 'human', text, ts: Date.now(), operatorId: userId });
     await getLearning().incrementOperatorMetric(userId, 'total_takeovers');
+
+    // Guardar también en el historial principal de Redis (TTL 24h)
+    // Esto permite que el bot retome con contexto completo de la conversación humana
+    try {
+      const memory = require('./memory');
+      await memory.addMessage(phone, text, 'bot'); // rol 'bot' para que Claude lo vea como assistant
+    } catch (e) {
+      console.error('[slack] Error guardando respuesta operador en memoria:', e.message);
+    }
   }
 
   // Devolver el nombre para que server.js firme el mensaje al cliente
@@ -386,10 +406,12 @@ function getActiveConversation(phone) {
   const info = activeConversations.get(phone);
   if (!info) return null;
 
+  // FIX 2: Usar takenAt actualizado por keepalive (sendOperatorReply lo resetea)
+  // Si el operador sigue escribiendo, takenAt se actualiza → timeout no expira
   if (Date.now() - info.takenAt > HANDOFF_TIMEOUT_MS) {
     activeConversations.delete(phone);
     persistHandoff(phone, null); // borrar de Redis
-    console.log(`🤖 Timeout handoff ${phone} → bot retoma`);
+    console.log(`🤖 Timeout handoff ${phone} — operador inactivo → bot retoma`);
     // Guardar conversación para aprendizaje aunque no hayan soltado
     const messages = conversationLog.get(phone) || [];
     if (messages.length > 0) {

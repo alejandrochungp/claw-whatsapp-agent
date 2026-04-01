@@ -49,17 +49,18 @@ async function ask(userMessage, history, context, systemPrompt, config) {
   // Construir mensajes
   const messages = [];
 
-  // Historial previo
-  for (const h of history.slice(-8)) {
-    messages.push({
-      role: h.role === 'bot' ? 'assistant' : 'user',
-      content: h.text
-    });
+  // FIX MEMORIA: aumentado de 8 a 16 turnos para que asesorías de piel
+  // no pierdan contexto (tipo de piel, productos discutidos, etc.)
+  for (const h of history.slice(-16)) {
+    // Ignorar el último mensaje si es el mismo que userMessage (evitar duplicado)
+    // El usuario ya se agregó al historial en server.js antes de llamar a ai.ask
+    const role = h.role === 'bot' ? 'assistant' : 'user';
+    messages.push({ role, content: h.text });
   }
 
-  // Mensaje actual (evitar duplicar si ya está en historial)
+  // Mensaje actual — agregar solo si no es duplicado del último en historial
   const last = messages[messages.length - 1];
-  if (!last || last.content !== userMessage) {
+  if (!last || !(last.role === 'user' && last.content === userMessage)) {
     messages.push({ role: 'user', content: userMessage });
   }
 

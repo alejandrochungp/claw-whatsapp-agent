@@ -877,12 +877,80 @@ async function handleMessage(message, value, config, business) {
 }
 
 // â"€â"€ Generar y enviar respuesta â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ─── Detección de conversación no productiva (spam/bots) ─────────────────────
+// Retorna true si el texto no tiene ninguna intención de negocio reconocible.
+function isNonProductiveMessage(text) {
+  if (!text || text.trim().length === 0) return true;
+  const t = text.toLowerCase();
+
+  // Patrones de spam/bot/conversación sin intención
+  const spamPatterns = [
+    /^[\p{Emoji}\s]+$/u,                    // solo emojis
+    /^(hola|hi|hello|ola|hey|buenas?)[\s!.]*$/i,  // solo saludo genérico (sin pregunta)
+    /^(jaja|jajaja|haha|xd|lol|uwu|owo)+[\s!.]*$/i,
+    /^(ok|oka|dale|si|sí|no|ya|claro)[\s.!]*$/i,  // monosílabos sin contexto (solo si no hay historial)
+    /^[a-z]{1,3}[\s.!]*$/i,                // mensajes de 1-3 letras sueltas
+    /^(te quiero|te amo|me gustas|eres lindo|eres bonito)/i,
+    /^(tú|tu|yo|me gusta|mi fav|fan de)/i,
+    /^\p{Emoji}+\s*(oso|bear|gato|perro|cat|dog)\s*\p{Emoji}*$/iu,
+  ];
+
+  return spamPatterns.some(p => p.test(t.trim()));
+}
+
+// Detecta si Claude está preguntando lo mismo que antes (mismo tema sin respuesta útil)
+function detectsRepetitiveQuestion(botReply, history) {
+  if (!history || history.length < 4) return false;
+  const replyLower = botReply.toLowerCase();
+
+  // Keywords que indican que el bot está pidiendo info que ya debería tener
+  const repeatKeywords = [
+    'número de pedido', 'número de tu pedido', 'tu pedido',
+    'tipo de piel', 'qué tipo de piel', 'cómo es tu piel',
+    'qué buscas', 'en qué te puedo ayudar', 'cuéntame qué necesitas',
+    'me puedes pasar', 'me pasas'
+  ];
+
+  // Contar cuántas veces el bot ha dicho algo similar en las últimas respuestas
+  const botMessages = history.filter(m => m.role === 'bot').slice(-4).map(m => m.text?.toLowerCase() || '');
+  for (const kw of repeatKeywords) {
+    if (!replyLower.includes(kw)) continue;
+    const prevCount = botMessages.filter(m => m.includes(kw)).length;
+    if (prevCount >= 2) return true; // ya lo dijo 2+ veces antes
+  }
+  return false;
+}
+
 async function sendReply(from, userText, config, business, pendingMedia = null) {
-  const history = await memory.getHistory(from, 6);
+  const history = await memory.getHistory(from, 10); // más historial para detección
   const context = await memory.getContext(from) || {};
 
   let replyText = '';
   let notifySlack = false;
+
+  // ── FIX 3: Filtro conversación no productiva ─────────────────────────────
+  // Si el mensaje no tiene intención de negocio reconocible
+  if (isNonProductiveMessage(userText)) {
+    const npCount = await memory.incrementNonProductiveCount(from);
+    logger.log(`[non-productive] ${from} mensaje #${npCount}: "${userText.slice(0, 50)}"`);
+
+    if (npCount >= 5) {
+      // 5+ mensajes sin intención → cierre elegante
+      const closeMsg = 'si tienes alguna consulta sobre productos o pedidos de Yeppo, con gusto te ayudo! :blush:';
+      await memory.addMessage(from, closeMsg, 'bot');
+      await humanDelay(closeMsg.length);
+      await meta.sendMessage(from, closeMsg, config);
+      await slack.logConversation(from, userText, closeMsg, config, context.shopifySlackInfo);
+      // Resetear para no bloquear si después manda algo real
+      await memory.resetNonProductiveCount(from);
+      logger.log(`[non-productive] ${from} — cierre elegante enviado tras ${npCount} msgs sin intención`);
+      return;
+    }
+    // < 5: dejar que Claude responda normalmente (puede ser saludo legítimo)
+  } else {
+    // Mensaje productivo → resetear contador
+    await memory.resetNonProductiveCount(from);
+  }
 
   // 1. LÃ³gica de negocio del tenant (reglas rÃ¡pidas, sin LLM)
   // Pasar phone y config en contexto para upsell handler
@@ -972,7 +1040,30 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   if (!notifySlack && replyText && replyText.includes('[HANDOFF]')) {
     notifySlack = true;
     replyText = replyText.replace('[HANDOFF]', '').trim();
+    await memory.resetRepeatCount(from);
     logger.log('[handoff] Claude derivo a operador via token [HANDOFF]');
+  }
+
+  // ── FIX 1: Auto-handoff por preguntas repetitivas ────────────────────────
+  // Si el bot está pidiendo lo mismo 3+ veces sin avance → escalar al equipo
+  if (!notifySlack && replyText) {
+    const isRepeat = detectsRepetitiveQuestion(replyText, history);
+    if (isRepeat) {
+      const repeatCount = await memory.incrementRepeatCount(from);
+      logger.log(`[repeat-detect] ${from} pregunta repetitiva #${repeatCount}: "${replyText.slice(0, 60)}"`);
+
+      if (repeatCount >= 3) {
+        // Escalar — agregar aviso al cliente y notificar Slack
+        notifySlack = true;
+        replyText += ' [HANDOFF]';
+        replyText = replyText.replace('[HANDOFF]', '').trim();
+        await memory.resetRepeatCount(from);
+        logger.log(`[repeat-detect] ${from} — auto-handoff activado tras ${repeatCount} repeticiones`);
+      }
+    } else {
+      // Respuesta avanzó el tema → resetear contador
+      await memory.resetRepeatCount(from);
+    }
   }
 
   if (notifySlack) {

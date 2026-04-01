@@ -6,8 +6,8 @@
  */
 
 const MAX_HISTORY = 20;
-const TTL_SECS    = 24 * 60 * 60; // 24 horas en Redis
-const TTL_MS      = 30 * 60 * 1000; // 30 min en RAM
+const TTL_SECS    = 7 * 24 * 60 * 60; // 7 días en Redis (era 24h — aumentado para asesorías multiparte)
+const TTL_MS      = 30 * 60 * 1000;   // 30 min en RAM (fallback)
 
 // ─── Intento de conexión a Redis ────────────────────────────────────────────
 let redisClient = null;
@@ -218,4 +218,49 @@ function waitForRedis(timeoutMs = 5000) {
   });
 }
 
-module.exports = { addMessage, getHistory, getContext, updateContext, isReturning, setCampaignContext, getCampaignContext, setUpsellPending, getUpsellPending, clearUpsellPending, waitForRedis, get redis() { return redisClient; } };
+// ─── Contador de repetición de preguntas ─────────────────────────────────────
+// Detecta cuando el bot pregunta lo mismo N veces sin avance útil del cliente
+// Almacenado en el contexto del usuario bajo _repeatCount
+
+async function incrementRepeatCount(phone) {
+  const ctx = await getContext(phone);
+  const count = (ctx._repeatCount || 0) + 1;
+  await updateContext(phone, { _repeatCount: count });
+  return count;
+}
+
+async function resetRepeatCount(phone) {
+  await updateContext(phone, { _repeatCount: 0 });
+}
+
+async function getRepeatCount(phone) {
+  const ctx = await getContext(phone);
+  return ctx._repeatCount || 0;
+}
+
+// ─── Contador de mensajes no productivos (spam/bots) ─────────────────────────
+async function incrementNonProductiveCount(phone) {
+  const ctx = await getContext(phone);
+  const count = (ctx._nonProductiveCount || 0) + 1;
+  await updateContext(phone, { _nonProductiveCount: count });
+  return count;
+}
+
+async function resetNonProductiveCount(phone) {
+  await updateContext(phone, { _nonProductiveCount: 0 });
+}
+
+async function getNonProductiveCount(phone) {
+  const ctx = await getContext(phone);
+  return ctx._nonProductiveCount || 0;
+}
+
+module.exports = {
+  addMessage, getHistory, getContext, updateContext, isReturning,
+  setCampaignContext, getCampaignContext,
+  setUpsellPending, getUpsellPending, clearUpsellPending,
+  waitForRedis,
+  incrementRepeatCount, resetRepeatCount, getRepeatCount,
+  incrementNonProductiveCount, resetNonProductiveCount, getNonProductiveCount,
+  get redis() { return redisClient; }
+};
