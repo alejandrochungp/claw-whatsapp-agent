@@ -28,7 +28,7 @@ const CONFIG = {
   shopifyStore: process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com',
   waToken: process.env.WA_TOKEN,
   phoneId: process.env.PHONE_NUMBER_ID || '217563878110256',
-  templateName: 'carrito_abandonado',   // nuevo template evergreen (ID: 1004674258790199)
+  templateName: 'recuperar_carrito_yeppo',  // template evergreen UTF-8 correcto (ID: 4367182693500526)
   templateLang: 'es_CL',
   utmCampaign: 'carrito_auto',          // ← distinto de campañas manuales
   minMinutos: parseInt(process.env.CARRITO_MIN_MINUTOS || '45'),
