@@ -891,31 +891,35 @@ async function handleMessage(message, value, config, business) {
 
 const SKIN_KEYWORDS = {
   tipoPiel: [
-    { match: /piel\s+(grasa|aceitosa|brillante)/i,   value: 'Grasa' },
-    { match: /piel\s+(seca|reseca|tirante)/i,         value: 'Seca' },
-    { match: /piel\s+(mixta|combinada)/i,             value: 'Mixta' },
-    { match: /piel\s+(normal)/i,                      value: 'Normal' },
-    { match: /piel\s+(sensible|irritable|reactiva)/i, value: 'Sensible' },
-    { match: /zona\s+T\s+(grasa|aceitosa)/i,          value: 'Mixta' },
+    // Acepta: "piel grasa", "piel es grasa", "piel muy grasa", "tengo piel grasa"
+    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(grasa|aceitosa|brillante)/i,   value: 'Grasa' },
+    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(seca|reseca|tirante)/i,         value: 'Seca' },
+    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(mixta|combinada)/i,             value: 'Mixta' },
+    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(normal)/i,                      value: 'Normal' },
+    { match: /piel\s+(?:es\s+|muy\s+|bastante\s+)?(sensible|irritable|reactiva)/i, value: 'Sensible' },
+    { match: /zona\s*T\s*(?:es\s+|un\s+poco\s+)?(grasa|aceitosa)/i,                value: 'Mixta' },
+    { match: /tengo\s+la\s+piel\s+(grasa|seca|mixta|normal|sensible)/i,            value: null }, // handled below
   ],
   preocupaciones: [
-    { match: /acné|acne|granitos|espinillas/i,     value: 'acné' },
-    { match: /manchas|hiperpigmentac|melasma/i,    value: 'manchas' },
-    { match: /arrugas|líneas de expresión|aging/i, value: 'arrugas' },
-    { match: /poros\s+(abiertos|dilatados)/i,      value: 'poros dilatados' },
-    { match: /rojez|rosácea|enrojecimiento/i,       value: 'rojez' },
-    { match: /hidratac|seca(?:ción|mente)/i,        value: 'deshidratación' },
-    { match: /ojeras/i,                             value: 'ojeras' },
+    { match: /acn[eé]|granitos|espinillas/i,           value: 'acné' },
+    { match: /manchas|hiperpigmentac|melasma/i,        value: 'manchas' },
+    { match: /arrugas|l[ií]neas\s+de\s+expresi[oó]n/i, value: 'arrugas' },
+    { match: /poros\s*(abiertos|dilatados|grandes)/i,  value: 'poros dilatados' },
+    { match: /rojez|ros[aá]cea|enrojecimiento/i,        value: 'rojez' },
+    { match: /deshidrat|falta\s+de\s+hidrat/i,         value: 'deshidratación' },
+    { match: /ojeras/i,                                value: 'ojeras' },
+    { match: /brillo|muy\s+graso|demasiado\s+graso/i,  value: 'exceso de sebo' },
   ],
   edad: [
-    { match: /tengo\s+(\d{2})\s+años/i,   group: 1 },
-    { match: /soy\s+de\s+(\d{4})/i,       group: 1 },
-    { match: /(\d{2})\s+añ/i,             group: 1 },
+    { match: /tengo\s+(\d{2})\s+a[ñn]o/i, group: 1 },
+    { match: /soy\s+de\s+(\d{4})/i,        group: 1 },
+    { match: /(\d{2})\s+a[ñn]/i,           group: 1 },
   ],
   alergias: [
-    { match: /alérgica?\s+(?:al?\s+)?(.{5,40})/i, group: 1 },
-    { match: /me\s+cae\s+mal\s+(.{5,40})/i,       group: 1 },
-    { match: /no\s+puedo\s+usar\s+(.{5,40})/i,    group: 1 },
+    { match: /al[eé]rgic[ao]\s+a[l]?\s+(.{3,40})/i,   group: 1 },
+    { match: /me\s+cae\s+mal\s+(?:el\s+|la\s+)?(.{3,40})/i, group: 1 },
+    { match: /no\s+puedo\s+usar\s+(?:el\s+|la\s+)?(.{3,40})/i, group: 1 },
+    { match: /me\s+irrita\s+(?:el\s+|la\s+)?(.{3,40})/i,    group: 1 },
   ]
 };
 
@@ -925,9 +929,20 @@ async function extractAndSaveSkinProfile(phone, userText, botReply, context) {
   const combined = `${userText} ${botReply || ''}`;
   const extracted = {};
 
-  // Tipo de piel
-  for (const { match, value } of SKIN_KEYWORDS.tipoPiel) {
-    if (match.test(combined)) { extracted.tipoPiel = value; break; }
+  // Tipo de piel — incluye "tengo la piel X" con mapeo dinámico
+  const TIPO_MAP = { grasa: 'Grasa', aceitosa: 'Grasa', brillante: 'Grasa',
+                     seca: 'Seca', reseca: 'Seca', tirante: 'Seca',
+                     mixta: 'Mixta', combinada: 'Mixta', normal: 'Normal',
+                     sensible: 'Sensible', irritable: 'Sensible', reactiva: 'Sensible' };
+
+  const directMatch = combined.match(/tengo\s+(?:la\s+)?piel\s+(?:muy\s+|bastante\s+)?(\w+)/i);
+  if (directMatch && TIPO_MAP[directMatch[1].toLowerCase()]) {
+    extracted.tipoPiel = TIPO_MAP[directMatch[1].toLowerCase()];
+  }
+  if (!extracted.tipoPiel) {
+    for (const { match, value } of SKIN_KEYWORDS.tipoPiel) {
+      if (value && match.test(combined)) { extracted.tipoPiel = value; break; }
+    }
   }
 
   // Preocupaciones (puede haber varias)
@@ -963,8 +978,13 @@ async function extractAndSaveSkinProfile(phone, userText, botReply, context) {
 
   if (!Object.keys(toUpdate).length) return;
 
-  logger.log(`[klaviyo] Extrayendo perfil de piel para ${phone}: ${JSON.stringify(toUpdate)}`);
-  await klaviyo.updateSkinProfile(phone, toUpdate);
+  logger.log(`[klaviyo] 🧴 Perfil de piel detectado para ${phone}: ${JSON.stringify(toUpdate)}`);
+  const ok = await klaviyo.updateSkinProfile(phone, toUpdate);
+  if (ok) {
+    logger.log(`[klaviyo] ✅ Perfil guardado en Klaviyo para ${phone}`);
+  } else {
+    logger.log(`[klaviyo] ⚠️ No se encontró perfil Klaviyo para ${phone} (sin teléfono registrado?)`);
+  }
 
   // Actualizar contexto local para no volver a preguntar en esta sesión
   const merged = { ...existing, ...toUpdate };
