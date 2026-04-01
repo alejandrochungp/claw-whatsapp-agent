@@ -32,7 +32,11 @@ console.log(`💬 Slack: ${tenantConfig.slackChannel}`);
 // Esperar Redis antes de arrancar (evita perder historial al reiniciar)
 const memory = require('./core/memory');
 const server = require('./core/server');
+const carrito = require('./core/carrito-abandonado');
 
 memory.waitForRedis(5000).then(() => {
   server.start(tenantConfig, tenantBusiness);
+  
+  // Iniciar módulo de carritos abandonados (solo si CARRITO_ENABLED=true)
+  carrito.start().catch(e => console.error('[carrito] Error al iniciar:', e.message));
 });
