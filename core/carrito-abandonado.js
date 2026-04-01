@@ -18,7 +18,8 @@
  *   CARRITO_HORA_FIN    — hora fin envíos (default: 22)
  */
 
-const https = require('https');
+const https   = require('https');
+const klaviyo = require('./klaviyo');
 
 // ─── Configuración ────────────────────────────────────────────────────────────
 
@@ -239,13 +240,19 @@ async function run() {
   // Enviar
   let ok = 0, fail = 0;
 
-  for (const { phone, nombre, total, checkoutUrl } of candidatos) {
+  for (const { phone, nombre, total, checkoutUrl, email } of candidatos) {
     const result = await sendTemplate(phone, nombre, checkoutUrl);
 
     if (result?.messages?.[0]?.id) {
       console.log(`[carrito] ✅ ${phone} (${nombre}) $${total}`);
       await marcarEnviado(phone);
       ok++;
+
+      // Notificar a Klaviyo que este cliente ya fue contactado por WA
+      // → Klaviyo usa wa_carrito_enviado_at para suprimir el email redundante
+      klaviyo.markCartContactedByWA(phone, email).catch(e =>
+        console.error('[carrito] Klaviyo mark error:', e.message)
+      );
     } else {
       const errMsg = result?.error?.message || JSON.stringify(result);
       console.log(`[carrito] ❌ ${phone} (${nombre}) — ${errMsg}`);

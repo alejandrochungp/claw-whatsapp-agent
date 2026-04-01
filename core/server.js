@@ -17,6 +17,7 @@ const shopify    = require('./shopify');
 const audio      = require('./audio');
 const upsell     = require('./upsell');
 const learning   = require('./learning');
+const klaviyo    = require('./klaviyo');
 
 // Catálogo Shopify en memoria del módulo — se precalienta al arrancar y
 // se actualiza vía /admin/refresh-catalog. Se comparte en todas las llamadas.
@@ -853,6 +854,18 @@ async function handleMessage(message, value, config, business) {
     }
   }
 
+  // Enriquecer con perfil de piel desde Klaviyo (una vez por usuario)
+  if (!savedContext?.klaviyoSkinChecked) {
+    klaviyo.getSkinProfile(from).then(async (skinProfile) => {
+      if (skinProfile) {
+        await memory.updateContext(from, { klaviyoSkinChecked: true, skinProfile });
+        logger.log(`[klaviyo] Perfil de piel cargado: ${JSON.stringify(skinProfile)}`);
+      } else {
+        await memory.updateContext(from, { klaviyoSkinChecked: true });
+      }
+    }).catch(() => {});
+  }
+
   // Â¿Hay agente humano activo para este nÃºmero?
   const activeThread = slack.getActiveConversation(from);
   if (activeThread) {
@@ -872,6 +885,92 @@ async function handleMessage(message, value, config, business) {
 }
 
 // â"€â"€ Generar y enviar respuesta â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ─── Extracción de perfil de piel desde conversación ─────────────────────────
+// Detecta si el cliente mencionó su tipo de piel, edad, preocupaciones, etc.
+// Si hay info nueva, la guarda en Klaviyo de forma asíncrona (no bloquea).
+
+const SKIN_KEYWORDS = {
+  tipoPiel: [
+    { match: /piel\s+(grasa|aceitosa|brillante)/i,   value: 'Grasa' },
+    { match: /piel\s+(seca|reseca|tirante)/i,         value: 'Seca' },
+    { match: /piel\s+(mixta|combinada)/i,             value: 'Mixta' },
+    { match: /piel\s+(normal)/i,                      value: 'Normal' },
+    { match: /piel\s+(sensible|irritable|reactiva)/i, value: 'Sensible' },
+    { match: /zona\s+T\s+(grasa|aceitosa)/i,          value: 'Mixta' },
+  ],
+  preocupaciones: [
+    { match: /acné|acne|granitos|espinillas/i,     value: 'acné' },
+    { match: /manchas|hiperpigmentac|melasma/i,    value: 'manchas' },
+    { match: /arrugas|líneas de expresión|aging/i, value: 'arrugas' },
+    { match: /poros\s+(abiertos|dilatados)/i,      value: 'poros dilatados' },
+    { match: /rojez|rosácea|enrojecimiento/i,       value: 'rojez' },
+    { match: /hidratac|seca(?:ción|mente)/i,        value: 'deshidratación' },
+    { match: /ojeras/i,                             value: 'ojeras' },
+  ],
+  edad: [
+    { match: /tengo\s+(\d{2})\s+años/i,   group: 1 },
+    { match: /soy\s+de\s+(\d{4})/i,       group: 1 },
+    { match: /(\d{2})\s+añ/i,             group: 1 },
+  ],
+  alergias: [
+    { match: /alérgica?\s+(?:al?\s+)?(.{5,40})/i, group: 1 },
+    { match: /me\s+cae\s+mal\s+(.{5,40})/i,       group: 1 },
+    { match: /no\s+puedo\s+usar\s+(.{5,40})/i,    group: 1 },
+  ]
+};
+
+async function extractAndSaveSkinProfile(phone, userText, botReply, context) {
+  if (!userText || userText.length < 5) return;
+
+  const combined = `${userText} ${botReply || ''}`;
+  const extracted = {};
+
+  // Tipo de piel
+  for (const { match, value } of SKIN_KEYWORDS.tipoPiel) {
+    if (match.test(combined)) { extracted.tipoPiel = value; break; }
+  }
+
+  // Preocupaciones (puede haber varias)
+  const preoc = [];
+  for (const { match, value } of SKIN_KEYWORDS.preocupaciones) {
+    if (match.test(combined)) preoc.push(value);
+  }
+  if (preoc.length) extracted.preocupaciones = preoc.join(', ');
+
+  // Edad
+  for (const { match, group } of SKIN_KEYWORDS.edad) {
+    const m = combined.match(match);
+    if (m && m[group]) {
+      const n = parseInt(m[group]);
+      if (n >= 14 && n <= 90) { extracted.edad = String(n); break; }
+    }
+  }
+
+  // Alergias
+  for (const { match, group } of SKIN_KEYWORDS.alergias) {
+    const m = combined.match(match);
+    if (m && m[group]) { extracted.alergias = m[group].trim().slice(0, 80); break; }
+  }
+
+  if (!Object.keys(extracted).length) return; // nada nuevo
+
+  // No sobreescribir si ya tenemos ese dato en contexto
+  const existing = context?.skinProfile || {};
+  const toUpdate = {};
+  for (const [k, v] of Object.entries(extracted)) {
+    if (!existing[k]) toUpdate[k] = v;
+  }
+
+  if (!Object.keys(toUpdate).length) return;
+
+  logger.log(`[klaviyo] Extrayendo perfil de piel para ${phone}: ${JSON.stringify(toUpdate)}`);
+  await klaviyo.updateSkinProfile(phone, toUpdate);
+
+  // Actualizar contexto local para no volver a preguntar en esta sesión
+  const merged = { ...existing, ...toUpdate };
+  await memory.updateContext(phone, { skinProfile: merged });
+}
+
 // ─── Detección de conversación no productiva (spam/bots) ─────────────────────
 // Retorna true si el texto no tiene ninguna intención de negocio reconocible.
 function isNonProductiveMessage(text) {
@@ -1002,6 +1101,21 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
       }
     }
 
+    // Inyectar perfil de piel de Klaviyo si está disponible
+    const skinCtx = context?.skinProfile;
+    if (skinCtx && Object.keys(skinCtx).length) {
+      let skinText = '\n\n---\n## Perfil de piel de esta clienta (guardado de conversaciones anteriores)\n';
+      if (skinCtx.tipoPiel)          skinText += `- Tipo de piel: ${skinCtx.tipoPiel}\n`;
+      if (skinCtx.preocupaciones)    skinText += `- Preocupaciones: ${skinCtx.preocupaciones}\n`;
+      if (skinCtx.edad)              skinText += `- Edad aprox: ${skinCtx.edad}\n`;
+      if (skinCtx.productosActuales) skinText += `- Productos que ya usa: ${skinCtx.productosActuales}\n`;
+      if (skinCtx.alergias)          skinText += `- Alergias/sensibilidades: ${skinCtx.alergias}\n`;
+      if (skinCtx.rutina)            skinText += `- Rutina actual: ${skinCtx.rutina}\n`;
+      skinText += '\nUSA esta información para NO volver a preguntar lo que ya sabes de ella. Personaliza tu recomendación.';
+      systemPrompt += skinText;
+      logger.log(`[klaviyo] Perfil de piel inyectado en prompt (${Object.keys(skinCtx).length} campos)`);
+    }
+
     // Inyectar contexto de campaÃ±a si el cliente llega desde un envÃ­o masivo
     const campaignCtx = await memory.getCampaignContext(from);
     if (campaignCtx) {
@@ -1021,6 +1135,9 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
 
   // 3. Guardar en memoria
   await memory.addMessage(from, replyText, 'bot');
+
+  // 3b. Extraer perfil de piel si el cliente lo mencionó — guardar en Klaviyo async
+  extractAndSaveSkinProfile(from, userText, replyText, context).catch(() => {});
 
   // 4. Delay humano
   await humanDelay(replyText.length);
