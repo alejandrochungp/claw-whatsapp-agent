@@ -794,11 +794,30 @@ async function handleMessage(message, value, config, business) {
         const poopResult = await poop.handleMessage(from, message, accessToken);
         if (poopResult && poopResult.handled) {
           logger.log(`🐾 Poop analysis: ${poopResult.result || 'waiting_photo'}`);
+
+          // Acuse inmediato
           await humanDelay(poopResult.reply.length);
           await meta.sendMessage(from, poopResult.reply, config);
           await memory.addMessage(from, '[imagen caca]', 'user');
           await memory.addMessage(from, poopResult.reply, 'bot');
-          if (poopResult.followUpReply) {
+
+          // Si hay análisis diferido (delayedReply): enviar con delay realista 2-3h hábiles
+          if (poopResult.delayedReply) {
+            const delayMs = getPoopAnalysisDelay();
+            logger.log(`🐾 Análisis programado en ${Math.round(delayMs/60000)} min para ${from}`);
+            setTimeout(async () => {
+              try {
+                await meta.sendMessage(from, poopResult.delayedReply, config);
+                await memory.addMessage(from, poopResult.delayedReply, 'bot');
+                if (poopResult.followUpReply) {
+                  await new Promise(r => setTimeout(r, 4000));
+                  await meta.sendMessage(from, poopResult.followUpReply, config);
+                }
+              } catch (e) {
+                logger.log(`[poop] Error enviando análisis diferido: ${e.message}`);
+              }
+            }, delayMs);
+          } else if (poopResult.followUpReply) {
             await new Promise(resolve => setTimeout(resolve, 3000));
             await meta.sendMessage(from, poopResult.followUpReply, config);
           }
@@ -1299,6 +1318,42 @@ function humanDelay(len) {
   const jitter = Math.random() * 800;
   const ms = Math.max(base, min) + jitter;
   return new Promise(r => setTimeout(r, ms));
+}
+
+/**
+ * Calcula el delay en ms para enviar el análisis de caca de forma realista.
+ * Simula que un humano lo revisó: 2-3 horas en horario hábil (Lun-Vie 9-18 Chile).
+ * Si ya es tarde (>16h) o fin de semana, programa para las 10h del próximo día hábil.
+ */
+function getPoopAnalysisDelay() {
+  const now = new Date();
+  const chile = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const hour = chile.getHours();
+  const day  = chile.getDay(); // 0=dom, 6=sab
+
+  const isWeekend  = day === 0 || day === 6;
+  const isLate     = hour >= 16; // después de las 16h no alcanza a responder en el día
+  const isEarly    = hour < 9;
+
+  if (!isWeekend && !isLate && !isEarly) {
+    // Horario hábil: delay de 2-3 horas con algo de variación natural
+    const hours = 2 + Math.random(); // entre 2.0 y 3.0 horas
+    return Math.round(hours * 60 * 60 * 1000);
+  }
+
+  // Fuera de horario: programar para las 10:00 del próximo día hábil
+  const next = new Date(chile);
+  next.setHours(10, 0 + Math.floor(Math.random() * 30), 0, 0); // 10:00-10:30
+
+  // Avanzar al siguiente día hábil
+  let daysAhead = 1;
+  if (isLate || (!isEarly && !isWeekend)) daysAhead = 1;
+  const nextDay = day + daysAhead;
+  if (nextDay === 6) daysAhead += 2; // sábado → lunes
+  if (nextDay === 7) daysAhead += 1; // domingo → lunes
+  next.setDate(next.getDate() + daysAhead);
+
+  return next.getTime() - Date.now();
 }
 
 async function postSlackMessage(channel, thread_ts, text) {

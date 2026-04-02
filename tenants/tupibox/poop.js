@@ -210,29 +210,39 @@ async function downloadWhatsAppImage(imageId, accessToken) {
 async function analyzePoopImage(imageBase64, mimeType) {
   const contextDoc = loadContextDoc();
 
-  const systemPrompt = `Eres un asistente especializado en nutrición y salud digestiva canina de TupiBox Fresh.
+  const systemPrompt = `Eres un especialista en nutrición y salud digestiva canina de TupiBox Fresh.
 Tienes experiencia evaluando la salud digestiva de perros a partir de sus heces.
 
 CONTEXTO VETERINARIO:
 ${contextDoc}
 
-REGLAS CRÍTICAS:
-- Responde en español chileno, tono cercano y amigable (no alarmar innecesariamente)
-- NO menciones TupiBox Fresh ni ningún producto en este mensaje
+REGLAS CRÍTICAS DE FORMATO — MUY IMPORTANTE:
+- NUNCA uses asteriscos (*), guiones bajos (_), almohadillas (#) ni ningún markdown
+- NUNCA uses bullets ni listas con símbolos (•, -, *)
+- Escribe en texto plano, como si fuera un mensaje de WhatsApp de una persona real
+- Usa saltos de línea simples para separar ideas
+- Tono cercano, español chileno, sin alarmismo innecesario
+- NO menciones TupiBox Fresh ni ningún producto
 - NO hagas diagnóstico veterinario formal
-- Si hay algo serio (sangre, parásitos visibles, heces negras), recomendar visita al vet SIN alarmismo
-- Máximo 180 palabras en total
-- Sé concreto y útil, no genérico
+- Máximo 160 palabras en total
+- Si hay algo serio (sangre, parásitos, heces negras), recomendar vet SIN alarmismo
 
-INSTRUCCIÓN DE ANÁLISIS:
-Por favor analiza estas heces caninas y responde con:
+ESTRUCTURA DE LA RESPUESTA (en texto plano, sin títulos ni bullets):
+- Primera línea: estado general (ej: "se ve con atención leve" / "se ve bastante normal" / "esto hay que revisarlo con un vet")
+- Luego 2-3 observaciones concretas en párrafo corto: consistencia, color, forma
+- Una línea sobre la posible causa
+- Un consejo práctico de alimentación o hidratación
 
-1. Estado general: (una línea: Normal / Atención leve / Consultar veterinario)
-2. Lo que observo (2-3 puntos concretos): consistencia, color, forma
-3. Posible causa (1-2 líneas): qué puede estar pasando
-4. Un consejo práctico relacionado con alimentación o hidratación
+EJEMPLO DE TONO CORRECTO:
+"se ve con atención leve
 
-Si la imagen no es clara o no es una foto de heces caninas, indícalo amablemente.`;
+las heces están bastante blandas y sin forma definida, con un tono amarillo-verdoso y algo de mucosidad. eso sugiere que el tránsito intestinal está más acelerado de lo normal.
+
+puede ser colitis leve, un cambio de dieta reciente o alguna intolerancia. no es urgente pero vale la pena observarlo.
+
+ofrécele bastante agua y si en 48 horas no mejora o aparecen vómitos, pasa al vet"
+
+Si la imagen no es clara o no es caca de perro, indícalo con naturalidad.`;
 
   // ai.analyzeImage(base64, mimeType, systemPrompt) — firma del core
   const analysisText = await ai.analyzeImage(imageBase64, mimeType, systemPrompt);
@@ -340,17 +350,11 @@ async function handleMessage(phone, message, accessToken) {
 
   // CASO 2: Imagen llegó mientras esperábamos foto
   if (hasImage(message) && session.state === POOP_STATES.WAITING_PHOTO) {
-    // Actualizar estado
     await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.ANALYZING });
 
     try {
-      // Descargar imagen
       const { base64, mimeType } = await downloadWhatsAppImage(message.image.id, accessToken);
-
-      // Analizar con Claude Vision via core/ai
       const { analysisText, result } = await analyzePoopImage(base64, mimeType);
-
-      // Marcar sesión como completada
       await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
 
       console.log(`✅ [poop] Análisis completado para ${phone}: ${result}`);
@@ -367,7 +371,9 @@ async function handleMessage(phone, message, accessToken) {
 
       return {
         handled: true,
-        reply: analysisText,
+        // Acuse inmediato — el análisis llega "después" vía delayedReply
+        reply: `listo, ya vi la foto 👀 te mando el análisis en un momento`,
+        delayedReply: analysisText,
         followUpReply,
         result
       };
@@ -375,10 +381,9 @@ async function handleMessage(phone, message, accessToken) {
     } catch (err) {
       console.error(`❌ [poop] Error analizando imagen de ${phone}:`, err.message);
       poopSessions.delete(phone);
-
       return {
         handled: true,
-        reply: `Lo siento, tuve un problema procesando la imagen. Puedes intentar enviarla de nuevo? Asegúrate que sea una foto directa (no captura de pantalla) y que se vea con claridad. 📸`
+        reply: `tuve un problema procesando la imagen, puedes enviarla de nuevo? asegúrate que sea foto directa y con buena luz`
       };
     }
   }
