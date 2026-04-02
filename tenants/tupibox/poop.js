@@ -19,6 +19,8 @@ const path  = require('path');
 
 // Módulo AI del core (usa Claude Vision internamente)
 const ai = require('../../core/ai');
+// Sheets del tenant para registrar análisis
+const sheets = require('./sheets');
 
 const CLAUDE_API_KEY  = process.env.CLAUDE_API_KEY;
 const MAILERLITE_TOKEN = process.env.MAILERLITE_TOKEN;
@@ -358,6 +360,16 @@ async function handleMessage(phone, message, accessToken) {
       await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
 
       console.log(`✅ [poop] Análisis completado para ${phone}: ${result}`);
+
+      // Registrar en Sheets — hoja "Análisis Caca"
+      sheets.appendRow('Análisis Caca', [
+        new Date().toISOString(),
+        phone,
+        result,
+        analysisText.substring(0, 300),
+        'sí',
+        'whatsapp'
+      ]).catch(e => console.log(`[poop] sheets log error: ${e.message}`));
 
       // Mensaje de continuidad según resultado
       let followUpReply = '';
