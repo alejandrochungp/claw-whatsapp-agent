@@ -147,4 +147,37 @@ async function afterReply(phone, userText, botReply, history, context) {
   }
 }
 
-module.exports = { quickReply, buildSystemPrompt, afterReply };
+/**
+ * enrichContext — Carga datos del cliente desde Sheets al primer mensaje.
+ * El core lo llama una vez y guarda el resultado en Redis (tenantEnriched=true).
+ */
+async function enrichContext(phone, savedContext) {
+  try {
+    // Buscar en Subscribers primero, luego en Leads
+    let data = await sheets.getCustomer(phone);
+    if (!data) data = await sheets.getLead(phone);
+    if (!data) return {};
+
+    // Mapear campos de Sheets al contexto Redis
+    const ctx = {};
+    if (data.name)          ctx.customerName   = data.name;
+    if (data.dogName)       ctx.dogName        = data.dogName;
+    if (data.weight)        ctx.weight         = data.weight;
+    if (data.breed)         ctx.breed          = data.breed;
+    if (data.ageYears)      ctx.ageYears       = data.ageYears;
+    if (data.ageMonths)     ctx.ageMonths      = data.ageMonths;
+    if (data.activityLevel) ctx.activityLevel  = data.activityLevel;
+    if (data.allergies)     ctx.allergies      = data.allergies;
+    if (data.protein)       ctx.protein        = data.protein;
+    if (data.plan)          ctx.plan           = data.plan;
+    if (data.status)        ctx.status         = data.status;
+
+    return ctx;
+  } catch (e) {
+    const logger = require('../../core/logger');
+    logger.log(`[sheets] enrichContext error: ${e.message}`);
+    return {};
+  }
+}
+
+module.exports = { quickReply, buildSystemPrompt, afterReply, enrichContext };

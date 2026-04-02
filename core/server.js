@@ -875,9 +875,25 @@ async function handleMessage(message, value, config, business) {
     await memory.addMessage(from, userText, 'user');
   }
 
+  // Enriquecer con datos del tenant (primera vez o si no hay contexto guardado)
+  // Hook opcional: business.enrichContext(phone, savedContext) → object con campos a guardar
+  const savedContext = await memory.getContext(from);
+  if (typeof business.enrichContext === 'function' && !savedContext?.tenantEnriched) {
+    try {
+      const enriched = await business.enrichContext(from, savedContext);
+      if (enriched && Object.keys(enriched).length > 0) {
+        await memory.updateContext(from, { ...enriched, tenantEnriched: true });
+        logger.log(`[tenant:enrichContext] ${from} enriquecido con ${Object.keys(enriched).length} campos`);
+      } else {
+        await memory.updateContext(from, { tenantEnriched: true });
+      }
+    } catch (e) {
+      logger.log(`[tenant:enrichContext] error: ${e.message}`);
+    }
+  }
+
   // Enriquecer con datos de Shopify (primera vez o si no hay contexto guardado)
   let shopifyData = null;
-  const savedContext = await memory.getContext(from);
   if (!savedContext?.shopifyChecked) {
     shopifyData = await shopify.enrichContact(from);
     if (shopifyData) {
