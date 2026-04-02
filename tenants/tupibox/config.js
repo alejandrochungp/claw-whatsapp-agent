@@ -20,5 +20,7 @@ module.exports = {
   },
 
   fallbackMessage:  'disculpa, tuve un problema técnico. escribe "humano" para hablar con el equipo.',
-  offHoursMessage:  'Hola! ahora estamos fuera de horario (lun-vie 10:00-18:00).\n\nTe anotamos y te respondemos apenas abramos. Si es urgente, igual escríbenos y te contestamos en cuanto veamos tu mensaje.'
+  offHoursMessage:  'ahora estamos fuera de horario (lun-vie 10:00-18:00).\n\nte anotamos y apenas abramos te respondemos. si es urgente igual escríbenos.',
+
+  mailerliteToken: process.env.MAILERLITE_TOKEN,
 };
