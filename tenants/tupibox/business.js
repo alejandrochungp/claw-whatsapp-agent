@@ -21,16 +21,16 @@ async function quickReply(userText, context, history) {
   const text  = userText.toLowerCase().trim();
   const isNew = history.length <= 1;
 
-  // ── Saludo ───────────────────────────────────────────────────────────────
-  if (/^(hola|hi|buenas|buenos días|buenas tardes|buenas noches|saludos)$/.test(text)) {
-    if (!isNew) {
-      return { text: 'Hola de nuevo!\n\nen qué te puedo ayudar hoy?', useAI: false };
-    }
-    return {
-      text: 'Hola! qué gusto que nos escribas.\n\nte puedo ayudar con info sobre planes, hacer un pedido nuevo, consultar uno existente o conectarte con el equipo.\n\nqué necesitas?',
-      useAI: false
-    };
-  }
+  // REMOVIDO: saludos los maneja Claude (más natural)
+  // if (/^(hola|hi|buenas|buenos días|buenas tardes|buenas noches|saludos)$/.test(text)) {
+  //   if (!isNew) {
+  //     return { text: 'Hola de nuevo!\n\nen qué te puedo ayudar hoy?', useAI: false };
+  //   }
+  //   return {
+  //     text: 'Hola! qué gusto que nos escribas.\n\nte puedo ayudar con info sobre planes, hacer un pedido nuevo, consultar uno existente o conectarte con el equipo.\n\nqué necesitas?',
+  //     useAI: false
+  //   };
+  // }
 
   // ── Pedir humano ─────────────────────────────────────────────────────────
   if (/humano|persona|equipo|ayuda/.test(text)) {

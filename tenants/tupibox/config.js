@@ -5,6 +5,7 @@
 module.exports = {
   name:          'TupiBox Fresh',
   businessPhone: process.env.BUSINESS_PHONE || '+56920633976',
+  accessToken:   process.env.WHATSAPP_ACCESS_TOKEN,
 
   verifyToken:   process.env.WEBHOOK_VERIFY_TOKEN || 'tupibox_fresh_verify_token_2026',
   port:          process.env.PORT || 3000,

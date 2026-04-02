@@ -1,0 +1,1199 @@
+{
+  "generatedAt": "2026-03-26T20:35:37.920Z",
+  "stats": {
+    "orders": 2000,
+    "ordersWithMultiple": 1029,
+    "totalItems": 4574,
+    "uniqueSkus": 759
+  },
+  "pairs": [
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "ANUA-009",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Niacinamide 10 TXA 4 Serum",
+      "variantIdA": 46331858583701,
+      "variantIdB": 45496153407637,
+      "frecuencia": 16
+    },
+    {
+      "skuA": "NICO-006",
+      "skuB": "NICO-007",
+      "nombreA": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "nombreB": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantIdA": 45303883137173,
+      "variantIdB": 45303900340373,
+      "frecuencia": 13
+    },
+    {
+      "skuA": "NICO-003",
+      "skuB": "NICO-007",
+      "nombreA": "Catch Me Patch 33pcs (Sin Clean Touch)",
+      "nombreB": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantIdA": 44019391889557,
+      "variantIdB": 45303900340373,
+      "frecuencia": 10
+    },
+    {
+      "skuA": "KUNDAL-021",
+      "skuB": "KUNDAL-022",
+      "nombreA": "Rich Perfume Shampoo (2 Fragancias)",
+      "nombreB": "Rich Perfume Treatment (3 Fragancias)",
+      "variantIdA": 45501193257109,
+      "variantIdB": 45501208854677,
+      "frecuencia": 9
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "NUM-025",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46324582547605,
+      "frecuencia": 9
+    },
+    {
+      "skuA": "DGMR-001",
+      "skuB": "DGMR-002",
+      "nombreA": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "nombreB": "Ki Gold Premium Treatment (2 Tamaños)",
+      "variantIdA": 46324233011349,
+      "variantIdB": 46324233863317,
+      "frecuencia": 7
+    },
+    {
+      "skuA": "THEL-013",
+      "skuB": "THEL-017",
+      "nombreA": "Teatree CICA 80 Toner",
+      "nombreB": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantIdA": 44018255069333,
+      "variantIdB": 44018565644437,
+      "frecuencia": 7
+    },
+    {
+      "skuA": "KERASYS-048",
+      "skuB": "KERASYS-051",
+      "nombreA": "Advanced Repair Ampoule Shampoo (2 Tamaños y Refill)",
+      "nombreB": "Advanced Repair Ampoule Conditioner (2 Tamaños)",
+      "variantIdA": 44026287095957,
+      "variantIdB": 44026285719701,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-027",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949638805,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "ROUND-046",
+      "skuB": "ROUND-048",
+      "nombreA": "Vita Niacinamide Dark Spot Serum Mask 20ml",
+      "nombreB": "Birch Juice Moisturizing Double Gel Mask",
+      "variantIdA": 46497225769109,
+      "variantIdB": 46739737575573,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "ALTHEA-004",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Vitamin C Boosting Serum 30ml",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46497676689557,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "THEL-015",
+      "skuB": "THEL-017",
+      "nombreA": "Teatree CICA 60 Moisturizer",
+      "nombreB": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantIdA": 44018258935957,
+      "variantIdB": 44018565644437,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "THEL-013",
+      "skuB": "THEL-015",
+      "nombreA": "Teatree CICA 80 Toner",
+      "nombreB": "Teatree CICA 60 Moisturizer",
+      "variantIdA": 44018255069333,
+      "variantIdB": 44018258935957,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "APL-013",
+      "skuB": "APL-023",
+      "nombreA": "Retinol Vitamin C Vitamin E Sheet Mask",
+      "nombreB": "Collagen EGF Peptide Sheet Mask",
+      "variantIdA": 46331186839701,
+      "variantIdB": 46343745601685,
+      "frecuencia": 6
+    },
+    {
+      "skuA": "NICO-003",
+      "skuB": "NICO-006",
+      "nombreA": "Catch Me Patch 33pcs (Sin Clean Touch)",
+      "nombreB": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "variantIdA": 44019391889557,
+      "variantIdB": 45303883137173,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "ROUND-003",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 46331858583701,
+      "variantIdB": 44017985486997,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "KERASYS-129",
+      "skuB": "KERASYS-130",
+      "nombreA": "Dear Flora Cherry Blossom Shampoo (1.5L)",
+      "nombreB": "Dear Flora Cherry Blossom Rinse (1.5L)",
+      "variantIdA": 46331895120021,
+      "variantIdB": 46331901804693,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "NUM-025",
+      "skuB": "NUM-030",
+      "nombreA": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "nombreB": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "variantIdA": 46324582547605,
+      "variantIdB": 46741809266837,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "NUM-025",
+      "skuB": "NUM-029",
+      "nombreA": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "nombreB": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "variantIdA": 46324582547605,
+      "variantIdB": 46756485857429,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "MEDICUBE-005",
+      "skuB": "NUM-025",
+      "nombreA": "PDRN Pink Collagen Capsule Cream",
+      "nombreB": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantIdA": 46324603453589,
+      "variantIdB": 46324582547605,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "JOSEON-028",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantIdA": 46331858583701,
+      "variantIdB": 45630996185237,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "NUM-025",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "No.9 NAD Bio Lifting-sil Essence (50ml)",
+      "variantIdA": 45496153407637,
+      "variantIdB": 46324582547605,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "APL-003",
+      "skuB": "APL-023",
+      "nombreA": "Glutathione Niacinamide Sheet Mask",
+      "nombreB": "Collagen EGF Peptide Sheet Mask",
+      "variantIdA": 46330997670037,
+      "variantIdB": 46343745601685,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "DGMR-010",
+      "skuB": "DGMR-011",
+      "nombreA": "DlaeSoo Hair Loss Care Shampoo (2 Tamaños)",
+      "nombreB": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantIdA": 46324114096277,
+      "variantIdB": 46324234518677,
+      "frecuencia": 5
+    },
+    {
+      "skuA": "KERASYS-071",
+      "skuB": "KUNDAL-205",
+      "nombreA": "Hair Clinic Moisture Treatment 300ml",
+      "nombreB": "Ultra Hair Serum (5 Fragrancias)",
+      "variantIdA": 44018982682773,
+      "variantIdB": 46612386152597,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "MIXSOON-001",
+      "skuB": "MIXSOON-005",
+      "nombreA": "Bean Essence (2 tamaños)",
+      "nombreB": "Bean Cleansing Oil (2 Tamaños)",
+      "variantIdA": 46121508929685,
+      "variantIdB": 46124946161813,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "ETUDE-046",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "variantIdA": 45496153407637,
+      "variantIdB": 44018295275669,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "COSRX-018",
+      "skuB": "COSRX-019",
+      "nombreA": "Advanced Snail 96 Mucin Power Essence",
+      "nombreB": "Advanced Snail 92 All In One Cream",
+      "variantIdA": 44019263111317,
+      "variantIdB": 44019267240085,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "THEL-020",
+      "skuB": "THEL-021",
+      "nombreA": "Miniatura Cica Vitamin K Barrier Cream 15ml",
+      "nombreB": "Miniatura Delicate Daily Moisturizer 15ml",
+      "variantIdA": 45423513895061,
+      "variantIdB": 45423435022485,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "ROUND-003",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 45496153407637,
+      "variantIdB": 44017985486997,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-025",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949573269,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "HOLIKA-027",
+      "skuB": "HOLIKA-069",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949638805,
+      "variantIdB": 44017949769877,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "NUM-029",
+      "skuB": "NUM-030",
+      "nombreA": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "nombreB": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "variantIdA": 46756485857429,
+      "variantIdB": 46741809266837,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "KERASYS-071",
+      "skuB": "KERASYS-093",
+      "nombreA": "Hair Clinic Moisture Treatment 300ml",
+      "nombreB": "Hair Clinic Damage Treatment 300ml",
+      "variantIdA": 44018982682773,
+      "variantIdB": 44019414827157,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "VT-015",
+      "skuB": "VT-016",
+      "nombreA": "Collagen Reedle Shot 100 2Step Mask",
+      "nombreB": "Vita-Light Reedle Shot® 100 2Step Hydrogel Mask",
+      "variantIdA": 45988586094741,
+      "variantIdB": 45988604248213,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "NICO-004",
+      "skuB": "NICO-007",
+      "nombreA": "Catch Me Patch 22pcs (Sin Clean Touch)",
+      "nombreB": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "variantIdA": 44914971574421,
+      "variantIdB": 45303900340373,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "KUNDAL-007",
+      "skuB": "KUNDAL-017",
+      "nombreA": "Honey & Macadamia Shampoo (7 Fragancias)",
+      "nombreB": "Honey & Macadamia Treatment (6 Aromas y Tamaños)",
+      "variantIdA": 46125921829013,
+      "variantIdB": 46125985169557,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "HOLIKA-022",
+      "skuB": "HOLIKA-027",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949474965,
+      "variantIdB": 44017949638805,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "JOSEON-028",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantIdA": 45496153407637,
+      "variantIdB": 45630996185237,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "HOLIKA-028",
+      "skuB": "HOLIKA-029",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949671573,
+      "variantIdB": 44017949704341,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ALTHEA-004",
+      "skuB": "ROUND-003",
+      "nombreA": "Vitamin C Boosting Serum 30ml",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 46497676689557,
+      "variantIdB": 44017985486997,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "MEDICUBE-005",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "PDRN Pink Collagen Capsule Cream",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46324603453589,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "ETUDE-004",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "My Lash Serum",
+      "variantIdA": 46331858583701,
+      "variantIdB": 44018031067285,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "DGMR-008",
+      "skuB": "DGMR-009",
+      "nombreA": "Vitalizing Nutrition Hair Pack 120ml",
+      "nombreB": "Vitalizing Nutrition Hair Pack with Hair Cap 35g",
+      "variantIdA": 44019325829269,
+      "variantIdB": 44019331760277,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-022",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949474965,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "DGMR-011",
+      "skuB": "DGMR-012",
+      "nombreA": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "nombreB": "DlaeSoo Intensive Nourishing Pack 200ml",
+      "variantIdA": 46324234518677,
+      "variantIdB": 44019347914901,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "KUNDAL-502",
+      "skuB": "THEL-017",
+      "nombreA": "Macadamia Balancing & Moisture Double Deep Cleansing Oil",
+      "nombreB": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantIdA": 44018020253845,
+      "variantIdB": 44018565644437,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "DGMR-007",
+      "skuB": "DGMR-008",
+      "nombreA": "Vitalizing Nutrition Scalp Pack For Hair Loss 145ml",
+      "nombreB": "Vitalizing Nutrition Hair Pack 120ml",
+      "variantIdA": 44019321438357,
+      "variantIdB": 44019325829269,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "JOSEON-028",
+      "skuB": "SKIN1004-015",
+      "nombreA": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "nombreB": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantIdA": 45630996185237,
+      "variantIdB": 45994345627797,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "APL-003",
+      "skuB": "APL-013",
+      "nombreA": "Glutathione Niacinamide Sheet Mask",
+      "nombreB": "Retinol Vitamin C Vitamin E Sheet Mask",
+      "variantIdA": 46330997670037,
+      "variantIdB": 46331186839701,
+      "frecuencia": 4
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "SKIN1004-013",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Madagascar Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++ 50ml",
+      "variantIdA": 46331858583701,
+      "variantIdB": 45621228896405,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "ANUA-020",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46497316733077,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-020",
+      "skuB": "SKIN1004-013",
+      "nombreA": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "nombreB": "Madagascar Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++ 50ml",
+      "variantIdA": 46497316733077,
+      "variantIdB": 45621228896405,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ROUND-003",
+      "skuB": "THEL-016",
+      "nombreA": "Birch Juice Moisturizing Sun Screen",
+      "nombreB": "Big Delicate Daily Moisturizer (220ml)",
+      "variantIdA": 44017985486997,
+      "variantIdB": 44018563022997,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "MIXSOON-003",
+      "skuB": "MIXSOON-005",
+      "nombreA": "Bean Cream (2 Tamaños)",
+      "nombreB": "Bean Cleansing Oil (2 Tamaños)",
+      "variantIdA": 46121577250965,
+      "variantIdB": 46124946161813,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "MIXSOON-001",
+      "skuB": "MIXSOON-003",
+      "nombreA": "Bean Essence (2 tamaños)",
+      "nombreB": "Bean Cream (2 Tamaños)",
+      "variantIdA": 46121508929685,
+      "variantIdB": 46121577250965,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "MEDICUBE-002",
+      "skuB": "MEDICUBE-010",
+      "nombreA": "Collagen Jelly Cream (2 Tamaños)",
+      "nombreB": "PDRN Pink Peptide Serum",
+      "variantIdA": 46498093301909,
+      "variantIdB": 46961578967189,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "MEDICUBE-003",
+      "skuB": "MEDICUBE-010",
+      "nombreA": "DEEP VITA C CAPSULE CREAM",
+      "nombreB": "PDRN Pink Peptide Serum",
+      "variantIdA": 46125274136725,
+      "variantIdB": 46961578967189,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "MEDICUBE-001",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "COLLAGEN NIGHT WRAPPING MASK",
+      "variantIdA": 45496153407637,
+      "variantIdB": 46125160464533,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ETUDE-004",
+      "skuB": "KUNDAL-502",
+      "nombreA": "My Lash Serum",
+      "nombreB": "Macadamia Balancing & Moisture Double Deep Cleansing Oil",
+      "variantIdA": 44018031067285,
+      "variantIdB": 44018020253845,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "AXIS-003",
+      "skuB": "ETUDE-046",
+      "nombreA": "Dark Spot Correcting Glow Serum",
+      "nombreB": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "variantIdA": 46125573472405,
+      "variantIdB": 44018295275669,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "MEDICUBE-005",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "PDRN Pink Collagen Capsule Cream",
+      "variantIdA": 45496153407637,
+      "variantIdB": 46324603453589,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ETUDE-004",
+      "skuB": "SBM-013",
+      "nombreA": "My Lash Serum",
+      "nombreB": "Retinol Intense Daily Mask",
+      "variantIdA": 44018031067285,
+      "variantIdB": 45779126583445,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "SKIN1004-002",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Madagascar Centella Light Cleansing Oil",
+      "variantIdA": 46331858583701,
+      "variantIdB": 45309811884181,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "NICO-007",
+      "skuB": "ROUND-003",
+      "nombreA": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 45303900340373,
+      "variantIdB": 44017985486997,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "KS-005",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "SEOUL 1988 Eye Cream : Retinal Liposome 4% + Fermented Bean",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46616416125077,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "NICO-006",
+      "skuB": "ROUND-011",
+      "nombreA": "Catch Me Patch 27 Brightening (Clean Touch)",
+      "nombreB": "Mugwort Calming Mask",
+      "variantIdA": 45303883137173,
+      "variantIdB": 44017902682261,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "KERASYS-049",
+      "skuB": "KERASYS-052",
+      "nombreA": "Keratin Bond Silky Moisture Shampoo (2 Tamaños)",
+      "nombreB": "Keratin Bond Silky Moisture Conditioner (2 Tamaños)",
+      "variantIdA": 44026286768277,
+      "variantIdB": 44026286178453,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "VT-015",
+      "skuB": "VT-018",
+      "nombreA": "Collagen Reedle Shot 100 2Step Mask",
+      "nombreB": "Hydrop Reedle Shot 100 hL 2Step Hydrogel Mask",
+      "variantIdA": 45988586094741,
+      "variantIdB": 45988614471829,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "VT-013",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Cica Daily Soothing Mask (30 mascarillas)",
+      "variantIdA": 46331858583701,
+      "variantIdB": 45988574789781,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-025",
+      "skuB": "HOLIKA-027",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949573269,
+      "variantIdB": 44017949638805,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-069",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949769877,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "NICO-007",
+      "skuB": "THEL-017",
+      "nombreA": "Catch Me Patch 27 Calmante (Clean Touch)",
+      "nombreB": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantIdA": 45303900340373,
+      "variantIdB": 44018565644437,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "KS-002",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "SEOUL 1988 Serum : Retinal Liposome 2% + Black Ginseng",
+      "variantIdA": 45496153407637,
+      "variantIdB": 46616230068373,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "JOSEON-028",
+      "skuB": "THEL-017",
+      "nombreA": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "nombreB": "Limpiador Tea Tree CICA Ph Trouble Balanced",
+      "variantIdA": 45630996185237,
+      "variantIdB": 44018565644437,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "COSNORI-001",
+      "skuB": "ROUND-048",
+      "nombreA": "Long Active Eyelash Serum",
+      "nombreB": "Birch Juice Moisturizing Double Gel Mask",
+      "variantIdA": 44018078843029,
+      "variantIdB": 46739737575573,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "COSNORI-001",
+      "skuB": "ROUND-046",
+      "nombreA": "Long Active Eyelash Serum",
+      "nombreB": "Vita Niacinamide Dark Spot Serum Mask 20ml",
+      "variantIdA": 44018078843029,
+      "variantIdB": 46497225769109,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "NUM-029",
+      "skuB": "NUM-031",
+      "nombreA": "No.9+ NAD+ PDRN Glow Boosting Toner 150ml",
+      "nombreB": "No. 9 NAD Bio Lifting-sil Full Face Pack Sheet",
+      "variantIdA": 46756485857429,
+      "variantIdB": 46741814837397,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "KERASYS-050",
+      "skuB": "KERASYS-093",
+      "nombreA": "Advanced Volume Ampoule Shampoo (2 Tamaños)",
+      "nombreB": "Hair Clinic Damage Treatment 300ml",
+      "variantIdA": 44026286407829,
+      "variantIdB": 44019414827157,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DOKDO-015",
+      "skuB": "ROUND-048",
+      "nombreA": "1025 Dokdo Mascarilla Gel",
+      "nombreB": "Birch Juice Moisturizing Double Gel Mask",
+      "variantIdA": 44018089394325,
+      "variantIdB": 46739737575573,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ETUDE-004",
+      "skuB": "ROUND-003",
+      "nombreA": "My Lash Serum",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 44018031067285,
+      "variantIdB": 44017985486997,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-026",
+      "skuB": "HOLIKA-028",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949606037,
+      "variantIdB": 44017949671573,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "NUM-030",
+      "skuB": "VT-027",
+      "nombreA": "No.9 NAD+ Retinol Volumetox Eye Cream 10ml",
+      "nombreB": "PDRN Capsule Cream 100",
+      "variantIdA": 46741809266837,
+      "variantIdB": 46961666031765,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "MEDICUBE-008",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Exosome Shot Pore Serum 2000 30ml",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46497470087317,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "MEDICUBE-010",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "PDRN Pink Peptide Serum",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46961578967189,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "KUNDAL-021",
+      "skuB": "KUNDAL-029",
+      "nombreA": "Rich Perfume Shampoo (2 Fragancias)",
+      "nombreB": "Rich Perfume Bruma para el Cabello (3 Fragancias)",
+      "variantIdA": 45501193257109,
+      "variantIdB": 45503900975253,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "KUNDAL-012",
+      "skuB": "KUNDAL-061",
+      "nombreA": "Honey&Macadamia Shampoo Refill 400ml (2 Fragancias)",
+      "nombreB": "Natural Caffeine Scalp Shampoo Anticaida (3 Fragancias)",
+      "variantIdA": 45176504090773,
+      "variantIdB": 44018037293205,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-023",
+      "skuB": "HOLIKA-069",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949507733,
+      "variantIdB": 44017949769877,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "VT-015",
+      "skuB": "VT-017",
+      "nombreA": "Collagen Reedle Shot 100 2Step Mask",
+      "nombreB": "Reti-A Reedle Shot® 100 2STEP Hydrogel Mask",
+      "variantIdA": 45988586094741,
+      "variantIdB": 45988611522709,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "SKIN1004-011",
+      "skuB": "SKIN1004-015",
+      "nombreA": "Madagascar Centella Ampoule (3 Tamaños)",
+      "nombreB": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantIdA": 45620190347413,
+      "variantIdB": 45994345627797,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ROUND-011",
+      "skuB": "ROUND-014",
+      "nombreA": "Mugwort Calming Mask",
+      "nombreB": "Soybean Nourishing Mask",
+      "variantIdA": 44017902682261,
+      "variantIdB": 44017903829141,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "JOSEON-015",
+      "skuB": "LILY-239",
+      "nombreA": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "nombreB": "Bálsamo: Luv Beam Cheek (11 Colores)",
+      "variantIdA": 44018464784533,
+      "variantIdB": 44026254786709,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-008",
+      "skuB": "KUNDAL-029",
+      "nombreA": "Vitalizing Nutrition Hair Pack 120ml",
+      "nombreB": "Rich Perfume Bruma para el Cabello (3 Fragancias)",
+      "variantIdA": 44019325829269,
+      "variantIdB": 45503900975253,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "KERASYS-093",
+      "skuB": "KUNDAL-205",
+      "nombreA": "Hair Clinic Damage Treatment 300ml",
+      "nombreB": "Ultra Hair Serum (5 Fragrancias)",
+      "variantIdA": 44019414827157,
+      "variantIdB": 46612386152597,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "JOSEON-006",
+      "skuB": "ROUND-048",
+      "nombreA": "Centella Asiatica Calming Mask",
+      "nombreB": "Birch Juice Moisturizing Double Gel Mask",
+      "variantIdA": 44017965105301,
+      "variantIdB": 46739737575573,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "COSRX-012",
+      "skuB": "COSRX-027",
+      "nombreA": "Acne Pimple Master Patch",
+      "nombreB": "Clear Fit Master Patch",
+      "variantIdA": 44019234078869,
+      "variantIdB": 45642659070101,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-038",
+      "skuB": "LILY-347",
+      "nombreA": "Puri Pore No Sebum Pact",
+      "nombreB": "AM9 to PM9 Infinite Mascara (2 tipos)",
+      "variantIdA": 44017972412565,
+      "variantIdB": 44026258096277,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ETUDE-046",
+      "skuB": "JOSEON-028",
+      "nombreA": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "nombreB": "Relief Sun Aqua Fresh Rice B5 (2 versiones)",
+      "variantIdA": 44018295275669,
+      "variantIdB": 45630996185237,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-009",
+      "skuB": "SKIN1004-005",
+      "nombreA": "Niacinamide 10 TXA 4 Serum",
+      "nombreB": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantIdA": 45496153407637,
+      "variantIdB": 45994920509589,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-004",
+      "skuB": "ANUA-009",
+      "nombreA": "Vitamin C Boosting Serum 30ml",
+      "nombreB": "Niacinamide 10 TXA 4 Serum",
+      "variantIdA": 46497676689557,
+      "variantIdB": 45496153407637,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ISNTREE-005",
+      "skuB": "JOSEON-015",
+      "nombreA": "Hyaluronic Acid Aqua Gel Cream",
+      "nombreB": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "variantIdA": 44773337825429,
+      "variantIdB": 44018464784533,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-020",
+      "skuB": "MEDICUBE-010",
+      "nombreA": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "nombreB": "PDRN Pink Peptide Serum",
+      "variantIdA": 46497316733077,
+      "variantIdB": 46961578967189,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DOKDO-015",
+      "skuB": "ROUND-014",
+      "nombreA": "1025 Dokdo Mascarilla Gel",
+      "nombreB": "Soybean Nourishing Mask",
+      "variantIdA": 44018089394325,
+      "variantIdB": 44017903829141,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ROUND-011",
+      "skuB": "ROUND-048",
+      "nombreA": "Mugwort Calming Mask",
+      "nombreB": "Birch Juice Moisturizing Double Gel Mask",
+      "variantIdA": 44017902682261,
+      "variantIdB": 46739737575573,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "SBM-001",
+      "skuB": "VT-015",
+      "nombreA": "Retinol Intense Reactivating Mask",
+      "nombreB": "Collagen Reedle Shot 100 2Step Mask",
+      "variantIdA": 44019157696661,
+      "variantIdB": 45988586094741,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "MEDICUBE-007",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Zero Pore Pad 2.0",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46497453277333,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-001",
+      "skuB": "DGMR-008",
+      "nombreA": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "nombreB": "Vitalizing Nutrition Hair Pack 120ml",
+      "variantIdA": 46324233011349,
+      "variantIdB": 44019325829269,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-020",
+      "skuB": "ROUND-003",
+      "nombreA": "Azelaic Acid 10 Hyaluron Redness Soothing Serum 30ml",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 46497316733077,
+      "variantIdB": 44017985486997,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "KERASYS-045",
+      "skuB": "KERASYS-050",
+      "nombreA": "Crema de Tratamiento - Keramide Heat Protection 200ml",
+      "nombreB": "Advanced Volume Ampoule Shampoo (2 Tamaños)",
+      "variantIdA": 44018971312277,
+      "variantIdB": 44026286407829,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-028",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949671573,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-003",
+      "skuB": "DGMR-005",
+      "nombreA": "Vitalizing Shampoo (3 tamaños)",
+      "nombreB": "Vitalizing Treatment (3 tamaños)",
+      "variantIdA": 44019309936789,
+      "variantIdB": 44019315605653,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ETUDE-046",
+      "skuB": "PURITO-022",
+      "nombreA": "Soon Jung 5.5 Foam Cleanser (23AD)",
+      "nombreB": "Wonder Releaf Centella Serum Unscented (2 Tamaños)",
+      "variantIdA": 44018295275669,
+      "variantIdB": 46611992936597,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DOKDO-017",
+      "skuB": "ROUND-003",
+      "nombreA": "Dokdo Toner",
+      "nombreB": "Birch Juice Moisturizing Sun Screen",
+      "variantIdA": 44026209435797,
+      "variantIdB": 44017985486997,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-022",
+      "skuB": "HOLIKA-025",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949474965,
+      "variantIdB": 44017949573269,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-010",
+      "skuB": "DGMR-012",
+      "nombreA": "DlaeSoo Hair Loss Care Shampoo (2 Tamaños)",
+      "nombreB": "DlaeSoo Intensive Nourishing Pack 200ml",
+      "variantIdA": 46324114096277,
+      "variantIdB": 44019347914901,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-002",
+      "skuB": "DGMR-011",
+      "nombreA": "Ki Gold Premium Treatment (2 Tamaños)",
+      "nombreB": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantIdA": 46324233863317,
+      "variantIdB": 46324234518677,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-001",
+      "skuB": "DGMR-011",
+      "nombreA": "Ki Gold Premium Shampoo (2 Tamaños)",
+      "nombreB": "DlaeSoo Hair Loss Care Treatment (2 Tamaños)",
+      "variantIdA": 46324233011349,
+      "variantIdB": 46324234518677,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ETUDE-004",
+      "skuB": "KS-005",
+      "nombreA": "My Lash Serum",
+      "nombreB": "SEOUL 1988 Eye Cream : Retinal Liposome 4% + Fermented Bean",
+      "variantIdA": 44018031067285,
+      "variantIdB": 46616416125077,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "ALTHEA-002",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "147 Barrier Cream 50ml",
+      "variantIdA": 46331858583701,
+      "variantIdB": 46497645887637,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "SKIN1004-015",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Madagascar Centella Tone Brightening Capsule Ampoule (3 Tamaños)",
+      "variantIdA": 46331858583701,
+      "variantIdB": 45994345627797,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ALTHEA-001",
+      "skuB": "JOSEON-015",
+      "nombreA": "345 Relief Cream (50ml)",
+      "nombreB": "Relief Sun : Rice + Probiotics (SPF50+, PA++++)",
+      "variantIdA": 46331858583701,
+      "variantIdB": 44018464784533,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "DGMR-009",
+      "skuB": "SBM-001",
+      "nombreA": "Vitalizing Nutrition Hair Pack with Hair Cap 35g",
+      "nombreB": "Retinol Intense Reactivating Mask",
+      "variantIdA": 44019331760277,
+      "variantIdB": 44019157696661,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ELI-008",
+      "skuB": "MEDICUBE-010",
+      "nombreA": "Milky Piggy Carbonated Bubble Clay Pack",
+      "nombreB": "PDRN Pink Peptide Serum",
+      "variantIdA": 45785641287829,
+      "variantIdB": 46961578967189,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "SBM-013",
+      "skuB": "VT-013",
+      "nombreA": "Retinol Intense Daily Mask",
+      "nombreB": "Cica Daily Soothing Mask (30 mascarillas)",
+      "variantIdA": 45779126583445,
+      "variantIdB": 45988574789781,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "SBM-001",
+      "skuB": "VT-017",
+      "nombreA": "Retinol Intense Reactivating Mask",
+      "nombreB": "Reti-A Reedle Shot® 100 2STEP Hydrogel Mask",
+      "variantIdA": 44019157696661,
+      "variantIdB": 45988611522709,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-002",
+      "skuB": "ANUA-008",
+      "nombreA": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "nombreB": "Heartleaf Pore Control Cleansing Oil (2 Tamaños)",
+      "variantIdA": 45495934615701,
+      "variantIdB": 45500733456533,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-002",
+      "skuB": "ANUA-023",
+      "nombreA": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "nombreB": "Heartleaf 70% Daily Lotion (2 Tamaños)",
+      "variantIdA": 45495934615701,
+      "variantIdB": 46497795309717,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "ANUA-002",
+      "skuB": "MANYO-010",
+      "nombreA": "Heartleaf 77% Soothing Toner (2 Tamaños)",
+      "nombreB": "Bifida Biome Ampoule Toner (2 Tamaños)",
+      "variantIdA": 45495934615701,
+      "variantIdB": 45637079498901,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "COSRX-012",
+      "skuB": "DOKDO-015",
+      "nombreA": "Acne Pimple Master Patch",
+      "nombreB": "1025 Dokdo Mascarilla Gel",
+      "variantIdA": 44019234078869,
+      "variantIdB": 44018089394325,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "APL-022",
+      "skuB": "APL-023",
+      "nombreA": "Collagen EGF Peptide Facial Cream 55ml",
+      "nombreB": "Collagen EGF Peptide Sheet Mask",
+      "variantIdA": 46331276165269,
+      "variantIdB": 46343745601685,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-024",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949540501,
+      "frecuencia": 3
+    },
+    {
+      "skuA": "HOLIKA-021",
+      "skuB": "HOLIKA-070",
+      "nombreA": "Pure Essence Mask (11 Tipos)",
+      "nombreB": "Pure Essence Mask (11 Tipos)",
+      "variantIdA": 44017949442197,
+      "variantIdB": 44017949737109,
+      "frecuencia": 3
+    }
+  ]
+}

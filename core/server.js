@@ -1,4 +1,4 @@
-/**
+﻿/**
  * core/server.js â€" Webhook Express genÃ©rico
  *
  * Recibe mensajes de Meta Cloud API y los enruta al tenant correspondiente.
@@ -726,6 +726,24 @@ async function handleMessage(message, value, config, business) {
     return;
   }
 
+  // 🐾 POOP CTA — solo para tenant tupibox (texto)
+  if (type === 'text' && process.env.TENANT === 'tupibox') {
+    try {
+      const poop = require('../tenants/tupibox/poop');
+      const accessToken = config.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
+      const poopResult = await poop.handleMessage(from, message, accessToken);
+      if (poopResult && poopResult.handled) {
+        logger.log(`🐾 Poop CTA detectado para ${from}`);
+        await humanDelay(poopResult.reply.length);
+        await meta.sendMessage(from, poopResult.reply, config);
+        await memory.addMessage(from, message.text?.body || '', 'user');
+        await memory.addMessage(from, poopResult.reply, 'bot');
+        return;
+      }
+    } catch (e) {
+      logger.log(`[poop] Error CTA: ${e.message}`);
+    }
+  }
   let userText = '';
   let isAudio  = false;
 
@@ -768,7 +786,28 @@ async function handleMessage(message, value, config, business) {
       return;
     }
 
-    // â"€â"€ ImÃ¡genes: analizar con Claude Vision y responder directamente â"€â"€â"€â"€
+    // 🐾 POOP ANALYSIS — solo para tenant tupibox
+    if (type === 'image' && process.env.TENANT === 'tupibox') {
+      try {
+        const poop = require('../tenants/tupibox/poop');
+        const accessToken = config.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
+        const poopResult = await poop.handleMessage(from, message, accessToken);
+        if (poopResult && poopResult.handled) {
+          logger.log(`🐾 Poop analysis: ${poopResult.result || 'waiting_photo'}`);
+          await humanDelay(poopResult.reply.length);
+          await meta.sendMessage(from, poopResult.reply, config);
+          await memory.addMessage(from, '[imagen caca]', 'user');
+          await memory.addMessage(from, poopResult.reply, 'bot');
+          if (poopResult.followUpReply) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            await meta.sendMessage(from, poopResult.followUpReply, config);
+          }
+          return;
+        }
+      } catch (e) {
+        logger.log(`[poop] Error: ${e.message}`);
+      }
+    }
     if (type === 'image' && mediaUrl) {
       try {
         const imageBuf  = await meta.downloadMedia(mediaUrl);
