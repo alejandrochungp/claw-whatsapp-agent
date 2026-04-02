@@ -64,14 +64,24 @@ function buildSystemPrompt(context) {
   if (context && Object.keys(context).length > 0) {
     prompt += '\n\n---\n\n📋 DATOS DEL CLIENTE (úsalos para personalizar):\n';
 
-    if (context.name)          prompt += `- Cliente: ${context.name}\n`;
-    if (context.dogName)       prompt += `- Perro: ${context.dogName}\n`;
-    if (context.weight)        prompt += `- Peso: ${context.weight}kg\n`;
-    if (context.ageYears)      prompt += `- Edad: ${context.ageYears} años\n`;
-    if (context.activityLevel) prompt += `- Actividad: ${context.activityLevel}\n`;
-    if (context.allergies)     prompt += `- Alergias: ${context.allergies}\n`;
-    if (context.protein)       prompt += `- Proteína preferida: ${context.protein}\n`;
-    if (context.orderNumber)   prompt += `- Pedido en seguimiento: #${context.orderNumber}\n`;
+    if (context.customerName)   prompt += `- Cliente: ${context.customerName}\n`;
+    if (context.dogName)        prompt += `- Perro: ${context.dogName}${context.breed ? ` (${context.breed})` : ''}\n`;
+    if (context.weight)         prompt += `- Peso: ${context.weight}kg\n`;
+    if (context.ageYears)       prompt += `- Edad: ${context.ageYears} años\n`;
+    if (context.ageMonths)      prompt += `- Edad: ${context.ageMonths} meses\n`;
+    if (context.activityLevel)  prompt += `- Actividad: ${context.activityLevel}\n`;
+    if (context.allergies)      prompt += `- Alergias: ${context.allergies}\n`;
+    if (context.protein)        prompt += `- Proteína preferida: ${context.protein}\n`;
+    if (context.plan)           prompt += `- Plan actual/interesado: ${context.plan}\n`;
+    if (context.city)           prompt += `- Ciudad: ${context.city}\n`;
+    if (context.orderNumber)    prompt += `- Pedido en seguimiento: #${context.orderNumber}\n`;
+
+    // Cliente recurrente de TupiBox Original
+    if (context.isReturningCustomer) {
+      prompt += `\n⭐ CLIENTE RECURRENTE: tiene ${context.totalOrders || 'varios'} pedido(s) de TupiBox Original (cajas temáticas).\n`;
+      prompt += `Reconócelo como cliente conocido. Puedes mencionar que ya conoce la marca y presentarle Fresh como el siguiente paso natural.\n`;
+      prompt += `Ejemplo: "ya que conoces TupiBox, Fresh es la versión de alimentación — mismo cuidado pero en comida diaria para [nombre perro]"\n`;
+    }
 
     // Si tenemos los 6 datos, agregar el link pre-cargado
     if (context.dogName && context.weight && (context.ageYears || context.ageMonths) && context.activityLevel) {
@@ -153,13 +163,32 @@ async function afterReply(phone, userText, botReply, history, context) {
  */
 async function enrichContext(phone, savedContext) {
   try {
-    // Buscar en Subscribers primero, luego en Leads
-    let data = await sheets.getCustomer(phone);
-    if (!data) data = await sheets.getLead(phone);
+    const logger = require('../../core/logger');
+    let data = null;
+    let source = null;
+
+    // 1. Fresh Subscribers (cliente activo Fresh — máxima prioridad)
+    data = await sheets.getCustomer(phone);
+    if (data) { source = 'fresh_subscriber'; }
+
+    // 2. Fresh Leads (prospecto Fresh)
+    if (!data) {
+      data = await sheets.getLead(phone);
+      if (data) { source = 'fresh_lead'; }
+    }
+
+    // 3. TupiBox Original (cliente histórico de cajas)
+    if (!data) {
+      data = await sheets.getOriginalCustomer(phone);
+      if (data) { source = 'tupibox_original'; }
+    }
+
     if (!data) return {};
 
-    // Mapear campos de Sheets al contexto Redis
-    const ctx = {};
+    logger.log(`[sheets] enrichContext: cliente encontrado en ${source}`);
+
+    // Mapear campos al contexto Redis
+    const ctx = { dataSource: source };
     if (data.name)          ctx.customerName   = data.name;
     if (data.dogName)       ctx.dogName        = data.dogName;
     if (data.weight)        ctx.weight         = data.weight;
@@ -171,6 +200,13 @@ async function enrichContext(phone, savedContext) {
     if (data.protein)       ctx.protein        = data.protein;
     if (data.plan)          ctx.plan           = data.plan;
     if (data.status)        ctx.status         = data.status;
+    if (data.city)          ctx.city           = data.city;
+    if (data.email)         ctx.email          = data.email;
+    // Cliente Original: indicar que es recurrente y cuántos pedidos tiene
+    if (source === 'tupibox_original') {
+      ctx.isReturningCustomer = true;
+      ctx.totalOrders = data.totalOrders;
+    }
 
     return ctx;
   } catch (e) {

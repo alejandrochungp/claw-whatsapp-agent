@@ -495,6 +495,70 @@ async function appendRow(sheetName, rowData) {
   }
 }
 
+/**
+ * Busca un cliente en TupiBox Original (cajas temáticas) por teléfono.
+ * Sheet ID fijo ya que es distinto al de Fresh.
+ */
+async function getOriginalCustomer(phoneNumber) {
+  if (!sheets) return null;
+
+  try {
+    const spreadsheetId = '1OL2NTjFGDJhurOVgwqVLdnL52RQzRBVsQPydW0pD0Cc';
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Pedidos!A:Z',
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length < 2) return null;
+
+    const headers = rows[0];
+    const phoneIdx   = headers.findIndex(h => h && h.toLowerCase() === 'phone');
+    const emailIdx   = headers.findIndex(h => h && h.toLowerCase() === 'email');
+    const nameIdx    = headers.findIndex(h => h && h.toLowerCase() === 'name');
+    const dogIdx     = headers.findIndex(h => h && h.toLowerCase().includes('nombre') || h.toLowerCase() === 'petname');
+    const breedIdx   = headers.findIndex(h => h && h.toLowerCase() === 'breed');
+    const allergyIdx = headers.findIndex(h => h && h.toLowerCase() === 'allergie');
+    const planIdx    = headers.findIndex(h => h && h.toLowerCase() === 'plan');
+    const cityIdx    = headers.findIndex(h => h && h.toLowerCase() === 'city');
+
+    if (phoneIdx === -1) return null;
+
+    // Normalizar teléfono para buscar (quitar +56, espacios, etc.)
+    const normalizePhone = (p) => p ? p.replace(/\D/g, '').replace(/^56/, '') : '';
+    const searchPhone = normalizePhone(phoneNumber);
+
+    // Buscar todas las filas del cliente (puede tener múltiples pedidos)
+    const customerRows = rows.slice(1).filter(row => {
+      const rowPhone = normalizePhone(row[phoneIdx] || '');
+      return rowPhone && rowPhone === searchPhone;
+    });
+
+    if (customerRows.length === 0) return null;
+
+    // Usar la fila más reciente (última)
+    const latest = customerRows[customerRows.length - 1];
+
+    logger.log(`[sheets] Cliente Original encontrado: ${customerRows.length} pedido(s)`);
+
+    return {
+      phone: phoneNumber,
+      name:     nameIdx  >= 0 ? latest[nameIdx]    || '' : '',
+      email:    emailIdx >= 0 ? latest[emailIdx]   || '' : '',
+      dogName:  dogIdx   >= 0 ? latest[dogIdx]     || '' : '',
+      breed:    breedIdx >= 0 ? latest[breedIdx]   || '' : '',
+      allergies: allergyIdx >= 0 ? latest[allergyIdx] || '' : '',
+      plan:     planIdx  >= 0 ? latest[planIdx]    || '' : '',
+      city:     cityIdx  >= 0 ? latest[cityIdx]    || '' : '',
+      totalOrders: customerRows.length,
+      source: 'tupibox_original',
+    };
+  } catch (e) {
+    logger.log(`[sheets] getOriginalCustomer error: ${e.message}`);
+    return null;
+  }
+}
+
 module.exports = {
   initialize,
   getCustomer,
@@ -506,6 +570,7 @@ module.exports = {
   getLead,
   updateLead,
   appendRow,
+  getOriginalCustomer,
 };
 
 // Auto-init al cargar el módulo
