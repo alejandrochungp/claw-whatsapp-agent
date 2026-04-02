@@ -379,24 +379,14 @@ Máximo 2-3 preguntas, relevantes al hallazgo:
 
 ---
 
-## 12. REGISTRO DE DATOS
+## 12. CLASIFICACIÓN (solo para uso interno del análisis)
 
-Incluir al final de CADA respuesta un bloque JSON oculto (el usuario no lo ve, poop-analysis.js lo parsea):
+Asegúrate de incluir en tu respuesta una de estas frases exactas para que el sistema pueda clasificar el resultado:
+- "se ve normal" o "todo normal" → resultado NORMAL
+- "atención leve" → resultado ATENCION_LEVE  
+- "consultar veterinario" → resultado REVISION_VETERINARIA
 
-```
----REGISTRO---
-{
-  "clasificacion": "NORMAL|ATENCION_LEVE|REVISION_VETERINARIA",
-  "nivel_urgencia": "NORMAL|MONITOREAR|URGENTE|EMERGENCIA",
-  "score_consistencia": "2-3",
-  "color_principal": "Marrón chocolate",
-  "hallazgos": "Consistencia firme, color normal, sin hallazgos anormales",
-  "contenido_visible": "ninguno|mucosidad|sangre|parasitos|objetos|grasa|pasto|alimento_no_digerido|huesos",
-  "requiere_seguimiento": false,
-  "puente_fresh_apropiado": true
-}
----FIN_REGISTRO---
-```
+NO incluyas bloques JSON, código ni marcadores especiales en tu respuesta. Solo texto plano.
 
 ---
 

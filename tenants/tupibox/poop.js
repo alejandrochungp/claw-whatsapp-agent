@@ -381,7 +381,7 @@ async function handleMessage(phone, message, accessToken) {
         new Date().toISOString(),
         phone,
         result,
-        analysisText.substring(0, 300),
+        analysisText.substring(0, 500),
         'sí',
         'whatsapp'
       ]).catch(e => console.log(`[poop] sheets log error: ${e.message}`));
@@ -389,11 +389,11 @@ async function handleMessage(phone, message, accessToken) {
       // Mensaje de continuidad según resultado
       let followUpReply = '';
       if (result === 'NORMAL') {
-        followUpReply = `buena señal! lo que ves en las heces refleja directamente cómo está procesando la comida tu perro.\n\nsi quieres entender más sobre qué revela la digestión canina y cómo la alimentación impacta en esto, te mando info por correo — sin spam, solo lo útil. te sirve?`;
+        followUpReply = `lo que comes impacta directamente en lo que ves ahí 🐾\n\nsi te interesa saber más sobre cómo la alimentación afecta la digestión de tu perro, cuéntame qué come actualmente y te doy mi opinión`;
       } else if (result === 'ATENCION_LEVE') {
-        followUpReply = `hay algunas señales que vale la pena observar. la buena noticia es que con ajustes en la alimentación se corrige en días.\n\nsi quieres, te mando por correo una guía sobre qué cambios dietarios ayudan — con base en lo que acabas de ver. te parece?`;
+        followUpReply = `este tipo de señales generalmente mejoran bastante rápido con ajustes en la alimentación.\n\nsi quieres, cuéntame qué come actualmente y vemos si hay algo que pueda estar causando esto`;
       } else if (result === 'REVISION_VETERINARIA') {
-        followUpReply = `lo más importante ahora es ir al vet, no esperes.\n\nsi quieres entender mejor qué está pasando y cómo la dieta puede apoyar la recuperación, puedo mandarte info por correo. tienes el correo a mano?`;
+        followUpReply = `lo primero es el vet, no lo postergues.\n\ncuando ya estén más tranquilos, si quieres conversamos sobre la dieta y cómo puede ayudar en la recuperación`;
       }
 
       return {
