@@ -1214,6 +1214,13 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   // 3b. Extraer perfil de piel via Claude (vocabulario controlado) — async, no bloquea
   extractAndSaveSkinProfile(from, userText, replyText, context, config).catch(() => {});
 
+  // 3c. Hook post-respuesta del tenant (opcional — solo si está definido)
+  if (typeof business.afterReply === 'function') {
+    const freshHistory = await memory.getHistory(from, 6);
+    business.afterReply(from, userText, replyText, freshHistory, context)
+      .catch(e => logger.log(`[tenant:afterReply] ${e.message}`));
+  }
+
   // 4. Delay humano
   await humanDelay(replyText.length);
 

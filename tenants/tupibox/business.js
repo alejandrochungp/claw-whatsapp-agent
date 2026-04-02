@@ -5,8 +5,10 @@
  * Mantiene paridad con el bot actual (server.js del repo viejo).
  */
 
-const fs   = require('fs');
-const path = require('path');
+const fs         = require('fs');
+const path       = require('path');
+const sheets     = require('./sheets');
+const extraction = require('./extraction');
 
 const PROMPT_BASE = fs.readFileSync(path.join(__dirname, 'prompt.md'), 'utf8');
 
@@ -112,4 +114,37 @@ function isBusinessHours() {
   return day >= 1 && day <= 5 && hour >= 10 && hour < 18;
 }
 
-module.exports = { quickReply, buildSystemPrompt };
+/**
+ * Hook post-respuesta: guardar lead + extraer datos con IA
+ * Llamado por el core después de enviar la respuesta al cliente.
+ */
+async function afterReply(phone, userText, botReply, history, context) {
+  try {
+    // 1. Capturar lead si es nuevo
+    const isNew = await sheets.isNewLead(phone);
+    if (isNew) {
+      await sheets.captureLead({
+        phone,
+        source: 'WhatsApp Bot',
+        intent: context?.lastIntent || '',
+        message: userText,
+        notes: `Primera conversación: ${new Date().toISOString()}`
+      });
+    }
+
+    // 2. Extracción inteligente si hay suficiente conversación
+    if (history.length >= 4) {
+      const extracted = await extraction.extractFromConversation(history);
+      if (Object.keys(extracted).length > 0) {
+        const mapped = extraction.mapToSheetFormat ? extraction.mapToSheetFormat(extracted) : extracted;
+        await sheets.updateLead(phone, mapped);
+      }
+    }
+  } catch (err) {
+    // No crítico — no bloquear el flujo
+    const logger = require('../../core/logger');
+    logger.log(`[sheets] afterReply error: ${err.message}`);
+  }
+}
+
+module.exports = { quickReply, buildSystemPrompt, afterReply };
