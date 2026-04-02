@@ -266,32 +266,34 @@ Si la imagen no es clara o no es caca de perro, indícalo con naturalidad.`;
 }
 
 /**
- * Tagea al lead como "interesado_fresh" en MailerLite
- * Crea el suscriptor si no existe (usando email generado desde teléfono)
+ * Tagea al lead en MailerLite.
+ * Prioridad: email real (desde Sheets) > email generado desde teléfono.
+ * Actualiza campos custom: etapa1_cta_click, interesado_fresh, analisis_caca_completado.
  */
-async function tagInMailerLite(phone) {
+async function tagInMailerLite(phone, realEmail = null) {
   if (!MAILERLITE_TOKEN) return;
 
   try {
     const phoneNormalized = phone.replace(/\D/g, '');
-    const phoneEmail = `${phoneNormalized}@whatsapp.tupibox.com`;
+    // Usar email real si lo tenemos, fallback a email generado
+    const emailToUse = realEmail || `${phoneNormalized}@whatsapp.tupibox.com`;
     let subscriberId = null;
 
-    // Buscar suscriptor por email generado desde teléfono
+    // Buscar suscriptor por email
     const searchResp = await axios.get(
-      `https://connect.mailerlite.com/api/subscribers/${encodeURIComponent(phoneEmail)}`,
+      `https://connect.mailerlite.com/api/subscribers/${encodeURIComponent(emailToUse)}`,
       { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}` } }
     ).catch(() => ({ data: null }));
 
     if (searchResp.data?.data?.id) {
       subscriberId = searchResp.data.data.id;
-      console.log(`📧 MailerLite: suscriptor encontrado ${subscriberId}`);
+      console.log(`📧 MailerLite: suscriptor encontrado (${emailToUse}) → ${subscriberId}`);
     } else {
       // Crear suscriptor nuevo
       const createResp = await axios.post(
         'https://connect.mailerlite.com/api/subscribers',
         {
-          email: phoneEmail,
+          email: emailToUse,
           fields: {
             phone: phone,
             etapa1_cta_click: 'true',
@@ -302,7 +304,7 @@ async function tagInMailerLite(phone) {
         { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
       );
       subscriberId = createResp.data?.data?.id;
-      console.log(`✅ MailerLite: nuevo suscriptor creado desde WA ${subscriberId}`);
+      console.log(`✅ MailerLite: nuevo suscriptor creado (${emailToUse}) → ${subscriberId}`);
     }
 
     if (subscriberId) {
@@ -310,6 +312,7 @@ async function tagInMailerLite(phone) {
         `https://connect.mailerlite.com/api/subscribers/${subscriberId}`,
         {
           fields: {
+            phone: phone,
             etapa1_cta_click: 'true',
             interesado_fresh: 'true',
             analisis_caca_completado: 'true'
@@ -341,8 +344,20 @@ async function handleMessage(phone, message, accessToken) {
     const newSession = { state: POOP_STATES.WAITING_PHOTO, startedAt: Date.now(), attempts: 0 };
     await setPoopSessionPersisted(phone, newSession);
 
-    // Tagear en MailerLite (async, no bloqueante)
-    tagInMailerLite(phone).catch(() => {});
+    // Obtener email real desde Sheets si existe
+    let realEmail = null;
+    try {
+      const sub = await sheets.getCustomer(phone) || await sheets.getLead(phone);
+      if (!sub) {
+        const orig = await sheets.getOriginalCustomer(phone);
+        realEmail = orig?.email || null;
+      } else {
+        realEmail = sub?.email || null;
+      }
+    } catch(e) {}
+
+    // Tagear en MailerLite con email real si lo tenemos
+    tagInMailerLite(phone, realEmail).catch(() => {});
 
     return {
       handled: true,

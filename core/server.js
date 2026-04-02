@@ -1335,6 +1335,11 @@ function getPoopAnalysisDelay() {
   const isLate     = hour >= 16; // después de las 16h no alcanza a responder en el día
   const isEarly    = hour < 9;
 
+  // Modo debug: variable POOP_DEBUG_DELAY en ms (ej: 30000 = 30 segundos)
+  if (process.env.POOP_DEBUG_DELAY) {
+    return parseInt(process.env.POOP_DEBUG_DELAY, 10);
+  }
+
   if (!isWeekend && !isLate && !isEarly) {
     // Horario hábil: delay de 2-3 horas con algo de variación natural
     const hours = 2 + Math.random(); // entre 2.0 y 3.0 horas
