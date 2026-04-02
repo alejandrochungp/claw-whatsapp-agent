@@ -246,23 +246,50 @@ ofrécele bastante agua y si en 48 horas no mejora o aparecen vómitos, pasa al 
 
 Si la imagen no es clara o no es caca de perro, indícalo con naturalidad.`;
 
-  // ai.analyzeImage(base64, mimeType, systemPrompt) — firma del core
-  const analysisText = await ai.analyzeImage(imageBase64, mimeType, systemPrompt);
+  // Prompt separado para extraer metadatos estructurados (no se envía al usuario)
+  const metaPrompt = `Analiza esta imagen de heces caninas y responde SOLO con un JSON válido, sin texto adicional ni explicaciones.
 
+Formato exacto requerido:
+{
+  "clasificacion": "NORMAL|ATENCION_LEVE|REVISION_VETERINARIA",
+  "nivel_urgencia": "NORMAL|MONITOREAR|URGENTE|EMERGENCIA",
+  "score_consistencia": "1-2|3|4-5|6|7",
+  "color_principal": "marron_chocolate|marron_claro|amarillo|verde|negro|rojo|gris|blanco",
+  "contenido_visible": "ninguno|mucosidad|sangre|parasitos|grasa|pasto|alimento_no_digerido",
+  "posible_causa": "breve descripcion max 60 chars",
+  "requiere_seguimiento": true
+}
+
+Solo el JSON. Sin texto antes ni después.`;
+
+  // Llamada 1: texto para el usuario
+  const analysisText = await ai.analyzeImage(imageBase64, mimeType, systemPrompt);
   if (!analysisText) throw new Error('Claude no retornó análisis');
 
-  // Clasificar resultado
-  const lower = analysisText.toLowerCase();
-  let result;
-  if (lower.includes('consultar veterinario') || lower.includes('visitar al vet') || lower.includes('veterinario urgente')) {
-    result = 'REVISION_VETERINARIA';
-  } else if (lower.includes('atención leve') || lower.includes('atencion leve') || lower.includes('mejorar')) {
-    result = 'ATENCION_LEVE';
-  } else {
-    result = 'NORMAL';
+  // Llamada 2: metadatos estructurados
+  let meta = {};
+  try {
+    const metaRaw = await ai.analyzeImage(imageBase64, mimeType, metaPrompt);
+    const jsonMatch = metaRaw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) meta = JSON.parse(jsonMatch[0]);
+  } catch(e) {
+    console.log(`[poop] meta extracción falló: ${e.message}`);
   }
 
-  return { analysisText, result };
+  // Clasificar resultado (preferir meta.clasificacion, fallback por texto)
+  const lower = analysisText.toLowerCase();
+  let result = meta.clasificacion || null;
+  if (!result) {
+    if (lower.includes('consultar veterinario') || lower.includes('visitar al vet') || lower.includes('veterinario urgente')) {
+      result = 'REVISION_VETERINARIA';
+    } else if (lower.includes('atención leve') || lower.includes('atencion leve') || lower.includes('hay que revisarlo')) {
+      result = 'ATENCION_LEVE';
+    } else {
+      result = 'NORMAL';
+    }
+  }
+
+  return { analysisText, result, meta };
 }
 
 /**
@@ -328,6 +355,90 @@ async function tagInMailerLite(phone, realEmail = null) {
 }
 
 /**
+ * Tagea el resultado del análisis en MailerLite (llamado después del análisis)
+ * Busca el suscriptor por teléfono (campo phone) para actualizarlo
+ */
+async function tagInMailerLiteResult(phone, result) {
+  if (!MAILERLITE_TOKEN) return;
+  try {
+    const phoneNormalized = phone.replace(/\D/g, '');
+    // Intentar encontrar por email generado o email real (ambas variantes)
+    const emailsToTry = [
+      `${phoneNormalized}@whatsapp.tupibox.com`,
+    ];
+    // También buscar por email real si lo tenemos en Sheets
+    try {
+      const sub = await sheets.getCustomer(phone) || await sheets.getLead(phone);
+      const orig = sub ? null : await sheets.getOriginalCustomer(phone);
+      const realEmail = sub?.email || orig?.email;
+      if (realEmail) emailsToTry.unshift(realEmail); // priorizar email real
+    } catch(e) {}
+
+    let subscriberId = null;
+    for (const email of emailsToTry) {
+      const r = await axios.get(
+        `https://connect.mailerlite.com/api/subscribers/${encodeURIComponent(email)}`,
+        { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}` } }
+      ).catch(() => ({ data: null }));
+      if (r.data?.data?.id) { subscriberId = r.data.data.id; break; }
+    }
+
+    if (!subscriberId) {
+      console.log(`[poop] MailerLite: no se encontró suscriptor para ${phone}, creando con email generado`);
+      const created = await axios.post('https://connect.mailerlite.com/api/subscribers',
+        { email: `${phoneNormalized}@whatsapp.tupibox.com`, fields: { phone, canal_origen: 'whatsapp' } },
+        { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
+      );
+      subscriberId = created.data?.data?.id;
+    }
+
+    if (!subscriberId) return;
+
+    const tagField = result === 'NORMAL' ? 'caca_normal'
+      : result === 'ATENCION_LEVE' ? 'caca_atencion_leve'
+      : 'caca_revision_vet';
+
+    await axios.put(
+      `https://connect.mailerlite.com/api/subscribers/${subscriberId}`,
+      { fields: { analisis_caca_completado: 'true', [tagField]: 'true', interesado_fresh: 'true' } },
+      { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
+    );
+    console.log(`✅ MailerLite post-análisis: ${phone} → ${tagField}`);
+  } catch(err) {
+    console.error(`⚠️ MailerLite post-análisis error: ${err.message}`);
+  }
+}
+
+/**
+ * Postea el análisis al canal Slack para supervisión
+ */
+async function postPoopToSlack(phone, result, analysisText, meta) {
+  const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN;
+  const SLACK_CHANNEL = process.env.SLACK_CHANNEL_ID || 'C06BWBXMHSQ';
+  if (!SLACK_TOKEN) return;
+
+  const emoji = result === 'NORMAL' ? '🟢' : result === 'ATENCION_LEVE' ? '🟡' : '🔴';
+  const urgencia = meta?.nivel_urgencia || result;
+  const score = meta?.score_consistencia ? `Score ${meta.score_consistencia}` : '';
+  const color = meta?.color_principal ? `Color: ${meta.color_principal}` : '';
+  const contenido = meta?.contenido_visible && meta.contenido_visible !== 'ninguno' ? `Contenido: ${meta.contenido_visible}` : '';
+
+  const metaLine = [score, color, contenido].filter(Boolean).join(' | ');
+
+  const text = `${emoji} *Análisis de caca* — \`${phone}\`\n*Resultado:* ${result} (${urgencia})\n${metaLine ? `*Detalles:* ${metaLine}\n` : ''}*Posible causa:* ${meta?.posible_causa || 'no determinada'}\n\n_${analysisText.substring(0, 300).replace(/\n/g, ' ')}_`;
+
+  try {
+    await axios.post('https://slack.com/api/chat.postMessage',
+      { channel: SLACK_CHANNEL, text, mrkdwn: true },
+      { headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json' } }
+    );
+    console.log(`✅ [poop] Slack notificado`);
+  } catch(e) {
+    console.log(`[poop] Slack error: ${e.message}`);
+  }
+}
+
+/**
  * FUNCIÓN PRINCIPAL
  * Procesa un mensaje entrante y determina si es parte del flujo de análisis
  *
@@ -371,20 +482,31 @@ async function handleMessage(phone, message, accessToken) {
 
     try {
       const { base64, mimeType } = await downloadWhatsAppImage(message.image.id, accessToken);
-      const { analysisText, result } = await analyzePoopImage(base64, mimeType);
+      const { analysisText, result, meta } = await analyzePoopImage(base64, mimeType);
       await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
 
       console.log(`✅ [poop] Análisis completado para ${phone}: ${result}`);
 
-      // Registrar en Sheets — hoja "Análisis Caca"
+      // Registrar en Sheets con metadatos estructurados
       sheets.appendRow('Análisis Caca', [
         new Date().toISOString(),
         phone,
         result,
+        meta.nivel_urgencia || '',
+        meta.score_consistencia || '',
+        meta.color_principal || '',
+        meta.contenido_visible || '',
+        meta.posible_causa || '',
+        meta.requiere_seguimiento ? 'sí' : 'no',
         analysisText.substring(0, 500),
-        'sí',
         'whatsapp'
       ]).catch(e => console.log(`[poop] sheets log error: ${e.message}`));
+
+      // Tagear resultado en MailerLite post-análisis
+      tagInMailerLiteResult(phone, result).catch(() => {});
+
+      // Notificar Slack para supervisión
+      postPoopToSlack(phone, result, analysisText, meta).catch(() => {});
 
       // Mensaje de continuidad según resultado
       let followUpReply = '';
