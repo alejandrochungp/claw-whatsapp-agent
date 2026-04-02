@@ -37,7 +37,8 @@ async function initRedis() {
 initRedis().catch(() => {});
 
 // ─── Helpers Redis ───────────────────────────────────────────────────────────
-const key = (phone) => `conv:${phone}`;
+const TENANT_PREFIX = process.env.TENANT ? `${process.env.TENANT}:` : '';
+const key = (phone) => `${TENANT_PREFIX}conv:${phone}`;
 
 async function redisGet(phone) {
   try {
