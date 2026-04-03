@@ -546,6 +546,12 @@ function start(config, business) {
     }).catch(e => logger.log(`[catalog] Error precalentando: ${e.message}`));
     // Iniciar cron de aprendizaje diario (20:00 Santiago)
     learning.startDailyCron();
+    // Recuperar análisis de caca pendientes tras deploy (cola Redis)
+    setTimeout(() => {
+      recoverPendingPoopDeliveries()
+        .then(() => logger.log('[poop] Recovery check completado'))
+        .catch(e => logger.log(`[poop] Recovery error: ${e.message}`));
+    }, 5000); // 5s para que Redis conecte primero
     // Cron diario de estadísticas upsell (09:00 Lun-Vie Santiago)
     try {
       const { CronJob } = require('cron');
@@ -801,10 +807,15 @@ async function handleMessage(message, value, config, business) {
           await memory.addMessage(from, '[imagen caca]', 'user');
           await memory.addMessage(from, poopResult.reply, 'bot');
 
-          // Si hay análisis diferido (delayedReply): enviar con delay realista 2-3h hábiles
+          // Si hay análisis diferido (delayedReply): enviar con delay ~2h, solo 08:00-22:00 Chile
           if (poopResult.delayedReply) {
-            const delayMs = getPoopAnalysisDelay();
-            logger.log(`🐾 Análisis programado en ${Math.round(delayMs/60000)} min para ${from}`);
+            const delayMs  = getPoopAnalysisDelay();
+            const deliverAt = new Date(Date.now() + delayMs).toISOString();
+            logger.log(`🐾 Análisis programado en ${Math.round(delayMs/60000)} min para ${from} (entrega: ${deliverAt})`);
+
+            // Persistir en Redis para sobrevivir deploys
+            schedulePendingPoopDelivery(from, poopResult.delayedReply, poopResult.followUpReply, deliverAt, config);
+
             setTimeout(async () => {
               try {
                 await meta.sendMessage(from, poopResult.delayedReply, config);
@@ -813,6 +824,8 @@ async function handleMessage(message, value, config, business) {
                   await new Promise(r => setTimeout(r, 4000));
                   await meta.sendMessage(from, poopResult.followUpReply, config);
                 }
+                // Limpiar de Redis al entregar
+                clearPendingPoopDelivery(from);
               } catch (e) {
                 logger.log(`[poop] Error enviando análisis diferido: ${e.message}`);
               }
@@ -1326,39 +1339,94 @@ function humanDelay(len) {
  * Si ya es tarde (>16h) o fin de semana, programa para las 10h del próximo día hábil.
  */
 function getPoopAnalysisDelay() {
-  const now = new Date();
-  const chile = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
-  const hour = chile.getHours();
-  const day  = chile.getDay(); // 0=dom, 6=sab
-
-  const isWeekend  = day === 0 || day === 6;
-  const isLate     = hour >= 16; // después de las 16h no alcanza a responder en el día
-  const isEarly    = hour < 9;
-
   // Modo debug: variable POOP_DEBUG_DELAY en ms (ej: 30000 = 30 segundos)
   if (process.env.POOP_DEBUG_DELAY) {
     return parseInt(process.env.POOP_DEBUG_DELAY, 10);
   }
 
-  if (!isWeekend && !isLate && !isEarly) {
-    // Horario hábil: delay de 2-3 horas con algo de variación natural
-    const hours = 2 + Math.random(); // entre 2.0 y 3.0 horas
-    return Math.round(hours * 60 * 60 * 1000);
+  const DELIVERY_DELAY_MS = 2 * 60 * 60 * 1000; // 2 horas fijas
+  const HORA_INICIO = 8;   // 08:00 Chile
+  const HORA_FIN    = 22;  // 22:00 Chile (no se entrega después de esta hora)
+
+  const now       = new Date();
+  const chileNow  = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const tentative = new Date(chileNow.getTime() + DELIVERY_DELAY_MS);
+  const hour      = tentative.getHours();
+
+  // Si la entrega tentativa cae dentro del horario permitido (08:00–22:00) → OK
+  // Funciona cualquier día de la semana (sábado y domingo incluidos)
+  if (hour >= HORA_INICIO && hour < HORA_FIN) {
+    return DELIVERY_DELAY_MS;
   }
 
-  // Fuera de horario: programar para las 10:00 del próximo día hábil
-  const next = new Date(chile);
-  next.setHours(10, 0 + Math.floor(Math.random() * 30), 0, 0); // 10:00-10:30
+  // Fuera de horario → posponer a las 08:00 del día siguiente (cualquier día)
+  const next = new Date(tentative);
+  if (hour >= HORA_FIN) {
+    next.setDate(next.getDate() + 1);
+  }
+  next.setHours(HORA_INICIO, Math.floor(Math.random() * 20), 0, 0); // 08:00–08:20 con variación natural
 
-  // Avanzar al siguiente día hábil
-  let daysAhead = 1;
-  if (isLate || (!isEarly && !isWeekend)) daysAhead = 1;
-  const nextDay = day + daysAhead;
-  if (nextDay === 6) daysAhead += 2; // sábado → lunes
-  if (nextDay === 7) daysAhead += 1; // domingo → lunes
-  next.setDate(next.getDate() + daysAhead);
+  return next.getTime() - chileNow.getTime();
+}
 
-  return next.getTime() - Date.now();
+// ============================================================
+// COLA PERSISTENTE DE ANÁLISIS DIFERIDOS (sobrevive deploys Railway)
+// Clave Redis: poop:queue:{phone}
+// ============================================================
+async function schedulePendingPoopDelivery(phone, analysisText, followUp, deliverAt, config) {
+  const redisClient = require('./memory').getRedisClient ? require('./memory').getRedisClient() : null;
+  if (!redisClient) return;
+  try {
+    const payload = JSON.stringify({ analysisText, followUp: followUp || null, deliverAt, config });
+    await redisClient.setEx(`poop:queue:${phone}`, 86400, payload); // TTL 24h
+    logger.log(`[poop] Cola Redis: análisis guardado para ${phone}`);
+  } catch(e) { logger.log(`[poop] Cola Redis error: ${e.message}`); }
+}
+
+async function clearPendingPoopDelivery(phone) {
+  const redisClient = require('./memory').getRedisClient ? require('./memory').getRedisClient() : null;
+  if (!redisClient) return;
+  try { await redisClient.del(`poop:queue:${phone}`); } catch {}
+}
+
+async function recoverPendingPoopDeliveries() {
+  const redisClient = require('./memory').getRedisClient ? require('./memory').getRedisClient() : null;
+  if (!redisClient) return;
+  try {
+    const keys = await redisClient.keys('poop:queue:*');
+    if (!keys.length) return;
+    logger.log(`[poop] Recovery: ${keys.length} análisis pendientes encontrados`);
+    for (const key of keys) {
+      const phone = key.replace('poop:queue:', '');
+      const val = await redisClient.get(key);
+      if (!val) continue;
+      const item = JSON.parse(val);
+      const deliverAt = new Date(item.deliverAt);
+      const now = new Date();
+      let delayMs = deliverAt.getTime() - now.getTime();
+
+      // Si ya pasó → recalcular respetando horario
+      if (delayMs <= 0) delayMs = getPoopAnalysisDelay();
+
+      // Si la nueva hora cae fuera del horario → ajustar
+      const chileDeliverAt = new Date(now.getTime() + delayMs);
+      const h = parseInt(chileDeliverAt.toLocaleString('en-US', { timeZone: 'America/Santiago', hour: 'numeric', hour12: false }));
+      if (h >= 22 || h < 8) delayMs = getPoopAnalysisDelay();
+
+      logger.log(`[poop] Recovery: ${phone} → entrega en ${Math.round(delayMs/60000)} min`);
+      setTimeout(async () => {
+        try {
+          await meta.sendMessage(phone, item.analysisText, item.config);
+          if (item.followUp) {
+            await new Promise(r => setTimeout(r, 4000));
+            await meta.sendMessage(phone, item.followUp, item.config);
+          }
+          await redisClient.del(key);
+          logger.log(`✅ [poop] Recovery entregado a ${phone}`);
+        } catch(e) { logger.log(`❌ [poop] Recovery error ${phone}: ${e.message}`); }
+      }, delayMs);
+    }
+  } catch(e) { logger.log(`[poop] recoverPending error: ${e.message}`); }
 }
 
 async function postSlackMessage(channel, thread_ts, text) {
