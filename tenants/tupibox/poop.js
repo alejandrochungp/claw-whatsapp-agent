@@ -26,12 +26,16 @@ const sheets = require('./sheets');
 const CLAUDE_API_KEY  = process.env.CLAUDE_API_KEY;
 const MAILERLITE_TOKEN = process.env.MAILERLITE_TOKEN;
 
+// ID del grupo MailerLite que dispara el funnel evergreen
+const FRESH_LEADS_GROUP_ID = '183752528576382954';
+
 // Estados de conversación de análisis de caca
 const POOP_STATES = {
   IDLE:          'idle',           // Sin análisis activo
   WAITING_PHOTO: 'waiting_photo',  // Esperando foto tras CTA
   ANALYZING:     'analyzing',      // Procesando imagen
-  DONE:          'done'            // Análisis completado
+  DONE:          'done',           // Análisis completado
+  WAITING_EMAIL: 'waiting_email'   // Esperando email para suscribir al funnel
 };
 
 // Cache de estados por número de teléfono
@@ -446,6 +450,60 @@ async function postPoopToSlack(phone, result, analysisText, meta) {
 }
 
 /**
+ * Agrega al lead al grupo "TupiBox Fresh Leads" en MailerLite.
+ * Esto dispara automáticamente el funnel evergreen de correos.
+ * Si el suscriptor no existe, lo crea con el email dado.
+ */
+async function addToFreshLeadsGroup(email, phone, petName = null) {
+  if (!MAILERLITE_TOKEN) return;
+  try {
+    const phoneNormalized = phone.replace(/\D/g, '');
+
+    // Buscar o crear suscriptor
+    let subscriberId = null;
+    const searchResp = await axios.get(
+      `https://connect.mailerlite.com/api/subscribers/${encodeURIComponent(email)}`,
+      { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}` } }
+    ).catch(() => ({ data: null }));
+
+    if (searchResp.data?.data?.id) {
+      subscriberId = searchResp.data.data.id;
+      logger.log(`[poop] MailerLite: suscriptor encontrado (${email}) → ${subscriberId}`);
+    } else {
+      const fields = { phone: phoneNormalized, canal_origen: 'whatsapp', interesado_fresh: 'true' };
+      if (petName) fields.petname = petName;
+      const createResp = await axios.post(
+        'https://connect.mailerlite.com/api/subscribers',
+        { email, fields },
+        { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
+      );
+      subscriberId = createResp.data?.data?.id;
+      logger.log(`[poop] MailerLite: nuevo suscriptor creado (${email}) → ${subscriberId}`);
+    }
+
+    if (!subscriberId) return;
+
+    // Agregar al grupo que dispara el funnel evergreen
+    await axios.post(
+      `https://connect.mailerlite.com/api/subscribers/${subscriberId}/groups/${FRESH_LEADS_GROUP_ID}`,
+      {},
+      { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
+    );
+    logger.log(`✅ [poop] ${email} agregado a TupiBox Fresh Leads → funnel disparado`);
+  } catch(err) {
+    logger.log(`⚠️ [poop] addToFreshLeadsGroup error: ${err.message}`);
+  }
+}
+
+/**
+ * Detecta si un texto es un email válido
+ */
+function extractEmail(text) {
+  const match = text && text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  return match ? match[0].toLowerCase() : null;
+}
+
+/**
  * FUNCIÓN PRINCIPAL
  * Procesa un mensaje entrante y determina si es parte del flujo de análisis
  *
@@ -456,6 +514,33 @@ async function postPoopToSlack(phone, result, analysisText, meta) {
  */
 async function handleMessage(phone, message, accessToken) {
   const session = await getPoopSessionPersisted(phone);
+
+  // CASO 0: Estamos esperando el email post-análisis
+  if (session.state === POOP_STATES.WAITING_EMAIL && message.type === 'text') {
+    const email = extractEmail(message.text?.body);
+    if (email) {
+      // Email válido → agregar al grupo y disparar funnel
+      await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.IDLE });
+      addToFreshLeadsGroup(email, phone, session.petName).catch(() => {});
+      return {
+        handled: true,
+        reply: `perfecto, te mando la info a ${email} 📬\n\nen unos minutos llega un correo con lo que necesitas saber sobre la digestión y alimentación de tu perro`
+      };
+    } else if (/no|mejor no|sin correo|no tengo|skip/i.test(message.text?.body)) {
+      // Lead no quiere dar email
+      await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.IDLE });
+      return {
+        handled: true,
+        reply: `no hay problema! si en algún momento quieres más info, acá estaré 🐾`
+      };
+    } else {
+      // Texto no es email ni negativa → recordar que pedimos email
+      return {
+        handled: true,
+        reply: `no logré leer tu correo, ¿puedes escribirlo de nuevo? (ej: tunombre@gmail.com)`
+      };
+    }
+  }
 
   // CASO 1: Mensaje de texto con CTA → iniciar flujo
   if (message.type === 'text' && await isPoopCTAMessage(message.text?.body)) {
@@ -490,7 +575,6 @@ async function handleMessage(phone, message, accessToken) {
     try {
       const { base64, mimeType } = await downloadWhatsAppImage(message.image.id, accessToken);
       const { analysisText, result, meta } = await analyzePoopImage(base64, mimeType);
-      await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
 
       logger.log(`✅ [poop] Análisis completado para ${phone}: ${result}`);
 
@@ -515,14 +599,46 @@ async function handleMessage(phone, message, accessToken) {
       // Notificar Slack para supervisión
       postPoopToSlack(phone, result, analysisText, meta).catch(() => {});
 
+      // Buscar email real del lead en Sheets
+      let realEmail = null;
+      let petName = null;
+      try {
+        const sub = await sheets.getCustomer(phone) || await sheets.getLead(phone);
+        const orig = sub ? null : await sheets.getOriginalCustomer(phone);
+        realEmail = sub?.email || orig?.email || null;
+        petName = sub?.dogName || orig?.dogName || null;
+      } catch(e) {}
+
+      // Si tenemos email real → suscribir directo al funnel sin preguntar
+      if (realEmail && result !== 'REVISION_VETERINARIA') {
+        addToFreshLeadsGroup(realEmail, phone, petName).catch(() => {});
+        logger.log(`[poop] funnel disparado directamente para ${realEmail}`);
+      }
+
       // Mensaje de continuidad según resultado
       let followUpReply = '';
       if (result === 'NORMAL') {
-        followUpReply = `lo que comes impacta directamente en lo que ves ahí 🐾\n\nsi te interesa saber más sobre cómo la alimentación afecta la digestión de tu perro, cuéntame qué come actualmente y te doy mi opinión`;
+        if (realEmail) {
+          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\nte mandé a ${realEmail} info sobre cómo la alimentación impacta en esto — revisa tu correo en unos minutos`;
+        } else {
+          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\ntengo más info sobre cómo la alimentación impacta en esto, ¿a qué correo te la mando?`;
+        }
       } else if (result === 'ATENCION_LEVE') {
-        followUpReply = `este tipo de señales generalmente mejoran bastante rápido con ajustes en la alimentación.\n\nsi quieres, cuéntame qué come actualmente y vemos si hay algo que pueda estar causando esto`;
+        if (realEmail) {
+          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\nte mandé a ${realEmail} una guía con qué cambios dietarios ayudan — revisa tu correo`;
+        } else {
+          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\ntengo una guía con qué cambios dietarios ayudan, ¿a qué correo te la mando?`;
+        }
       } else if (result === 'REVISION_VETERINARIA') {
-        followUpReply = `lo primero es el vet, no lo postergues.\n\ncuando ya estén más tranquilos, si quieres conversamos sobre la dieta y cómo puede ayudar en la recuperación`;
+        // No pedir email si hay urgencia veterinaria — priorizar el vet
+        followUpReply = `lo primero es el vet, no lo postergues\n\ncuando estén más tranquilos, si quieres conversamos sobre la dieta y cómo puede apoyar la recuperación`;
+      }
+
+      // Si no tiene email y no es urgencia → poner en estado WAITING_EMAIL
+      if (!realEmail && result !== 'REVISION_VETERINARIA') {
+        await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.WAITING_EMAIL, result, petName });
+      } else {
+        await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
       }
 
       return {
