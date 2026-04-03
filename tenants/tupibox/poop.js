@@ -305,7 +305,7 @@ Solo el JSON. Sin texto antes ni después.`;
  * Actualiza campos custom: etapa1_cta_click, interesado_fresh, analisis_caca_completado.
  */
 async function tagInMailerLite(phone, realEmail = null) {
-  if (!MAILERLITE_TOKEN) return;
+  if (!MAILERLITE_TOKEN) { logger.log(`[poop] MailerLite SKIP — MAILERLITE_TOKEN no configurado`); return; }
 
   try {
     const phoneNormalized = phone.replace(/\D/g, '');
@@ -366,7 +366,7 @@ async function tagInMailerLite(phone, realEmail = null) {
  * Busca el suscriptor por teléfono (campo phone) para actualizarlo
  */
 async function tagInMailerLiteResult(phone, result) {
-  if (!MAILERLITE_TOKEN) return;
+  if (!MAILERLITE_TOKEN) { logger.log(`[poop] MailerLite result SKIP — MAILERLITE_TOKEN no configurado`); return; }
   try {
     const phoneNormalized = phone.replace(/\D/g, '');
     // Intentar encontrar por email generado o email real (ambas variantes)
