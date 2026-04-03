@@ -115,6 +115,14 @@ function loadContextDoc() {
 }
 
 /**
+ * Detecta si el mensaje viene con ref del funnel de email (ya está suscrito).
+ * Si contiene "ref:funnel_e1" → no pedir email post-análisis.
+ */
+function isFromEmailFunnel(messageText) {
+  return messageText && /ref:funnel_e1/i.test(messageText);
+}
+
+/**
  * Detecta si un mensaje es un CTA de análisis de caca usando Claude.
  * Costo: ~$0.00005 USD por mensaje (Claude Haiku, solo texto corto).
  */
@@ -544,7 +552,8 @@ async function handleMessage(phone, message, accessToken) {
 
   // CASO 1: Mensaje de texto con CTA → iniciar flujo
   if (message.type === 'text' && await isPoopCTAMessage(message.text?.body)) {
-    const newSession = { state: POOP_STATES.WAITING_PHOTO, startedAt: Date.now(), attempts: 0 };
+    const fromFunnel = isFromEmailFunnel(message.text?.body);
+    const newSession = { state: POOP_STATES.WAITING_PHOTO, startedAt: Date.now(), attempts: 0, fromFunnel };
     await setPoopSessionPersisted(phone, newSession);
 
     // Obtener email real desde Sheets si existe
@@ -609,33 +618,42 @@ async function handleMessage(phone, message, accessToken) {
         petName = sub?.dogName || orig?.dogName || null;
       } catch(e) {}
 
-      // Si tenemos email real → suscribir directo al funnel sin preguntar
-      if (realEmail && result !== 'REVISION_VETERINARIA') {
+      const fromFunnel = session.fromFunnel || false;
+
+      // Lead orgánico (no viene del email) + tiene email en Sheets → suscribir al funnel
+      if (!fromFunnel && realEmail && result !== 'REVISION_VETERINARIA') {
         addToFreshLeadsGroup(realEmail, phone, petName).catch(() => {});
-        logger.log(`[poop] funnel disparado directamente para ${realEmail}`);
+        logger.log(`[poop] funnel disparado para lead orgánico: ${realEmail}`);
       }
 
       // Mensaje de continuidad según resultado
       let followUpReply = '';
       if (result === 'NORMAL') {
-        if (realEmail) {
-          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\nte mandé a ${realEmail} info sobre cómo la alimentación impacta en esto — revisa tu correo en unos minutos`;
+        if (fromFunnel) {
+          // Ya está en el funnel — no pedir email, E2 llega solo en 3 días
+          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\nen unos días te mando más info sobre cómo la alimentación impacta en esto`;
+        } else if (realEmail) {
+          // Orgánico con email conocido → funnel disparado
+          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\nte mandé a ${realEmail} info sobre cómo la alimentación impacta en esto — revisa tu correo`;
         } else {
-          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\ntengo más info sobre cómo la alimentación impacta en esto, ¿a qué correo te la mando?`;
+          // Orgánico sin email → pedir
+          followUpReply = `lo que se ve en las heces refleja directamente la digestión 🐾\n\ntengo más info sobre esto, ¿a qué correo te la mando?`;
         }
       } else if (result === 'ATENCION_LEVE') {
-        if (realEmail) {
-          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\nte mandé a ${realEmail} una guía con qué cambios dietarios ayudan — revisa tu correo`;
+        if (fromFunnel) {
+          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\nen unos días te mando info sobre qué cambios dietarios ayudan`;
+        } else if (realEmail) {
+          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\nte mandé a ${realEmail} una guía con qué cambios ayudan — revisa tu correo`;
         } else {
-          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\ntengo una guía con qué cambios dietarios ayudan, ¿a qué correo te la mando?`;
+          followUpReply = `este tipo de señales mejoran rápido con ajustes en la alimentación\n\ntengo una guía sobre qué cambios dietarios ayudan, ¿a qué correo te la mando?`;
         }
       } else if (result === 'REVISION_VETERINARIA') {
-        // No pedir email si hay urgencia veterinaria — priorizar el vet
+        // Nunca pedir email si hay urgencia veterinaria
         followUpReply = `lo primero es el vet, no lo postergues\n\ncuando estén más tranquilos, si quieres conversamos sobre la dieta y cómo puede apoyar la recuperación`;
       }
 
-      // Si no tiene email y no es urgencia → poner en estado WAITING_EMAIL
-      if (!realEmail && result !== 'REVISION_VETERINARIA') {
+      // Estado final: WAITING_EMAIL solo si es orgánico, sin email, y no es urgencia
+      if (!fromFunnel && !realEmail && result !== 'REVISION_VETERINARIA') {
         await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.WAITING_EMAIL, result, petName });
       } else {
         await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
