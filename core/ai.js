@@ -119,28 +119,44 @@ function getStats() {
  */
 /**
  * Analizar una imagen con Claude Vision.
- * Recibe el systemPrompt del tenant para mantener el tono correcto.
+ *
+ * Si se pasa systemPrompt, se usa TAL CUAL (el tenant controla todo).
+ * Si no se pasa, se usa un prompt genérico de fallback.
+ *
+ * @param {string} base64      - imagen en base64
+ * @param {string} mimeType    - tipo MIME (image/jpeg, image/png, etc.)
+ * @param {string} systemPrompt - prompt completo del tenant (opcional)
+ * @param {object} opts        - opciones extra: { maxTokens, userText }
+ * @returns {string|null}      - texto de respuesta de Claude
  */
-async function analyzeImage(base64, mimeType, systemPrompt) {
+async function analyzeImage(base64, mimeType, systemPrompt, opts = {}) {
   if (!CLAUDE_API_KEY) return null;
   try {
-    // Usar el system prompt del tenant + instrucción de análisis de imagen
-    const imageSystem = (systemPrompt || '') +
-      '\n\nEl cliente acaba de enviarte una imagen. Analízala brevemente y responde de forma natural. ' +
-      'Si es un producto, ayuda a identificarlo. Si es una consulta de piel, da un consejo breve y sugiere venir a la tienda para asesoría gratuita. ' +
-      'Máximo 2-3 oraciones. Usa el mismo tono natural que usarías en cualquier otro mensaje.';
+    // Si el tenant pasa su propio systemPrompt, respetarlo completamente.
+    // Si no, usar fallback genérico para análisis de imágenes de clientes.
+    const imageSystem = systemPrompt
+      ? systemPrompt
+      : (
+        'Eres un asistente de atención al cliente. ' +
+        'El cliente acaba de enviarte una imagen. Analízala brevemente y responde de forma natural. ' +
+        'Si es un producto, ayuda a identificarlo. Si es una consulta de piel, da un consejo breve y sugiere venir a la tienda para asesoría gratuita. ' +
+        'Máximo 2-3 oraciones. Usa el mismo tono natural que usarías en cualquier otro mensaje.'
+      );
+
+    const userText = opts.userText || 'qué ves en esta imagen?';
+    const maxTokens = opts.maxTokens || (systemPrompt ? 600 : 300);
 
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
         model: CLAUDE_MODEL,
-        max_tokens: 300,
+        max_tokens: maxTokens,
         system: imageSystem,
         messages: [{
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-            { type: 'text', text: 'qué ves en esta imagen?' }
+            { type: 'text', text: userText }
           ]
         }]
       },

@@ -262,15 +262,21 @@ Formato exacto requerido:
 
 Solo el JSON. Sin texto antes ni después.`;
 
-  // Llamada 1: texto para el usuario
-  const analysisText = await ai.analyzeImage(imageBase64, mimeType, systemPrompt);
+  // Llamada 1: texto para el usuario (máx 600 tokens = ~180 palabras)
+  const analysisText = await ai.analyzeImage(imageBase64, mimeType, systemPrompt, {
+    maxTokens: 600,
+    userText: 'Analiza esta imagen de heces caninas siguiendo las instrucciones del sistema.'
+  });
   if (!analysisText) throw new Error('Claude no retornó análisis');
 
-  // Llamada 2: metadatos estructurados
+  // Llamada 2: metadatos estructurados (máx 200 tokens, solo JSON)
   let meta = {};
   try {
-    const metaRaw = await ai.analyzeImage(imageBase64, mimeType, metaPrompt);
-    const jsonMatch = metaRaw.match(/\{[\s\S]*\}/);
+    const metaRaw = await ai.analyzeImage(imageBase64, mimeType, metaPrompt, {
+      maxTokens: 200,
+      userText: 'Analiza esta imagen y devuelve solo el JSON con los metadatos solicitados.'
+    });
+    const jsonMatch = metaRaw?.match(/\{[\s\S]*\}/);
     if (jsonMatch) meta = JSON.parse(jsonMatch[0]);
   } catch(e) {
     console.log(`[poop] meta extracción falló: ${e.message}`);
