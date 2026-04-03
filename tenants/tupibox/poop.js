@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tenants/tupibox/poop.js - Módulo de análisis de caca para TupiBox Fresh
  *
  * Adaptado desde tupibox-fresh/webhook/poop-analysis.js para el repo multi-tenant.
@@ -18,7 +18,8 @@ const fs    = require('fs');
 const path  = require('path');
 
 // Módulo AI del core (usa Claude Vision internamente)
-const ai = require('../../core/ai');
+const ai     = require('../../core/ai');
+const logger = require('../../core/logger');
 // Sheets del tenant para registrar análisis
 const sheets = require('./sheets');
 
@@ -45,7 +46,7 @@ try {
     if (createClient) {
       redisClient = createClient({ url: process.env.REDIS_URL });
       redisClient.connect().catch(e => {
-        console.error('[poop] Redis no disponible, usando RAM:', e.message);
+        logger.log('[poop] Redis no disponible, usando RAM:', e.message);
         redisClient = null;
       });
     }
@@ -146,7 +147,7 @@ async function isPoopCTAMessage(messageText) {
     return answer === 'SI' || answer === 'SÍ';
   } catch (e) {
     // Si Claude falla, fallback a regex básico
-    console.error('[poop] Claude CTA detection fallback:', e.message);
+    logger.log('[poop] Claude CTA detection fallback:', e.message);
     return /caca|heces|analiz/.test(lower);
   }
 }
@@ -279,7 +280,7 @@ Solo el JSON. Sin texto antes ni después.`;
     const jsonMatch = metaRaw?.match(/\{[\s\S]*\}/);
     if (jsonMatch) meta = JSON.parse(jsonMatch[0]);
   } catch(e) {
-    console.log(`[poop] meta extracción falló: ${e.message}`);
+    logger.log(`[poop] meta extracción falló: ${e.message}`);
   }
 
   // Clasificar resultado (preferir meta.clasificacion, fallback por texto)
@@ -320,7 +321,7 @@ async function tagInMailerLite(phone, realEmail = null) {
 
     if (searchResp.data?.data?.id) {
       subscriberId = searchResp.data.data.id;
-      console.log(`📧 MailerLite: suscriptor encontrado (${emailToUse}) → ${subscriberId}`);
+      logger.log(`📧 MailerLite: suscriptor encontrado (${emailToUse}) → ${subscriberId}`);
     } else {
       // Crear suscriptor nuevo
       const createResp = await axios.post(
@@ -337,7 +338,7 @@ async function tagInMailerLite(phone, realEmail = null) {
         { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
       );
       subscriberId = createResp.data?.data?.id;
-      console.log(`✅ MailerLite: nuevo suscriptor creado (${emailToUse}) → ${subscriberId}`);
+      logger.log(`✅ MailerLite: nuevo suscriptor creado (${emailToUse}) → ${subscriberId}`);
     }
 
     if (subscriberId) {
@@ -353,10 +354,10 @@ async function tagInMailerLite(phone, realEmail = null) {
         },
         { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
       );
-      console.log(`✅ MailerLite: ${phone} tageado correctamente`);
+      logger.log(`✅ MailerLite: ${phone} tageado correctamente`);
     }
   } catch (err) {
-    console.error(`⚠️ Error MailerLite: ${err.message}`);
+    logger.log(`⚠️ Error MailerLite: ${err.message}`);
   }
 }
 
@@ -390,7 +391,7 @@ async function tagInMailerLiteResult(phone, result) {
     }
 
     if (!subscriberId) {
-      console.log(`[poop] MailerLite: no se encontró suscriptor para ${phone}, creando con email generado`);
+      logger.log(`[poop] MailerLite: no se encontró suscriptor para ${phone}, creando con email generado`);
       const created = await axios.post('https://connect.mailerlite.com/api/subscribers',
         { email: `${phoneNormalized}@whatsapp.tupibox.com`, fields: { phone, canal_origen: 'whatsapp' } },
         { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
@@ -409,9 +410,9 @@ async function tagInMailerLiteResult(phone, result) {
       { fields: { analisis_caca_completado: 'true', [tagField]: 'true', interesado_fresh: 'true' } },
       { headers: { Authorization: `Bearer ${MAILERLITE_TOKEN}`, 'Content-Type': 'application/json' } }
     );
-    console.log(`✅ MailerLite post-análisis: ${phone} → ${tagField}`);
+    logger.log(`✅ MailerLite post-análisis: ${phone} → ${tagField}`);
   } catch(err) {
-    console.error(`⚠️ MailerLite post-análisis error: ${err.message}`);
+    logger.log(`⚠️ MailerLite post-análisis error: ${err.message}`);
   }
 }
 
@@ -438,9 +439,9 @@ async function postPoopToSlack(phone, result, analysisText, meta) {
       { channel: SLACK_CHANNEL, text, mrkdwn: true },
       { headers: { Authorization: `Bearer ${SLACK_TOKEN}`, 'Content-Type': 'application/json' } }
     );
-    console.log(`✅ [poop] Slack notificado`);
+    logger.log(`✅ [poop] Slack notificado`);
   } catch(e) {
-    console.log(`[poop] Slack error: ${e.message}`);
+    logger.log(`[poop] Slack error: ${e.message}`);
   }
 }
 
@@ -491,7 +492,7 @@ async function handleMessage(phone, message, accessToken) {
       const { analysisText, result, meta } = await analyzePoopImage(base64, mimeType);
       await setPoopSessionPersisted(phone, { ...session, state: POOP_STATES.DONE, result });
 
-      console.log(`✅ [poop] Análisis completado para ${phone}: ${result}`);
+      logger.log(`✅ [poop] Análisis completado para ${phone}: ${result}`);
 
       // Registrar en Sheets con metadatos estructurados
       sheets.appendRow('Análisis Caca', [
@@ -506,7 +507,7 @@ async function handleMessage(phone, message, accessToken) {
         meta.requiere_seguimiento ? 'sí' : 'no',
         analysisText.substring(0, 500),
         'whatsapp'
-      ]).catch(e => console.log(`[poop] sheets log error: ${e.message}`));
+      ]).catch(e => logger.log(`[poop] sheets log error: ${e.message}`));
 
       // Tagear resultado en MailerLite post-análisis
       tagInMailerLiteResult(phone, result).catch(() => {});
@@ -534,7 +535,7 @@ async function handleMessage(phone, message, accessToken) {
       };
 
     } catch (err) {
-      console.error(`❌ [poop] Error analizando imagen de ${phone}:`, err.message);
+      logger.log(`❌ [poop] Error analizando imagen de ${phone}:`, err.message);
       poopSessions.delete(phone);
       return {
         handled: true,
