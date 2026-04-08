@@ -11,6 +11,12 @@ require('dotenv').config();
 if (process.stdout.setEncoding) process.stdout.setEncoding('utf8');
 if (process.stderr.setEncoding) process.stderr.setEncoding('utf8');
 
+// Override console.log/error to use Buffer.from UTF-8 (Railway strips non-ASCII otherwise)
+const _origLog = console.log.bind(console);
+const _origErr = console.error.bind(console);
+console.log = (...args) => process.stdout.write(Buffer.from(args.join(' ') + '\n', 'utf8'));
+console.error = (...args) => process.stderr.write(Buffer.from(args.join(' ') + '\n', 'utf8'));
+
 const TENANT = process.env.TENANT;
 
 if (!TENANT) {
