@@ -7,6 +7,10 @@
 
 require('dotenv').config();
 
+// Force UTF-8 encoding for stdout/stderr (fixes emoji/tilde corruption in Railway logs)
+if (process.stdout.setEncoding) process.stdout.setEncoding('utf8');
+if (process.stderr.setEncoding) process.stderr.setEncoding('utf8');
+
 const TENANT = process.env.TENANT;
 
 if (!TENANT) {
