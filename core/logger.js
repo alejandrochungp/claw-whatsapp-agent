@@ -11,7 +11,7 @@ const MAX_LOGS = 200;
 
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
-  console.log(line);
+  process.stdout.write(Buffer.from(line + '\n', 'utf8'));
   recentLogs.push(line);
   if (recentLogs.length > MAX_LOGS) recentLogs.shift();
   if (LOG_FILE) {
