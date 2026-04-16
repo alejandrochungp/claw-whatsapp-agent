@@ -544,8 +544,10 @@ function start(config, business) {
       catalog = c || [];
       logger.log(`[catalog] Precalentado: ${catalog.length} productos`);
     }).catch(e => logger.log(`[catalog] Error precalentando: ${e.message}`));
-    // Iniciar cron de aprendizaje diario (20:00 Santiago)
-    learning.startDailyCron();
+    // Iniciar cron de aprendizaje diario (20:00 Santiago) — solo para Yeppo
+    if (process.env.TENANT === 'yeppo') {
+      learning.startDailyCron();
+    }
     // Recuperar análisis de caca pendientes tras deploy (cola Redis)
     setTimeout(() => {
       recoverPendingPoopDeliveries()
