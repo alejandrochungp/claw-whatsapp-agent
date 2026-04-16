@@ -241,7 +241,7 @@ function start(config, business) {
   app.post('/admin/seed-thread', async (req, res) => {
     const { phone, thread_ts, channel } = req.body;
     if (!phone || !thread_ts) return res.status(400).json({ error: 'phone y thread_ts requeridos' });
-    const data = { thread_ts, channel: channel || 'C05FES87S9J', timestamp: Date.now() };
+    const data = { thread_ts, channel: channel || config?.slackChannel || process.env.SLACK_CHANNEL_ID || 'C05FES87S9J', timestamp: Date.now() };
     slack.phoneToThread.set(phone, data);
     await slack.saveThreadExternal(phone, data);
     logger.log(`[seed] thread mapeado: ${phone} â†' ${thread_ts}`);
@@ -572,10 +572,9 @@ async function uploadMediaToSlack(phone, type, typeEmoji, caption, mediaUrl, mim
   // Resolver channel y thread_ts (mismo fallback que config.js)
   const threadData = slack.phoneToThread.get(phone);
   const channel    = threadData?.channel
-                  || process.env.SLACK_CHANNEL_ID
-                  || process.env.SLACK_CHANNEL_WHATSAPP
                   || config?.slackChannel
-                  || 'C05FES87S9J';  // fallback hardcoded igual que en config.js
+                  || process.env.SLACK_CHANNEL_ID
+                  || process.env.SLACK_CHANNEL_WHATSAPP;
 
   logger.log(`[media] upload â†' channel: ${channel}, thread: ${threadData?.thread_ts || 'nuevo'}`);
 
