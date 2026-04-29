@@ -9,7 +9,7 @@ const axios = require('axios');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL   = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
-const MONTHLY_BUDGET = parseFloat(process.env.AI_MONTHLY_BUDGET || '10.0');
+const MONTHLY_BUDGET = parseFloat(process.env.AI_MONTHLY_BUDGET || '100.0');
 
 // Pricing por 1M tokens
 const PRICING = {
