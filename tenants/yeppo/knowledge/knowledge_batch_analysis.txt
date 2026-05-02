@@ -1,0 +1,431 @@
+## ANÁLISIS DE CONVERSACIONES YEPPO
+
+---
+
+### 1. PREGUNTAS FRECUENTES
+
+**Problemas de inicio de sesión / activación de cuenta:**
+- Cliente reporta que no puede ingresar o no recibe correo de activación
+- Respuesta típica: *"Déjanos tu email y en 1 día hábil te enviaremos un mensaje para activarla. Revisa tu bandeja de spam o correo no deseado"*
+- Piden el correo registrado y envían mail de activación manualmente
+
+**Asesorías de piel / recomendaciones de productos:**
+- Cliente pide rutina o productos para su tipo de piel
+- Respuesta típica: protocolo de preguntas:
+  *"🌸¿Has tenido problemas como acné, sensibilidad, rosácea o eczema?*
+  *🌸¿Qué productos utilizas actualmente?*
+  *🌸¿Tienes alguna preocupación específica?*
+  *🌸Describe tu tipo de piel (grasa, seca, mixta, sensible, etc.)"*
+
+**Agendamiento de asesorías cosmetológicas:**
+- *"Para agendar una hora de asesoría, debes ingresar al siguiente link [enlace], llenar el formulario y seleccionar una hora según tu disponibilidad"*
+- La asesoría presencial en tienda es **gratuita**
+
+**Colaboraciones / creadores de contenido:**
+- Derivación estándar: WhatsApp colaboradores +56946912288 o correo marketing@yeppo.cl
+- También hay link de postulación para vacantes abiertas
+
+**Consulta de envíos:**
+- Plazo explicado con detalle (ver Políticas)
+- Opción FAZT para RM mismo día si se pide antes 10:30 am
+
+**Precios web vs tienda física:**
+- *"Nuestros precios se mantienen tanto en tiendas físicas como en la web"*
+
+**Puntos de recompensa:**
+- Explicación: puntos acumulados por compras, canjeables en pestaña "recompensas" de la cuenta
+
+---
+
+### 2. POLÍTICAS
+
+**Despacho:**
+- Empaquetamiento: 1 a 3 días hábiles tras confirmación de pago
+- Variable según demanda en Cyberday, Cybermonday, Navidad
+- Tras empaquetado, transporte:
+  - RM: 1 a 2 días hábiles
+  - Ciudades principales: 2 a 3 días hábiles
+- Opción FAZT para RM: pedido antes 10:30 am llega el mismo día o al día siguiente
+
+**Cambios de dirección de despacho:**
+- Se puede hacer manualmente si el cliente avisa a tiempo
+- El agente consulta a logística internamente para modificar
+
+**Horarios de sucursales:**
+- Coyancura 2261: L-V 10:00-19:00, S 10:00-18:00, D cerrado
+- Patronato 461: L-V 10:00-18:30, S 10:00-17:00, D cerrado
+- Alcántara (Las Torcazas 50): L-V 10:00-20:00, S 10:00-16:00, D cerrado
+- Av. Recoleta 35: L-V 10:00-19:00, S 10:00-18:00, D cerrado
+
+**Mayoristas (B2B):**
+- Catálogo disponible para negocios de belleza/cosmética
+- Pedido mínimo: $300.000
+- Precios aprox. 70% del precio retail en tienda física
+- Registro en portal B2B, revisión en 24-48 horas hábiles
+- Envíos a regiones con Starken (por pagar)
+- Muestras sujetas a disponibilidad
+- Contacto: Juan Choe (juan@yeppo.cl)
+
+**Fusión de cuentas:**
+- Se pueden unificar cuentas de un mismo cliente
+- El agente hace la fusión manualmente y deja solo un correo como principal
+
+**Devoluciones / cambios:**
+- No aparece información explícita sobre políticas de devolución en estas conversaciones
+
+**Servicios no ofrecidos:**
+- No hacen limpieza facial
+- No tienen productos para lifting de pestañas coreano
+
+---
+
+### 3. TONO Y FRASES CARACTERÍSTICAS
+
+**Saludo estándar:**
+- *"¡Buen día [nombre]! ¿cómo estás?😊"*
+- *"Buen día! En qué te puedo ayudar?"*
+- *"Hola [nombre]! buenos días"*
+
+**Emojis característicos:**
+- 😊 (uso constante en saludos)
+- 🌸 (para preguntas de piel)
+- <3 (cierre de mensajes, despedidas, agradecimientos)
+- :D / :p (cierre informal amistoso)
+- 🌟 (mensajes de ausencia)
+
+**Mensajes de ausencia automatizados:**
+- *"Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos. ¡Gracias!🌟"*
+- Versión fin de semana: *"te responderemos el lunes. ¡Que tengas un lindo finde! 🌟"*
+
+**Frases de atención recurrentes:**
+- *"¿cómo puedo ayudarte?"*
+- *"te dejaré mis recomendaciones"*
+- *"revisa tu bandeja de spam o correo no deseado, ¡por las dudas!"*
+- *"si tienes otra duda, estamos pendiente!"*
+- *"no hay de qué! <3"*
+- *"De nada! Que tengas lindo día :D"*
+- *"De nada! Buen finde igualmente :p"*
+
+**Tono general:** Cálido, juvenil, cercano, con uso constante de emojis y un balance entre profesionalismo e informalidad amigable. Se personaliza con el nombre del cliente.
+
+---
+
+### 4. SITUACIONES ESPECIALES
+
+**Cliente insistente (Fernanda - conversación 61):**
+- Cliente solo escribe "Hola" repetidamente (al menos 15 veces en días distintos)
+- El equipo responde consistentemente con saludos y ofrecimiento de ayuda
+- Finalmente la cliente pregunta "Tienencatya?" (posiblemente "tienen catálogo")
+- Se le envía enlace de productos con la aclaración *"Productos sujetos a disponibilidad"*
+- El equipo nunca pierde la paciencia ni cambia el tono
+
+**Cambio de dirección exitoso (Mary - convers
+
+===
+
+**1. PREGUNTAS FRECUENTES (pregunta + respuesta típica)**  
+- *¿La promoción es solo online?* → “Todos nuestros precios y promociones aplican también en tiendas físicas :D”  
+- *¿Cómo pagar con débito online?* → “Debes agregar tu tarjeta a Mercado Pago y así puedes pagar con débito :D”  
+- *¿Para hacer la asesoría hay compromiso de compra?* → “No es necesario, no va con compromiso de compra”  
+- *¿El pedido puede llegar hoy mismo?* → Depende del horario: si ya retiraron los pedidos del día, se envía al día siguiente; si es antes de las 10:30 AM y es comuna dentro del perímetro de RM, llega el mismo día por Fazt.  
+- *¿Cómo calcular el valor del envío?* → “El valor del envío lo calcula la página automáticamente cuando pone su dirección y arma el carrito”  
+- *¿Tienen envío a regiones?* → Se menciona Starken para mayoristas y Bluexpress para envíos normales, con opción de sucursal de retiro.  
+- *¿Cómo activo mi cuenta?* → Se pide el correo, se envía un mail de activación en 1 día hábil.  
+- *¿Puedo reservar evaluación sin comprar?* → “No es condicionado ni obligatoria la compra”  
+- *¿Dónde están las tiendas y horarios?* → Se envían horarios y direcciones de las 4 sucursales: Coyancura (Providencia), Patronato, Alcántara, Recoleta. Horarios varían, cierran domingos.  
+- *¿Tienen labiales que aumentan el tamaño de los labios?* → “Por el momento no trabajamos ese tipo de labiales”  
+- *¿Cómo canjear puntos?* → “Debe ingresar a la parte de recompensas, ahí verá el total de puntos y beneficios disponibles”  
+
+**2. POLÍTICAS**  
+- **Despacho**:  
+  - Envíos en RM con Fazt (llega el mismo día si se pide antes de las 10:30 AM) o Bluexpress.  
+  - Para envíos a regiones, se calcula automático al poner dirección; opción de retiro en sucursal Bluexpress.  
+  - Mayoristas: envíos con Starken, envío por pagar.  
+  - Pedidos no se pueden programar para fecha exacta (ej. 14 de febrero); solo se envían en días hábiles.  
+- **Devoluciones / Reembolsos**:  
+  - Los reembolsos dependen del banco, pueden ser inmediatos o demorar días hábiles; Yeppo autoriza la devolución y el plazo de reflejo es del banco.  
+  - Si hay error de inventario, se cancela el producto faltante y se puede solicitar cancelación total.  
+- **Horarios de tiendas**:  
+  - Coyancura (Providencia): Lu-Vi 10-19, Sá 10-18, Do cerrado.  
+  - Patronato: Lu-Vi 10-18:30, Sá 10-17, Do cerrado.  
+  - Alcántara: Lu-Vi 10-20, Sá 10-16, Do cerrado.  
+  - Recoleta: Lu-Vi 10-19, Sá 10-18, Do cerrado.  
+- **Mayoristas**:  
+  - Requisitos: tienda física/virtual de belleza, pedidos mínimos de $300.000, evitar compras personales o agrupadas.  
+  - Registro en portal B2B (link), revisión en 24-48 h hábiles. Precios en promedio 70% del precio retail.  
+  - Contacto encargado: juan@yeppo.cl  
+
+**3. TONO Y FRASES CARACTERÍSTICAS**  
+- Emojis frecuentes: 😊, :D, <3, :P, 🥺, ✨, 💥, 🥹, 🫶🏼, 🌟.  
+- Saludos: “¡Hola [nombre]! 😊 Ahora no estamos disponibles, pero déjanos tu mensaje y te responderemos ni bien lo veamos.”  
+- Despedidas: “De nada! Que tenga buen día :D”, “¡Que tengas lindo día!”, “La esperamos <3”.  
+- Frases de oferta: “✨ ¡Aprovecha nuestras OFERTAS! ✨ 👉 Hasta un 15% de descuento en productos seleccionados y 20% en artículos destacados. ¡No te lo pierdas! 💥”  
+- Uso de “jiji”, “súper!”, “yaa”, “oki”, “pucha”, “te pasasteee!”.  
+- Expresiones de empatía: “lamentamos los inconvenientes”, “disculpe el error”.  
+- Para colaboraciones: “Puedes ver info sobre las posiciones abiertas y aplicar aquí abajo: [link]” o enviar a hola@yeppo.cl / marketing@yeppo.cl.  
+
+**4. SITUACIONES ESPECIALES**  
+- **Error en notificación de retiro** (conv. 414): Cliente recibe correo de que retiró pedido sin haberlo hecho. Se confirma error de sistema, pedido sigue en tienda. Resolución: aclarar y disculparse.  
+- **Producto sin stock en pedido online** (415): Problema de inventario, solo se procesa el shampoo. Se ofrece reembolso de la diferencia o cancelación total. Cliente pide cancelación total, se gestiona. Se explica que los productos llegarán en 10 días.  
+- **Demora en envío** (415, misma cliente luego): Pedido figura sin movimiento por varios días. Se aclara que hubo alta demanda y se ocupó el plazo máximo de 3 días hábiles; se informa que ya está en distribución y llegará ese día.  
+- **Promesa de envío de producto nuevo no cumplida** (416): Cliente reclama que le prometieron enviar uno nuevo hace una semana y no ha llegado correo ni producto. Agente reconoce que fue ella quien respondió y consulta al área encargada.  
+- **Problema con formulario de cita** (419): No abre el enlace. Se informa que está en arreglo y que con la confirmación de cita es suficiente.  
+- **Reembolso y cupón perdido** (436): Cliente tuvo devolución y perdió cupón de envío gratis. Se le reactiva de forma excepcional.  
+- **Consulta de caja de regalo y empaque** (421): Cliente quiere que productos lleguen en caja especial para regalo. Se explica que la caja no es tipo de envío sino de regalo frágil y se puede pedir en tienda, no para envíos.  
+
+**5. PRODUCTOS MÁS CONSULTADOS Y CÓMO SE EXPLICARON**  
+- **Serum de Anúa 10+**: precio $31.990, disponible en Providencia.  
+- **Crema 345 (Numbuzin?)**: valor $33.900, link enviado.  
+- **Limpiador oleoso de centella Skin1004**: $23.990.  
+- **Bloqueador Round Lab**: sin stock en Providencia, solo envío; se pregunta por línea específica.  
+- **Línea Numbuzin (No. 9)**: tónico, mascarilla, esencia, contorno de ojos, recién llegados. Se menciona stock en Recoleta y Alcántara.  
+- **Shampoo Daeng Gi Meo Ri (línea Hair Loss Care)**: recomendado para caída, limpieza profunda y reparación.  
+- **Mascarillas faciales**: se envían enlaces de opciones para piel madura (no se detallan marcas).  
+- **Exfoliante químico y serum PDRN (ADN de salmón)**: recomendados para manchas de sol, unificar tono, hidratar.  
+- **
+
+===
+
+Claro, aquí tienes el análisis específico basado únicamente en lo que aparece en las 40 conversaciones (561–600):
+
+---
+
+### 1. PREGUNTAS FRECUENTES (pregunta + respuesta típica)
+
+| Pregunta | Respuesta típica del equipo / bot |
+|----------|-----------------------------------|
+| **¿Está disponible en la tienda X?** (ej: Providencia, Patronato) | El bot no confirma stock en tiempo real, deriva al equipo o recomienda ir a la tienda. El agente (Kiki) revisa sistema: «según sistema sí está disponible», «hay stock de los dos». |
+| **¿Cuándo llega mi pedido?** | Bot: «depende del courier que hayas elegido. Si fue FAZT antes de las 10:30, puede llegar hoy. Blue Express: RM 1-2 días hábiles, regiones 2-5 días aprox.» Agente: «Según el seguimiento de Bluexpress, su pedido se encuentra en tránsito». |
+| **¿Envían a mi dirección/región?** | Bot: «sí, enviamos a todo Chile.» Si un producto no está disponible para envío, el agente explica: «no tiene stock en bodega central, que es de donde salen los pedidos para envío. Cada sucursal tiene su propia bodega interna». |
+| **¿Puedo cambiar un producto de mi pedido antes del despacho?** | El bot deriva a una persona. En una conversación se resuelve por otro canal. |
+| **¿Qué producto me recomiendas para…?** (manchas, piel grasa, arrugas, poros, etc.) | Bot realiza preguntas para clasificar tipo de piel y preocupaciones, luego arma rutina con productos específicos (Anua, SKIN1004, Round Lab, etc.). Siempre incluye protector solar. Si no puede dar links en tiempo real, deriva a yeppo.cl o al equipo. |
+| **¿Cómo sé mi tono de cushion?** | Bot: recomienda ir a tienda para testear el tono en persona. Indica horarios de cada sucursal. |
+| **¿Cómo uso correctamente los productos (mascarilla de arcilla, sérum, etc.)?** | Bot da instrucciones detalladas: frecuencia (2 veces por semana), orden de aplicación (primero Anua, luego SKIN1004), usarlos en capas, necesidad de protector solar. |
+| **¿Precio de X producto?** | Bot da precios concretos cuando los tiene (ej: Camellia Deep Collagen Cream $26.990, Sun Serum $23.990, 345 Relief Cream $29.990). |
+| **¿Cómo recuperar mi clave?** | Agente: «Debes seleccionar ‘iniciar sesión’ y te llegará un código de ingreso. No se usa contraseña, solo código.» |
+| **¿El precio online es igual al de tienda?** | Agente: «Los precios de la web se mantienen en tiendas físicas.» |
+
+---
+
+### 2. POLÍTICAS (extraídas textualmente)
+
+**Despacho / envíos:**
+- «enviamos a todo Chile»
+- RM con FAZT (antes de las 10:30 puede llegar el mismo día) o Blue Express (1-2 días hábiles)
+- Regiones con Blue Express o Starken (2-5 días hábiles aprox)
+- Si no hay stock en bodega central, no se puede enviar aunque esté en tiendas físicas.
+
+**Devoluciones / cambios / errores:**
+- Si se despachan dos cajas por error, el cliente puede devolver una mediante etiqueta de Blue Express sin costo y se le entrega un cupón de descuento por la honestidad.
+- Para cambiar un producto presencial: «te recomiendo ir a la misma tienda donde lo compraste, con el producto y la boleta si la tienes».
+- En una confusión de productos, el bot aclara que los envases eran correctos (tónico vs crema), el cliente se disculpa. Luego consulta por descuento por compras, se deriva al equipo.
+
+**Horarios de sucursales:**
+- Patronato: Lu-Vi 10:00-18:30, Sá 10:00-17:00 (en algunas respuestas dice Vi 18:30
+
+===
+
+# ANÁLISIS DE CONVERSACIONES YEPPO
+
+---
+
+## 1. PREGUNTAS FRECUENTES
+
+**Estado de pedido / cuándo llega**
+- Cliente: *"quisiera saber el estado de mi pedido n°237844"* / *"cuando llega??"*
+- Respuesta típica: Se pide número de pedido, se deriva a persona del equipo. El bot no entrega estado directamente.
+
+**Cambiar lugar de retiro**
+- Cliente: *"me equivoque de lugar de retiro"*
+- Respuesta de Kiki: *"Nuestro sistema no permite realizar cambios en el método de entrega una vez finalizada la compra. Cada tienda tiene su propia bodega y stock independiente."* → Se ofrece cancelar y re-comprar.
+
+**¿Llega hoy mismo? (FAZT)**
+- Cliente: *"lo pedí con fazt pero decía que llegaba hoy mismo... lo pedí a las 10:49"*
+- Respuesta: *"FAZT generalmente cumple con el mismo día cuando se pide dentro del horario"*. Si no llega, se deriva a persona.
+
+**¿Tienen asesoría online?**
+- Cliente: *"por la asesoría online"*
+- Respuesta: *"Las asesorías con scanner de piel Lumini son solo presenciales, duran aprox 50 minutos y son completamente gratis."*
+
+**¿Mismos precios online que en tienda?**
+- Cliente: *"Son los mismo precios de la tienda?"*
+- Respuesta: *"Sí, los precios son exactamente los mismos que en la web."*
+
+**¿Cómo comprar/métodos de pago?**
+- Cliente: *"cuales son sus métodos de pago?"*
+- Respuesta: *"Tarjeta de débito, crédito, transferencia y efectivo en tienda. Por web con tarjeta o transferencia."* Aclaran que transferencia directa no está disponible online.
+
+**¿Puedo cancelar un pedido?**
+- Cliente: *"puedo cancelar la compra y hacerlo de nuevo?"*
+- Respuesta: *"Sí, podemos cancelar la compra. El tiempo de reembolso dependerá de tu banco."*
+
+---
+
+## 2. POLÍTICAS
+
+**Despacho**
+- **Mismo día (FAZT):** si se pide antes de las 10:30 AM. Costo adicional.
+- **Blue Express RM:** 1-2 días hábiles.
+- **Regiones:** 3-5 días hábiles con Blue Express o Starken.
+- **Retiro en tienda:** Se guarda por *7 días hábiles*. Notifican cuando está listo.
+- *"Si necesitas más tiempo, avísanos."*
+- Pedidos en horario no hábil entran a preparación el día hábil siguiente.
+
+**Devoluciones / Cancelaciones**
+- Cancelación posible antes del envío.
+- Reembolso: depende del banco/plataforma de pago, no es inmediato.
+- No se pueden hacer cambios de sucursal post-compra. Solución: cancelar y re-comprar.
+- Cupones: *"No se pueden aplicar más de un descuento o beneficio por compra."*
+
+**Horarios tiendas**
+- **Patronato:** L-V 10:00-18:30, S 10:00-17:00. Domingo cerrado.
+- **Recoleta (Estación Seúl):** L-V 10:00-19:00, S 10:00-18:00.
+- **Providencia (Coyancura 2261):** L-V 10:00-19:00, S 10:00-18:00.
+
+**Mayoristas**
+- No hay ninguna mención ni consulta sobre ventas mayoristas en estas conversaciones.
+
+---
+
+## 3. TONO Y FRASES CARACTERÍSTICAS
+
+**Expresiones del equipo (agentes humanos como Kiki y Ale)**
+- *"dale!"* – usado frecuentemente para confirmar
+- *"okis" / "okok"*
+- *"sí!"* (con entusiasmo)
+- *"jajaja"* – tono muy coloquial, cercano
+- *"cualquier cosita me avisas"*
+- *"qué buena!"* – validación positiva
+
+**Expresiones del bot**
+- *"hola! bienvenido/a a Yeppo 🌸 en qué te puedo ayudar?"*
+- *"si te resulta más fácil, me puedes responder con una nota de voz"*
+- *"cuéntame un poco sobre tu piel"*
+- *"perfecto!"*
+- *"dale, sin problema!"*
+- *"con gusto!"*
+- Uso frecuente de emojis: 🌸, 😊, 💖, :D, :c
+- Frase de cierre: *"que tengas lindo día"*
+
+**Tono general**
+- Muy cálido y cercano, tuteo constante
+- Empático ante problemas (*"oh qué buena base!"*, *"qué lata lo de la Oat Intense Cream :c"*)
+
+---
+
+## 4. SITUACIONES ESPECIALES
+
+**Reclamo: Pedido no entregado (FAZT mismo día)**
+- Cliente Belen (n237803): pidió con FAZT a las 10:49, no llegó. Pregunta repetidamente *"y yo pasar a buscarlo?"*. Bot deriva múltiples veces al equipo sin respuesta concreta en la conversación. Situación quedó pendiente.
+
+**Reclamo: Pedido aparece como cancelado (n236965)**
+- Cliente Francia: vio su pedido cancelado en sistema. Kiki aclaró: *"tu pedido no ha sido cancelado, está en preparación. Como fue realizado en horario no hábil, ingresó a preparación recién el día de hoy."*
+
+**Reclamo: Pago descontado pero sin confirmación**
+- Cliente Francia: segunda compra con cobro en banco pero sin correo de confirmación. Kiki pide comprobante y reenvía correo. Pedido estaba empacado esperando despacho.
+
+**Error de producto en carrito**
+- Cliente Patricia/Tabata: *"No entiendo porque se marcó 147 barrier cream, la que necesito es 345 relief cream."* Derivada al equipo. Quedó en espera de contacto.
+
+**Cupón no aplica retroactivo**
+- Catalina del Carmen (n237780): quería aplicar cupón del 10% post-compra. Kiki: *"No me deja aplicarlo. Si deseas usarlo puedes hacerlo en otra compra."* Se canceló pedido completo para rehacer
+
+===
+
+Aquí está el análisis detallado de las conversaciones de Yeppo:
+
+---
+
+### 1. PREGUNTAS FRECUENTES (FAQ)
+
+**¿Hasta cuándo duran las ofertas?**
+*“Las ofertas del Black estarán hasta el 28.03, pero atenta a nuestras redes que siempre lanzamos sorpresas!”* (1048)
+
+**¿Tienen disponible X producto / cuándo estará disponible?**
+Respuesta típica: Se pide el nombre del producto, se revisa internamente, y se suele recomendar buscar directo en yeppo.cl para precio/stock actualizado. Si no se maneja la marca, se ofrecen alternativas similares. (1051, 1074)
+
+**¿Cómo puedo saber mi tipo de piel / quiero una rutina?**
+El bot pide detalles: tipo de piel (grasa/seca/mixta/sensible), preocupaciones principales (acné, manchas, hidratación) y productos actuales. Se ofrece nota de voz como alternativa. Luego recomienda rutinas base (limpiador, hidratante, protector solar) y productos coreanos específicos. (1046, 1052, 1066)
+
+**Problemas con envíos / repartidores**
+Se pide el número de pedido para revisar el estado y coordinar reentrega o solución. (1079)
+
+**¿Los descuentos de la web aplican en tienda física?**
+*“¡síp! los precios de la web se mantienen en tiendas”* (1078)
+
+**¿Cómo canjear puntos/recompensas?**
+Se instruye al cliente a generar cupones desde yeppo.cl en el botón rosa “Recompensas” y presentarlos en caja. Aplica tanto web como tienda física. (1058)
+
+---
+
+### 2. POLÍTICAS
+
+**Horarios y ubicaciones (1064, 1015?):**
+- Patronato 461 (Patronato): Lun-Vie 10:00–18:30, Sáb 10:00–17:00
+- Coyancura 2261 (Providencia): Lun-Vie 10:00–19:00, Sáb 10:00–18:00
+- Las Torcazas 50 (Las Condes / Alcántara): Lun-Vie 10:00–20:00, Sáb 10:00–16:00
+- Av. Recoleta 35: Lun-Vie 10:00–19:00, Sáb 10:00–18:00
+- Todas cerradas los domingos.
+
+**Despacho / Envíos:**
+- A ciudades principales: 2-3 días hábiles una vez despachado. (1051)
+- Si el courier no puede entregar, se puede coordinar un nuevo intento o retiro en tienda, pero la recoordinación no es para el mismo día. (1079)
+
+**Devoluciones / Cambios:**
+No hay una política formal explícita, pero se observa:
+- Caso Vicente (1067): Error de tienda (producto totalmente distinto). Inicialmente se apegaban a TyC ("el producto ya había sido testeado… no se podía hacer nada"), pero tras escalar, se realiza una *excepción* evaluando el cambio de forma excepcional y directa. El proceso formal (formulario de Google) falló inicialmente.
+
+**Mayoristas / Proveedores:**
+Para propuestas comerciales: “para todo lo relacionado con proveedores, lo mejor es que te contactes directamente con el equipo en <mailto:h...>” (1069, 1070).
+
+**Puntos de cumpleaños:**
+*“al momento de inscribirte en nuestra web, puedes ingresar tu fecha de cumpleaños. Si la ingresas al menos 3 meses antes del día te llegarán puntitos de regalo”* (1071).
+
+**Transferencia de beneficios:**
+Se permite transferir una bebida de regalo a otra persona con solo mostrar una autorización. (1061)
+
+**Probadores/Testers:**
+El caso 1067 menciona que un producto abierto/testeado no califica para cambio normal.
+
+---
+
+### 3. TONO Y FRASES CARACTERÍSTICAS
+
+El tono es **extremadamente juvenil, cálido y con uso intensivo de emojis**. Las frases buscan cercanía absoluta.
+
+**Saludos y despedidas:**
+- *“holi / oliiii”* (para iniciar, 1058)
+- *“jaja okis / dale!”*
+- *“cualquier cosa, aquí estamos <3”*
+- *“acá estaremos cuando nos necesites”*
+- *“que tengas lindo día!”*
+
+**Muletillas y jerga:**
+- Uso constante de **“jaja”** y **“jajaja”** incluso en respuestas formales o para suavizar.
+- **“súper”**, **“buenísimo”**, **“power”**, **“cuático”** (dicho por un agente sobre el bot: "está cuatico como interactúan", 1050).
+- **“ay”** para expresar pena o frustración: *“Ay qué lata :c”*, *“Ay no!”*.
+- **“uwu / <3 / :star2:”** frecuentes para mantener un tono dulce.
+
+**Manejo de errores:**
+- Se disculpan con frases autocríticas: *“perdona, me equivoqué de respuesta jaja”* o *“fue un mensaje automático que no correspondía”*.
+
+**Manejo de quejas:**
+- Validación inmediata: *“entiendo tu frustración :c”*, *“lo lamento sinceramente”*.
+- Ofertas de acción: *“voy a escalar esto ahora mismo”*.
+
+---
+
+### 4. SITUACIONES ESPECIALES (RECLAMOS Y RESOLUCIONES)
+
+**CASO 1: Error de producto y mala atención (1067 - Vicente)**
+- **Problema:** Cliente pidió un blush específico (bálsamo, color 5), le dieron otro en polvo y color distinto. Atención por Instagram puso en duda su versión ("que yo acepté ese producto"). Hizo reclamo por formulario y no obtuvo respuesta.
+- **Resolución inicial:** Se apegaban a TyC porque el producto estaba testeado/abierto y según el "testimonio de tienda".
+- **Resolución final (excepción):** Tras el reclamo en WhatsApp, el agente escala el caso y luego ofrece el cambio de forma excepcional y directa: *“estábamos evaluando el cambio de forma excepcional, solo por esta ocasión, ¿estarías interesado?”*.
+
+**CASO 2: Problemas con repartidor (1079)**
+- **Problema:** Repartidor marcó "no se pudo entregar" sin entrar a la propiedad. El cliente tuvo que salir a buscarlo a la calle. El pedido se canceló inicialmente sin aviso.
+- **Resolución:** El agente (Kiki) verifica dirección y confirma que investigará el caso. Ofrece buscar una solución prioritaria para el día siguiente, ya que por horario no alcanzaba a solucionarse el mismo día.
+
+**CASO 3: Cliente insatisfecho con regalo (1076)**
+- **Problema:** Cliente considera el regalo (bebida coreana) insuficiente, prefiere descuentos en cosméticos.
+- **Respuesta:** Se explica que la oferta es lo que es, pero se intenta levantar el ánimo destacando que la bebida es exclusiva y rica. El cliente corta la comunicación (“Gracias pero NO”), el ag

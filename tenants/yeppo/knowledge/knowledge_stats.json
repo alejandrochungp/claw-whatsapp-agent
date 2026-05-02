@@ -1,8 +1,10 @@
 {
-  "generatedAt": "2026-05-02T11:11:16.143Z",
+  "generatedAt": "2026-05-02T11:53:53.709Z",
   "conversationsProcessed": 570,
   "crispConversations": 583,
   "botConversations": 71,
-  "batchesProcessed": 16,
-  "docLength": 6152
+  "batchesProcessed": 1,
+  "docLength": 11322,
+  "finalGeneratedAt": "2026-05-02T12:54:32.524Z",
+  "model": "deepseek-v4-pro"
 }
