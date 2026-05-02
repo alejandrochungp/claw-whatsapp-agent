@@ -11,7 +11,7 @@ module.exports = {
 
   // Canal Slack donde llegar el reporte semanal
   // #agente-aprendizaje en Yeppo
-  reportChannel: process.env.SLACK_LEARNING_CHANNEL || 'C07LQNQ5W3B',
+  reportChannel: process.env.SLACK_LEARNING_CHANNEL || 'C0APVLMV98Q',
 
   // Canal Slack de conversaciones a analizar
   // #team-servicio-al-cliente
