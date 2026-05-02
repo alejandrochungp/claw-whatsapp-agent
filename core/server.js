@@ -1128,23 +1128,34 @@ async function extractAndSaveSkinProfile(phone, userText, botReply, context, con
   // Llamar a Claude para extracción inteligente
   let extracted = {};
   try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const claudeKey = process.env.CLAUDE_API_KEY || config?.claudeApiKey;
+    const claudeKey = process.env.CLAUDE_API_KEY || (config && config.claudeApiKey);
     if (!claudeKey) return;
 
-    const client = new Anthropic({ apiKey: claudeKey });
-    const response = await client.messages.create({
-      model: 'claude-3-haiku-20240307', // modelo más barato para extracción
-      max_tokens: 200,
-      messages: [{ role: 'user', content: buildSkinExtractionPrompt(conversation) }]
-    });
+    const skinResp = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: buildSkinExtractionPrompt(conversation) }]
+      },
+      {
+        headers: {
+          'x-api-key': claudeKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
 
-    const raw = response.content[0]?.text?.trim();
+    const raw = skinResp.data.content[0] && skinResp.data.content[0].text
+      ? skinResp.data.content[0].text.trim()
+      : '';
     if (!raw || raw === '{}') return;
 
     extracted = JSON.parse(raw);
   } catch (e) {
-    logger.log(`[klaviyo] Error extracción Claude: ${e.message}`);
+    logger.log('[klaviyo] Error extraccion skin: ' + e.message);
     return;
   }
 
