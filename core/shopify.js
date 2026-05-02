@@ -385,19 +385,32 @@ function normalizeOrderNumber(input) {
 }
 
 async function getOrderByNumber(rawInput) {
-  const digits = String(rawInput).trim().replace(/^#/, '');
-  if (!/^\d{4,6}$/.test(digits)) return { found: false, error: 'Numero de pedido invalido' };
-  const orderName = '#' + digits;
+  const raw = String(rawInput).trim();
+  // Soporta: 247090, #247090, n247090, #n247090 (formato POS Shopify)
+  const m = raw.match(/^#?n?(\d{4,6})$/i);
+  if (!m) return { found: false, error: 'Numero de pedido invalido' };
+  // Shopify POS usa prefijo 'n', ecommerce usa '#'
+  // Probar ambos formatos
+  const orderNameN = '#n' + m[1];
+  const orderNameH = '#' + m[1];
 
   try {
-    const result = await shopifyGet(
-      '/orders.json?name=' + encodeURIComponent(orderName) +
+    // Probar formato POS (#n247090) primero, luego ecommerce (#247090)
+    let result = await shopifyGet(
+      '/orders.json?name=' + encodeURIComponent(orderNameN) +
       '&status=any&limit=5&fields=id,name,financial_status,fulfillment_status,fulfillments,total_price'
     );
     if (!result || !result.orders || !result.orders.length) {
-      return { found: false, orderNumber: orderName };
+      result = await shopifyGet(
+        '/orders.json?name=' + encodeURIComponent(orderNameH) +
+        '&status=any&limit=5&fields=id,name,financial_status,fulfillment_status,fulfillments,total_price'
+      );
     }
-    const order = result.orders.find(function(o) { return o.name === orderName; }) || result.orders[0];
+    const orderName = orderNameN; // para mensaje de error
+    if (!result || !result.orders || !result.orders.length) {
+      return { found: false, orderNumber: m[1] };
+    }
+    const order = result.orders.find(function(o) { return o.name === orderNameN || o.name === orderNameH; }) || result.orders[0];
 
     let trackingUrl = null;
     let trackingCompany = null;
