@@ -582,6 +582,15 @@ function start(config, business) {
     // Iniciar cron de aprendizaje diario (20:00 Santiago) — solo para Yeppo
     if (process.env.TENANT === 'yeppo') {
       learning.startDailyCron();
+      // Iniciar AMAC — Agente de Mejora Continua (viernes 18:00 Santiago)
+      try {
+        const amacRunner = require('./amac-runner');
+        const amacConfig = require('../tenants/yeppo/amac.config');
+        amacRunner.startCron(amacConfig, 'yeppo');
+        logger.log('[amac] Cron semanal programado: viernes 18:00 Santiago');
+      } catch (e) {
+        logger.log('[amac] Error iniciando cron: ' + e.message);
+      }
     }
     // Recuperar análisis de caca pendientes tras deploy (cola Redis)
     setTimeout(() => {
