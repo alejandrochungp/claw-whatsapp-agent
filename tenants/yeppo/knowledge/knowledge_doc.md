@@ -1,70 +1,91 @@
-DOCUMENTO DE CONOCIMIENTO PARA AGENTE IA YEPPO
-Versión consolidada basada en 491 conversaciones reales
+DOCUMENTO DE CONOCIMIENTO - AGENTE IA WHATSAPP YEPPO
+Versión: Junio 2025
 
 
-QUIÉNES SOMOS
+QUIENES SOMOS
 
-Yeppo es una tienda especializada en cosméticos coreanos con sede principal en Patronato, Santiago de Chile. Vendemos productos de skincare, maquillaje y cuidado del cabello de marcas coreanas originales, todas registradas correctamente. Nuestros precios en web y tiendas físicas son exactamente iguales.
+Yeppo es una tienda especializada en cosméticos coreanos con sede en Santiago de Chile. Tenemos cuatro sucursales físicas y tienda online en yeppo.cl. Somos reconocidos por traer productos originales y registrados directamente desde Corea, con foco en skincare, maquillaje y cuidado capilar. Además contamos con asesorías de piel gratuitas con scanner Lumini en tienda, cafetería propia en Providencia y fotocabina.
 
-Contamos con cuatro sucursales en Santiago:
+Sucursales y horarios:
 
-Patronato 461, en el barrio Patronato. Horario lunes a viernes de 10:00 a 18:30, sábados de 10:00 a 17:00, domingos cerrado.
+Patronato 461: lunes a viernes 10:00 a 18:30, sábado 10:00 a 17:00, domingo cerrado.
 
-Coyancura 2261, en Providencia. Horario lunes a viernes de 10:00 a 19:00, sábados de 10:00 a 18:00, domingos cerrado.
+Coyancura 2261 (Providencia, cerca de metro Los Leones): lunes a viernes 10:00 a 19:00, sábado 10:00 a 18:00, domingo cerrado.
 
-Alcántara, en Las Torcazas 50, Las Condes. Horario lunes a viernes de 10:00 a 20:00, sábados de 10:00 a 16:00, domingos cerrado.
+Alcántara, Las Torcazas 50 (Las Condes): lunes a viernes 10:00 a 20:00, sábado 10:00 a 16:00, domingo cerrado.
 
-Avenida Recoleta 35, en galería Estación Seúl. Horario lunes a viernes de 10:00 a 19:00, sábados de 10:00 a 18:00, domingos cerrado.
+Av. Recoleta 35 (Estación Seúl): lunes a viernes 10:00 a 19:00, sábado 10:00 a 18:00, domingo cerrado.
 
-Todas las sucursales manejan el mismo catálogo de productos pero con stock independiente. Esto significa que un producto puede estar disponible en Providencia y agotado en Patronato. La sucursal de Alcántara tiende a tener horario más extenso (hasta las 20:00), lo que la hace conveniente para clientes con horario laboral ajustado.
-
-Adicionalmente contamos con cafetería en la tienda y fotocabina con promoción de copias.
-
-Para envíos trabajamos con FAZT y Blue Express dentro de la Región Metropolitana, y con Blue Express y Starken para regiones. Realizamos envíos a todo Chile continental, con excepción de Isla de Pascua y la Antártica.
-
-Estación Seúl es una tienda relacionada con los mismos dueños, pero no todos los productos de Yeppo están disponibles allí.
+Todas las sucursales están cerradas los domingos sin excepción. Los precios son iguales en tienda física y en la web.
 
 
-PRODUCTOS Y SERVICIOS MÁS CONSULTADOS
+PRODUCTOS Y SERVICIOS MAS CONSULTADOS
 
 SKINCARE POR TIPO DE PIEL
 
-Piel grasa con acné y manchas. Es el perfil de piel más consultado. La rutina base recomendada es limpiador con BHA o Tea Tree para limpiar profundo sin resecar, sérum de propóleo o niacinamida para controlar bacterias y poros, hidratante en gel de absorción rápida sin sensación sebosa, y bloqueador solar ligero con acabado mate o neutro. Siempre se enfatiza que el bloqueador es imprescindible porque el sol oscurece las marcas de acné incluso cuando se usan activos despigmentantes.
+Para piel acneica y grasa: los más consultados son limpiadores con ácido salicílico BHA o con heartleaf (Houttuynia Cordata), tónicos con AHA BHA PHA, sérums con niacinamida o propóleo, cremas gel que no tapen poros y protectores solares matificantes. El ingrediente heartleaf es considerado el número uno en Corea para acné, desinflamar granitos rojos y bajar sensibilidad sin engrasar.
 
-Piel seca o sensible con necesidad de hidratación y antiedad. La rutina base recomendada incluye limpiador con ácido hialurónico de bajo peso molecular, tónico de rápida absorción que calma y fortalece la barrera, sérum o esencia con colágeno o PDRN para prevenir pérdida de elasticidad, crema hidratante regenerativa, y protector solar ligero con acabado luminoso. Los ingredientes clave que se explican son el ginseng coreano para la firmeza, el escualano, la niacinamida y la mucina de caracol.
+Para piel seca y sensible: limpiadores con pH bajo que no resequen, tónicos con ácido hialurónico de múltiples pesos moleculares, sérums calmantes con té verde o pantenol, cremas reparadoras con centella o avena (como Purito Panthenol Re-barrier o Purito Oat-in). La crema de avena Purito es recomendada para pieles que reaccionan a todo porque tiene poquísimos ingredientes.
 
-Piel con rosácea o barrera cutánea dañada. El enfoque es siempre ir a la base: limpiar con algo muy suave y sin irritantes, hidratar para reparar la barrera, y bloquear el sol. No se recomienda empezar con activos fuertes. El aceite de centella Madagascar se menciona frecuentemente como limpiador que no gatilla rosácea.
+Para piel madura o con líneas de expresión: tónicos con ginseng (firmeza y luminosidad), sérums con retinol o retinal en concentración baja, cremas con colágeno o ADN de salmón, contorno de ojos específico. El ginseng es descrito como el mejor activo coreano para firmeza, rellena visualmente líneas y da luminosidad.
 
-LIMPIADORES
+Para manchas e hiperpigmentación: sérums con vitamina C, niacinamida con ácido tranexámico (TXA), propóleo. El más consultado es Anua Niacinamida + Ácido Tranexámico para control de manchas post-acné y poros.
 
-Los limpiadores son la categoría más consultada. Los aceites limpiadores se usan como primer paso de doble limpieza y disuelven maquillaje, protector solar y sebo. Se explica que el aceite disuelve al aceite, por eso es eficaz en puntos negros y poros tapados. El segundo paso es siempre un limpiador acuoso. Se recomienda no saltar ninguno de los dos pasos para resultados óptimos. Para piel sensible se recomienda el aceite de centella de Skin1004.
-
-SÉRUMS Y ESENCIAS MÁS FRECUENTES
-
-Mucina de caracol al 92 o 97 por ciento. Se explica como regenerador natural que rellena marcas, sana la barrera cutánea y aclara manchas oscuras. Es libre de aceites pesados, hidrata a nivel celular y ayuda a que los poros recuperen su forma.
-
-Sérum de propóleo. Se describe como antibiótico natural, ultra hidratante, da luminosidad y difumina manchas y ojeras.
-
-Sérum de niacinamida más ácido tranexámico de Anua. Se explica que es más potente para manchas post-acné en pieles mixtas o grasas. Siempre se acompañará de bloqueador solar.
-
-Sérum de centella más probióticos fermentados. Se recomienda para piel seca que arde, ya que los fermentos equilibran las bacterias y evitan que los puntos negros se conviertan en granitos.
-
-PDRN. Se explica como ingrediente que mejora textura, cierra visualmente los poros dilatados y previene la pérdida de colágeno. Se compara con el salmón PDRN por su efecto regenerador.
-
-Ginseng. Se presenta como el mejor activo coreano para firmeza. Mejora la circulación y el tono.
-
-CREMAS HIDRATANTES
-
-Para piel mixta con acné se recomiendan texturas en gel elástico que se absorben por completo, no tapan poros y mantienen la piel mate pero hidratada. Para piel seca se recomiendan cremas más ricas con colágeno o que se fundan en la piel. Se explica que la crema con colágeno baja la sensibilidad en la primera semana de uso.
+Para piel con rosácea o hipersensible: centella asiática pura, fórmulas sin fragancia, sin fermentos, pocos ingredientes. Si el cliente menciona ardor tipo piña o reacción a cremas básicas, pausar retinol y exfoliantes y recomendar centella y avena.
 
 PROTECTORES SOLARES
 
-Son el producto donde más se hace énfasis. La explicación estándar es que el sol oscurece cualquier mancha incluso usando productos despigmentantes, por lo que sin bloqueador el resto de la rutina no funciona. Para piel grasa se recomiendan opciones ultra ligeras que se absorben, no dejan rastro y no causan más granitos. Para piel seca o normal se recomiendan opciones con acabado luminoso. Una alternativa práctica que se ha sugerido es combinar un bloqueador líquido de absorción rápida con retoques en barra mate durante el día.
+El protector solar es descrito como el paso más importante de toda rutina. Los más consultados son Beauty of Joseon Relief Sun y Matte Sun Stick, Tocobo, Madagascar Centella de Skin1004, Numbuzin No.3 Porcelain Base-skip (hace de base y solar al mismo tiempo). Para piel grasa se recomienda acabado mate. Para piel sensible, fórmulas con centella.
 
-TRATAMIENTOS CAPILARES
+LIMPIADORES
 
-Se consultan frecuentemente productos de Daeng Gi Meo Ri y Kerasys. Cuando hay desabastecimiento se avisa honestamente y se menciona fecha estimada de restock cuando está disponible. El producto de la línea morada de Kerasys se describe como brutal para reparar el pelo e hidratarlo mucho, mientras que el rojo huele delicioso.
+Se explica frecuentemente la doble limpieza: primero limpiador oleoso con cara seca (como Clean It Zero o Skin1004 Centella Cleansing Oil), luego limpiador acuoso (espuma o gel). Los más consultados son Clean It Zero, Skin1004 Centella Light Cleansing Oil, limpiadores con BHA para piel grasa, limpiadores con pH bajo para piel sensible.
 
-ASESORÍAS DE PIEL
+TÓNICOS
 
-La asesoría presencial dura aproximadamente 50 minutos, incluye scanner facial Lumini gratuito que analiza la piel en profundidad, diseño de rutina personalizada y posibilidad de testear productos en el momento. Es completamente gratuita y no obliga a comprar nada. Se agenda por formulario en el link de la web o app. Se recomienda llegar con el rostro limpio y sin maquillaje para que el scanner funcione correctamente. El scanner no almacena datos, por lo que el reporte se envía al momento. Si no llega inmediatamente o a los minutos, no hay forma de recuperarlo. Se recomienda esperar entre 
+Los más recomendados son el tónico Heartleaf para acné e inflamación, tónicos con ginseng y agua de arroz para firmeza y luminosidad, tónicos con extracto de arroz y niacinamida para hidratación profunda antes de la crema.
+
+SERUMS Y AMPOLLAS
+
+Los más consultados son retinol para colágeno y control de acné, propóleo con niacinamida para manchas y piel mixta, vitamina C para iluminación, mucina de caracol 97% para cicatrización y regeneración, PDRN vegetal para inflamación activa y textura.
+
+MAQUILLAJE
+
+Bases, cushiones, delineadores y máscaras de pestañas. El stock varía por sucursal. Siempre hay testers disponibles en tienda para probar antes de abrir.
+
+CAPILARES
+
+Kerasys tiene alta demanda, especialmente el protector térmico morado. Cuando no hay stock se avisa que están trabajando para traerlo de vuelta.
+
+SERVICIOS
+
+Asesoría de piel gratuita presencial con scanner Lumini: dura aproximadamente 50 minutos, incluye análisis de piel, creación de rutina personalizada y testeo de productos. Sin compromiso de compra. Se agenda en yeppo.cl. Disponible en las sucursales que tengan el equipo. La evaluación se envía por correo inmediatamente, no se almacena en el sistema.
+
+Asesoría online: solo orientación por chat, sin scanner. El agente hace preguntas sobre tipo de piel, preocupaciones y productos actuales para hacer recomendaciones.
+
+Cafetería: ubicada en la sucursal de Providencia. Admite reservas para eventos. Contacto para eventos: hola@yeppo.cl.
+
+Fotocabina: disponible en Providencia. Ticket de 5.000 pesos, incluye 2 copias de foto o 1 foto grande.
+
+Clases de cosmetología: para principiantes, se anuncian en Instagram stories. Cupos limitados. También hay concursos para acceso público.
+
+
+PREGUNTAS FRECUENTES Y COMO RESPONDERLAS
+
+Cada respuesta debe ir en el tono real del equipo: informal, cálido, directo, con emojis cuando corresponda. No usar signos de exclamación de apertura. Las respuestas son ejemplos orientadores, no guiones exactos.
+
+1. No me llega el correo de activación de mi cuenta
+
+"Cuál es el correo con que te registraste? Te mando el mail de activación ahora. Y por si acaso revisa también la bandeja de spam o correo no deseado, a veces se va para allá."
+
+2. Cuánto demora el envío en Santiago
+
+"Si compras antes de las 10:30 am puede llegar el mismo día por FAZT (en comunas RM seleccionadas). Si no alcanzas ese horario, llega al día siguiente tarde o noche. El tiempo de empaquetado es de 1 a 3 días hábiles antes de salir."
+
+3. Cuánto demora el envío a regiones
+
+"A regiones llega en 2 a 3 días hábiles de transporte aproximadamente, más el tiempo de preparación que es de 1 a 3 días hábiles."
+
+4. Dónde puedo ver mis puntos
+
+"Ingresa a tu cuenta en yeppo.cl y busca el botón de

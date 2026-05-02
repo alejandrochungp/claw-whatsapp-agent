@@ -1,6 +1,8 @@
 {
-  "generatedAt": "2026-03-26T21:57:41.469Z",
-  "conversationsProcessed": 491,
-  "batchesProcessed": 14,
-  "docLength": 6511
+  "generatedAt": "2026-05-02T11:11:16.143Z",
+  "conversationsProcessed": 570,
+  "crispConversations": 583,
+  "botConversations": 71,
+  "batchesProcessed": 16,
+  "docLength": 6152
 }
