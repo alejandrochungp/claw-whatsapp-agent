@@ -1440,4 +1440,57 @@ async function postSlackMessage(channel, thread_ts, text) {
   ).catch(e => logger.log(`âš ï¸ Slack post error: ${e.message}`));
 }
 
+// ── GET /admin/export-conversations ─────────────────────────────────
+// Exporta todas las conversaciones del tenant desde Redis.
+// Uso: GET /admin/export-conversations
+//      GET /admin/export-conversations?min_turns=3   (solo convs con >= N turnos)
+//      GET /admin/export-conversations?format=jsonl  (una conv por linea)
+app.get('/admin/export-conversations', async (req, res) => {
+  const rc = memory.redis;
+  if (!rc) {
+    return res.status(503).json({ error: 'Redis no disponible' });
+  }
+  try {
+    const prefix = (process.env.TENANT || '') + ':conv:';
+    let cursor = 0;
+    const keys = [];
+    do {
+      const result = await rc.scan(cursor, { MATCH: prefix + '*', COUNT: 100 });
+      cursor = result.cursor;
+      keys.push(...result.keys);
+    } while (cursor !== 0);
+
+    const minTurns = parseInt(req.query.min_turns || '0', 10);
+    const conversations = [];
+
+    for (const k of keys) {
+      const raw = await rc.get(k);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
+      const history = data.history || [];
+      if (history.length < minTurns) continue;
+      const phone = k.replace(prefix, '');
+      conversations.push({
+        phone,
+        turns: history.length,
+        context: data.context || {},
+        history
+      });
+    }
+
+    conversations.sort((a, b) => b.turns - a.turns);
+    logger.log('[export-conversations] ' + conversations.length + ' conversaciones exportadas (min_turns=' + minTurns + ')');
+
+    if (req.query.format === 'jsonl') {
+      res.setHeader('Content-Type', 'application/jsonl');
+      res.send(conversations.map(c => JSON.stringify(c)).join('\n'));
+    } else {
+      res.json({ total: conversations.length, exportedAt: new Date().toISOString(), conversations });
+    }
+  } catch (e) {
+    logger.log('[export-conversations] Error: ' + e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = { start };
