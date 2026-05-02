@@ -579,6 +579,17 @@ function start(config, business) {
       catalog = c || [];
       logger.log(`[catalog] Precalentado: ${catalog.length} productos`);
     }).catch(e => logger.log(`[catalog] Error precalentando: ${e.message}`));
+    // ── GET /admin/amac-status — diagnóstico AMAC
+    app.get('/admin/amac-status', (req, res) => {
+      res.json({
+        deepseekKey:     !!process.env.DEEPSEEK_API_KEY,
+        githubToken:     !!process.env.GITHUB_TOKEN,
+        slackToken:      !!process.env.SLACK_BOT_TOKEN,
+        learningChannel: process.env.SLACK_LEARNING_CHANNEL || 'no configurado',
+        tenant:          process.env.TENANT
+      });
+    });
+
     // ── POST /admin/amac-run — dispara ciclo AMAC manualmente ──────────────
     app.post('/admin/amac-run', async (req, res) => {
       if (process.env.TENANT !== 'yeppo') return res.status(403).json({ error: 'Solo disponible para tenant yeppo' });
