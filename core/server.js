@@ -579,6 +579,22 @@ function start(config, business) {
       catalog = c || [];
       logger.log(`[catalog] Precalentado: ${catalog.length} productos`);
     }).catch(e => logger.log(`[catalog] Error precalentando: ${e.message}`));
+    // ── POST /admin/amac-run — dispara ciclo AMAC manualmente ──────────────
+    app.post('/admin/amac-run', async (req, res) => {
+      if (process.env.TENANT !== 'yeppo') return res.status(403).json({ error: 'Solo disponible para tenant yeppo' });
+      res.json({ ok: true, message: 'Ciclo AMAC iniciado en background' });
+      // Correr en background sin bloquear respuesta
+      setTimeout(async () => {
+        try {
+          const amacRunner = require('./amac-runner');
+          const amacConfig = require('../tenants/yeppo/amac.config');
+          await amacRunner.run('yeppo', amacConfig);
+        } catch (e) {
+          logger.log('[amac] Error ciclo manual: ' + e.message);
+        }
+      }, 100);
+    });
+
     // Iniciar cron de aprendizaje diario (20:00 Santiago) — solo para Yeppo
     if (process.env.TENANT === 'yeppo') {
       learning.startDailyCron();
