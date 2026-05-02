@@ -979,6 +979,31 @@ async function handleMessage(message, value, config, business) {
     await memory.addMessage(from, userText, 'user');
   }
 
+
+  // ── Interceptor: consulta de estado de pedido ─────────────────────────────
+  // Detecta números de pedido (#1234, 1234) + intención y responde automático
+  if (process.env.TENANT === 'yeppo') {
+    const orderMatch = userText.match(/#?(\d{4,6})/);
+    const hasOrderIntent = /(pedido|orden|order|compra|estado|envio|envío|tracking|seguimiento|lleg|cuando|dónde|donde)/i.test(userText);
+    if (orderMatch && hasOrderIntent) {
+      try {
+        const orderResult = await shopify.getOrderByNumber(orderMatch[1]);
+        if (orderResult && orderResult.found && orderResult.botReply) {
+          logger.log('[order-status] Pedido ' + orderResult.orderNumber + ' consultado por ' + from);
+          await humanDelay(orderResult.botReply.length);
+          await meta.sendMessage(from, orderResult.botReply, config);
+          await memory.addMessage(from, userText, 'user');
+          await memory.addMessage(from, orderResult.botReply, 'bot');
+          const ctx = await memory.getContext(from);
+          await slack.logConversation(from, userText, orderResult.botReply, config, ctx && ctx.shopifySlackInfo ? ctx.shopifySlackInfo : null);
+          return;
+        }
+      } catch (e) {
+        logger.log('[order-status] Error: ' + e.message);
+      }
+    }
+  }
+
   // Enriquecer con datos del tenant (primera vez o si no hay contexto guardado)
   // Hook opcional: business.enrichContext(phone, savedContext) → object con campos a guardar
   const savedContext = await memory.getContext(from);

@@ -1,8 +1,8 @@
 /**
- * core/shopify.js — Lookup de clientes en Shopify por número de teléfono
+ * core/shopify.js — Lookup de clientes y pedidos en Shopify
  *
- * Busca en múltiples formatos porque los números pueden estar guardados
- * de distintas maneras en Shopify (con/sin +56, con/sin 9, etc.)
+ * Busca clientes por teléfono (múltiples formatos) y pedidos por número de orden.
+ * También mantiene caché del catálogo de productos.
  */
 
 const https = require('https');
@@ -36,6 +36,14 @@ function phoneVariants(phone) {
   }
 
   return [...variants];
+}
+
+// ── Helper: número de orden a formato Shopify ───────────────────────────────
+function normalizeOrderNumber(input) {
+  // input puede ser: "#1001", "1001", "# 1001", "pedido #1001", etc.
+  const digits = (input || '').replace(/\D/g, '');
+  if (!digits) return null;
+  return '#' + digits; // Formato exacto de Shopify: #1001
 }
 
 // ── Request helper ───────────────────────────────────────────────────────────
@@ -94,10 +102,8 @@ function shopifyGetWithHeaders(path) {
 // ── Verificar que el teléfono del cliente realmente coincide ─────────────────
 function phonesMatch(searchPhone, customerPhone) {
   if (!customerPhone) return false;
-  // Normalizar ambos a solo dígitos
   const a = searchPhone.replace(/\D/g, '');
   const b = customerPhone.replace(/\D/g, '');
-  // Comparar los últimos 9 dígitos (número local sin prefijo país)
   const aSuffix = a.slice(-9);
   const bSuffix = b.slice(-9);
   return aSuffix === bSuffix;
@@ -114,7 +120,6 @@ async function findCustomer(phone) {
     const result  = await shopifyGet(`/customers/search.json?query=phone:${encoded}&limit=5&fields=id,first_name,last_name,email,phone,orders_count,total_spent,tags,note`);
 
     if (result?.customers?.length) {
-      // Verificar que el teléfono realmente coincide — Shopify hace búsqueda parcial
       const exactMatch = result.customers.find(c => phonesMatch(phone, c.phone));
       if (exactMatch) return exactMatch;
     }
@@ -130,6 +135,124 @@ async function getRecentOrders(customerId, limit = 3) {
   const result = await shopifyGet(`/orders.json?customer_id=${customerId}&limit=${limit}&status=any&fields=id,name,created_at,financial_status,fulfillment_status,total_price,line_items`);
 
   return result?.orders || [];
+}
+
+// ── Buscar pedido por número de orden (#XXXX) ────────────────────────────────
+async function getOrderByNumber(rawInput) {
+  if (!TOKEN) {
+    return { found: false, error: 'Token de Shopify no configurado' };
+  }
+
+  const orderName = normalizeOrderNumber(rawInput);
+  if (!orderName) {
+    return { found: false, error: 'Número de pedido inválido' };
+  }
+
+  try {
+    // Consultar por nombre exacto — Shopify devuelve coincidencias parciales,
+    // así que pedimos varios y filtramos por nombre exacto
+    const result = await shopifyGet(
+      `/orders.json?name=${encodeURIComponent(orderName)}&status=any&limit=10&fields=id,name,email,created_at,financial_status,fulfillment_status,fulfillments,line_items,total_price,shipping_address,customer`
+    );
+
+    if (!result || !result.orders || !result.orders.length) {
+      return { found: false, orderNumber: orderName };
+    }
+
+    // Filtrar por nombre exacto (Shopify puede devolver #1001, #10010, #21001...)
+    const exact = result.orders.find(o => o.name === orderName);
+    if (!exact) {
+      return { found: false, orderNumber: orderName, partialMatches: result.orders.length };
+    }
+
+    const order = exact;
+
+    // Extraer info de tracking de los fulfillments
+    let trackingUrl   = null;
+    let trackingCompany = null;
+    let shipmentStatus  = order.fulfillment_status || 'pendiente';
+
+    if (order.fulfillments && order.fulfillments.length > 0) {
+      // Tomar el fulfillment más reciente
+      const lastFulfillment = order.fulfillments[order.fulfillments.length - 1];
+      trackingUrl     = lastFulfillment.tracking_url || null;
+      trackingCompany = lastFulfillment.tracking_company || null;
+      if (lastFulfillment.shipment_status) {
+        shipmentStatus = lastFulfillment.shipment_status;
+      }
+    }
+
+    // Resumir productos
+    const items = (order.line_items || []).map(item => ({
+      name:     item.name,
+      quantity: item.quantity,
+      price:    item.price
+    }));
+
+    const total = parseFloat(order.total_price || 0).toLocaleString('es-CL');
+
+    // Construir respuesta
+    return {
+      found:            true,
+      orderNumber:      order.name,
+      orderId:          order.id,
+      createdAt:        order.created_at,
+      financialStatus:  order.financial_status,
+      fulfillmentStatus: order.fulfillment_status,
+      shipmentStatus:   shipmentStatus,
+      trackingUrl:      trackingUrl,
+      trackingCompany:  trackingCompany,
+      totalPrice:       total,
+      items:            items,
+      customerEmail:    order.email || (order.customer?.email || null),
+      // Mensaje pre-formateado para que el bot responda directo
+      botReply:         buildOrderStatusReply(order.name, shipmentStatus, trackingUrl, trackingCompany, total)
+    };
+
+  } catch (err) {
+    return { found: false, error: 'Error consultando Shopify: ' + (err.message || 'desconocido') };
+  }
+}
+
+// ── Construir respuesta amigable para el bot ─────────────────────────────────
+function buildOrderStatusReply(orderName, status, trackingUrl, trackingCompany, total) {
+  const statusEmoji = {
+    'pending':       '⏳',
+    'fulfilled':     '✅',
+    'partial':       '📦',
+    'on_hold':       '🔄',
+    'scheduled':     '📅',
+    'unfulfilled':   '⏳',
+    'pendiente':     '⏳',
+    'delivered':     '🏠',
+    'in_transit':    '🚚',
+    'out_for_delivery': '🛵',
+    'cancelled':     '❌'
+  };
+
+  const emoji = statusEmoji[status] || '📋';
+
+  let reply = `Holi! ${emoji} Tu pedido *${orderName}* está *${status}*`;
+
+  if (total) {
+    reply += ` (total: $${total})`;
+  }
+
+  reply += '.\n\n';
+
+  if (trackingUrl && trackingCompany) {
+    reply += `🚚 Lo mandamos por *${trackingCompany}*. Puedes seguir tu envío aquí:\n${trackingUrl}`;
+  } else if (trackingUrl) {
+    reply += `🚚 Puedes seguir tu envío aquí:\n${trackingUrl}`;
+  } else if (status === 'fulfilled' || status === 'delivered') {
+    reply += 'Si tu pedido ya fue entregado y tienes alguna duda, dime y te ayudo.';
+  } else if (status === 'pending' || status === 'unfulfilled') {
+    reply += 'Aún lo estamos preparando con mucho amor 🌸. Apenas salga te avisamos con el link de seguimiento.';
+  } else {
+    reply += 'Cualquier cosa me avisas y te ayudo.';
+  }
+
+  return reply;
 }
 
 // ── Formatear contexto para Claude ──────────────────────────────────────────
@@ -206,9 +329,6 @@ async function enrichContact(phone) {
 }
 
 // ── Catálogo de productos con caché Redis ────────────────────────────────────
-// Solo campos necesarios para el bot: título, precio, stock, tipo
-// Se refresca cada hora — no se consulta en cada mensaje, solo cuando relevante
-
 const CATALOG_TTL  = 60 * 60;       // 1 hora
 const CATALOG_KEY  = 'catalog:yeppo';
 let   catalogRam   = null;           // fallback en RAM si no hay Redis
@@ -233,54 +353,21 @@ async function fetchCatalogFromShopify() {
   if (!TOKEN) return [];
 
   const products = [];
-  let page = 1;
-  let pageInfo = null;
-  let path = '/products.json?limit=250&status=active&fields=id,title,handle,body_html,product_type,tags,variants';
+  let path = '/products.json?status=active&limit=250&fields=id,title,handle,vendor,product_type,variants';
 
-  // Paginar hasta traer todos
   while (path) {
-    const { body: r, linkHeader } = await shopifyGetWithHeaders(path);
-    console.log('[shopify] fetch productos - count:', r?.products?.length, 'link:', linkHeader ? 'sí' : 'no');
-    if (!r?.products?.length) break;
+    const { body, linkHeader } = await shopifyGetWithHeaders(path);
+    if (!body || !body.products) break;
+    products.push(...body.products);
 
-    for (const p of r.products) {
-      // Para productos con múltiples variantes, tomar la de menor precio con stock
-      const variants = p.variants || [];
-      const activeVariants = variants.filter(v => (v.inventory_quantity || 0) > 0 || v.inventory_policy === 'continue');
-      const bestVariant = activeVariants.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0] || variants[0];
-
-      if (!bestVariant) continue;
-
-      // Limpiar HTML de la descripción
-      const rawDesc = p.body_html || '';
-      const description = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
-
-      products.push({
-        id:    p.id,
-        title: p.title,
-        handle: p.handle || '',
-        description,
-        type:  p.product_type || '',
-        tags:  p.tags || '',
-        price: parseFloat(bestVariant.price || 0),
-        stock: activeVariants.length > 0,
-        variantTitle: bestVariant.title !== 'Default Title' ? bestVariant.title : null
-      });
-    }
-
-    // Paginación via header Link de Shopify
+    // Paginación: extraer next link del header
     path = null;
     if (linkHeader) {
-      // Buscar rel="next" en el header Link
-      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-      if (nextMatch) {
-        // Extraer solo el path desde la URL completa
-        try {
-          const url = new URL(nextMatch[1]);
-          path = url.pathname + url.search;
-          // Quitar el prefijo /admin/api/VERSION ya que shopifyGetWithHeaders lo agrega
-          path = path.replace(`/admin/api/${API}`, '');
-        } catch { path = null; }
+      const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      if (match) {
+        const fullUrl = match[1];
+        const urlObj = new URL(fullUrl);
+        path = urlObj.pathname + urlObj.search;
       }
     }
   }
@@ -288,92 +375,58 @@ async function fetchCatalogFromShopify() {
   return products;
 }
 
-async function getProductCatalog() {
-  // Intentar desde Redis
+async function refreshCatalog() {
+  const products = await fetchCatalogFromShopify();
+  if (!products.length) return catalogRam || [];
+
+  catalogRam   = products;
+  catalogRamTs = Date.now();
+
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      await redis.setEx(CATALOG_KEY, CATALOG_TTL, JSON.stringify(products));
+    } catch (e) {
+      // Redis fallback silencioso — ya está en RAM
+    }
+  }
+
+  return products;
+}
+
+async function getCatalog() {
+  // Intentar Redis primero
   const redis = await getRedis();
   if (redis) {
     try {
       const cached = await redis.get(CATALOG_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch {}
-  } else {
-    // Fallback RAM — TTL 1 hora
-    if (catalogRam && Date.now() - catalogRamTs < CATALOG_TTL * 1000) return catalogRam;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch (e) {
+      // Seguir a RAM
+    }
   }
 
-  // Fetch desde Shopify
-  console.log('[shopify] Refrescando catálogo de productos...');
-  const products = await fetchCatalogFromShopify();
-
-  // Guardar en caché
-  if (redis) {
-    try { await redis.setEx(CATALOG_KEY, CATALOG_TTL, JSON.stringify(products)); } catch {}
-  } else {
-    catalogRam   = products;
-    catalogRamTs = Date.now();
+  // Fallback a RAM si está fresco (< 2h)
+  if (catalogRam && (Date.now() - catalogRamTs) < 7200_000) {
+    return catalogRam;
   }
 
-  console.log(`[shopify] Catálogo cargado: ${products.length} productos`);
-  return products;
+  // Refrescar
+  return await refreshCatalog();
 }
 
-// ── Buscar productos relevantes por query del cliente ─────────────────────────
-// Devuelve los top N productos que hacen match con el texto
-function searchCatalog(catalog, query, limit = 5) {
-  if (!query || !catalog?.length) return [];
-  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '');
-  const terms = norm(query).split(/\s+/).filter(t => t.length > 2);
-  if (!terms.length) return [];
-
-  const scored = catalog.map(p => {
-    const haystack = norm(`${p.title} ${p.type} ${p.tags}`);
-    const score    = terms.reduce((s, t) => s + (haystack.includes(t) ? 1 : 0), 0);
-    return { ...p, score };
-  }).filter(p => p.score > 0).sort((a, b) => b.score - a.score);
-
-  return scored.slice(0, limit);
-}
-
-// ── Formatear catálogo para el prompt de Claude ───────────────────────────────
-function formatCatalogForPrompt(products) {
-  if (!products?.length) return '';
-  const lines = products.map(p => {
-    const precio = `$${Math.round(p.price).toLocaleString('es-CL')}`;
-    const stock  = p.stock ? '✅' : '❌ sin stock';
-    const variant = p.variantTitle ? ` (${p.variantTitle})` : '';
-    const link    = p.handle ? `https://yeppo.cl/products/${p.handle}` : '';
-    const desc    = p.description ? `\n  ${p.description}` : '';
-    return `• ${p.title}${variant} — ${precio} — ${stock}${link ? ` — ${link}` : ''}${desc}`;
-  });
-  return lines.join('\n');
-}
-
-// ── Detectar si el mensaje pregunta por productos/stock/precios ───────────────
-function isProductQuery(text) {
-  const t = (text || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quitar tildes para comparar
-
-  // Palabras clave de precio
-  const precioKw = ['precio', 'costo', 'valor', 'vale', 'cuesta', 'cobran', 'cuanto', 'cuánto',
-    'tarifa', 'monto', 'importe', 'rate', 'sale', 'oferta', 'descuento', 'promo'];
-
-  // Palabras clave de disponibilidad / producto
-  const prodKw = ['stock', 'disponible', 'disponibilidad', 'tienen', 'tienes', 'hay', 'existe',
-    'venden', 'busco', 'producto', 'catalogo', 'catalogo', 'quiero', 'necesito',
-    'me gustaria', 'podrian', 'podrian', 'quisiera'];
-
-  const all = [...precioKw, ...prodKw];
-  return all.some(kw => t.includes(kw));
-}
-
-async function invalidateCatalog() {
-  const redis = await getRedis();
-  if (redis) {
-    try { await redis.del(CATALOG_KEY); } catch {}
-  } else {
-    catalogRam = null;
-    catalogRamTs = 0;
-  }
-}
-
-module.exports = { enrichContact, getProductCatalog, searchCatalog, formatCatalogForPrompt, isProductQuery, invalidateCatalog };
+// ── Export ───────────────────────────────────────────────────────────────────
+module.exports = {
+  findCustomer,
+  getRecentOrders,
+  buildCustomerContext,
+  buildSlackCustomerInfo,
+  enrichContact,
+  getOrderByNumber,
+  fetchCatalogFromShopify,
+  getCatalog,
+  refreshCatalog
+};
