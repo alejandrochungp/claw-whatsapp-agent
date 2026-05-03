@@ -323,7 +323,18 @@ async function sendUpsellReminder(phone, order, match, config) {
 
     logger.log('[upsell] Enviando recordatorio a ' + phone + ': ' + complementoNombre);
 
-    await meta.sendText(phone, mensaje, config);
+    if (match.btsCampaign) {
+      const orderTotalStr = '$' + parseFloat(order.total_price).toLocaleString('es-CL');
+      await meta.sendTemplate(phone, 'upsell_bts_sorteo', 'es_CL', [
+        { type: 'body', parameters: [
+          { type: 'text', text: orderTotalStr },
+          { type: 'text', text: complementoNombre },
+          { type: 'text', text: precioFormateado }
+        ]}
+      ]);
+    } else {
+      await meta.sendText(phone, mensaje, config);
+    }
 
     // Marcar como enviado en Redis
     if (redis && order) {

@@ -6,8 +6,8 @@
     "startDate": "2026-04-30",
     "endDate": "2026-06-15",
     "threshold": 20000,
-    "templateName": "bts_sorteo_arirang_v3",
-    "templateId": "1627840815155388",
+    "templateName": "upsell_bts_sorteo",
+    "templateId": "1623727455591761",
     "utmCampaign": "bts_sorteo_mayo2026"
   },
   "cheapProducts": [
