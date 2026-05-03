@@ -31,8 +31,8 @@ async function quickReply(userText, context, history) {
   const memory = require('../../core/memory');
   const upsellPending = await memory.getUpsellPending(context._phone);
   if (upsellPending) {
-    const acepta  = /\b(sí|si|dale|ok|quiero|me interesa|agrega|perfecto|claro|bueno|ya|yes)\b/.test(text);
-    const rechaza = /\b(no|nop|paso|no gracias|no me interesa|no quiero)\b/.test(text);
+    const acepta  = /(?:^|[\s,.!?¿¡])(me interesa|agrega|perfecto|claro|bueno|s[ií]|dale|ok|quiero|ya|yes)(?:$|[\s,.!?¿¡])/i.test(text);
+    const rechaza = /(?:^|[\s,.!?¿¡])(no me interesa|no gracias|no quiero|nop|paso|no)(?:$|[\s,.!?¿¡])/i.test(text);
 
     if (acepta) {
       const orderMock = { id: upsellPending.orderId, name: upsellPending.orderName, total_price: '0', customer: {} };
