@@ -18,6 +18,14 @@ const shopifyCatalog = require('./shopify').catalog || []; // catálogo comparti
 // ── Constante de filtro ───────────────────────────────────────────────────────
 const MAX_UPSELL_PCT = 0.5; // 50% — el complemento no puede superar este % del precio referencia
 
+// ── Configuración de campañas especiales de upsell ────────────────────────────
+let upsellCampaignConfig = null;
+try {
+  upsellCampaignConfig = require(`../tenants/${process.env.TENANT}/upsell_config.json`);
+} catch(e) {
+  logger.log('[upsell] No upsell_config.json for tenant ' + process.env.TENANT + ', campaign upsell disabled');
+}
+
 // ── Productos complementarios predefinidos ────────────────────────────────────
 // Cada entrada mapea un producto comprado (título) a uno o más complementos.
 // VariantId es opcional; si no se especifica, se usa la primera variante.
@@ -207,10 +215,25 @@ async function handleNewOrder(order, config) {
       return;
     }
 
-    const complemento = findComplemento(order);
+    let complemento = findComplemento(order);
     if (!complemento) {
-      logger.log('[upsell] Pedido #' + order.name + ' sin complemento válido');
-      return;
+      const orderTotal = parseFloat(order.total_price);
+      if (orderTotal < 20000 && upsellCampaignConfig) {
+        const btsMatch = findBTSComplement(orderTotal, upsellCampaignConfig);
+        if (btsMatch) {
+          complemento = {
+            par: { complemento: btsMatch.product },
+            variantId: btsMatch.variantId,
+            precioComplemento: btsMatch.price,
+            btsCampaign: true
+          };
+          logger.log('[upsell] BTS upsell match pedido #' + order.name + ': ' + btsMatch.product + ' $' + btsMatch.price);
+        }
+      }
+      if (!complemento) {
+        logger.log('[upsell] Pedido #' + order.name + ' sin complemento válido');
+        return;
+      }
     }
 
     logger.log('[upsell] Match para pedido #' + order.name +
@@ -357,6 +380,38 @@ async function getStats() {
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
+async function findBTSComplement(orderTotal, config) {
+  if (!config || !config.btsCampaign || !config.cheapProducts) return null;
+  const campaign = config.btsCampaign;
+  if (campaign.active === false) return null;
+
+  if (campaign.startDate && campaign.endDate) {
+    const now = new Date();
+    const start = new Date(campaign.startDate);
+    const end = new Date(campaign.endDate);
+    if (now < start || now > end) return null;
+  }
+
+  const cheapProducts = config.cheapProducts
+    .filter(p => {
+      const price = parseFloat(p.price);
+      return !isNaN(price) && price >= 1990 && price <= 9990;
+    })
+    .sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+
+  for (const prod of cheapProducts) {
+    const price = parseFloat(prod.price);
+    if (orderTotal + price >= 20000) {
+      return {
+        product: prod.name,
+        variantId: prod.variantId,
+        price: price
+      };
+    }
+  }
+  return null;
+}
+
 module.exports = {
   findComplemento,
   handleNewOrder,
