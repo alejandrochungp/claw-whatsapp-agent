@@ -707,5 +707,6 @@ module.exports = {
   revertUpsell,
   getStats,
   MAX_UPSELL_PCT,
-  COMPLEMENTOS
+  COMPLEMENTOS,
+  get campaignConfig() { return upsellCampaignConfig; }
 };

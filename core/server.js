@@ -180,6 +180,40 @@ function start(config, business) {
     res.json({ ok: true, phone });
   });
 
+  // ── POST /admin/upsell/force-reminder — triggear con pedido real de Shopify ──
+  app.post('/admin/upsell/force-reminder', async (req, res) => {
+    const { phone, orderId } = req.body;
+    if (!phone || !orderId) return res.status(400).json({ error: 'phone y orderId requeridos' });
+    try {
+      const axios = require('axios');
+      const shopifyToken = process.env.SHOPIFY_TOKEN;
+      const shopifyDomain = process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+      const orderRes = await axios.get(
+        `https://${shopifyDomain}/admin/api/2024-01/orders/${orderId}.json`,
+        { headers: { 'X-Shopify-Access-Token': shopifyToken }, timeout: 10000 }
+      );
+      const order = orderRes.data.order;
+      if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+      const upsellMod = require('./upsell');
+      const upsellConfig = upsellMod.campaignConfig;
+      // Buscar el mejor complemento BTS para ese pedido
+      const total = parseFloat(order.total_price || 0);
+      const btsMatch = upsellMod.findBTSComplement(total, upsellConfig);
+      if (!btsMatch) return res.status(400).json({ error: 'No hay complemento BTS para este pedido', total });
+      const matchFull = {
+        item: { title: order.line_items?.[0]?.title || '' },
+        par: { producto: order.line_items?.[0]?.title || '', complemento: btsMatch.product, razon: 'BTS QA', variantId: btsMatch.variantId },
+        precioComplemento: btsMatch.price,
+        btsCampaign: true
+      };
+      await upsellMod.sendUpsellReminder(phone, order, matchFull, config);
+      res.json({ ok: true, phone, orderName: order.name, complemento: btsMatch.product, total });
+    } catch (err) {
+      logger.log(`[admin] force-reminder error: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── GET /admin/upsell/stats ───────────────────────────────────────────────────
   app.get('/admin/upsell/stats', async (req, res) => {
     const upsellStats = require('./upsell-stats');
