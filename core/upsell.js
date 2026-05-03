@@ -414,7 +414,7 @@ async function getStats() {
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
-async function findBTSComplement(orderTotal, config) {
+function findBTSComplement(orderTotal, config) {
   if (!config || !config.btsCampaign || !config.cheapProducts) return null;
   const campaign = config.btsCampaign;
   if (campaign.active === false) return null;
@@ -448,6 +448,7 @@ async function findBTSComplement(orderTotal, config) {
 
 module.exports = {
   findComplemento,
+  findBTSComplement,
   handleNewOrder,
   sendUpsellReminder,
   getStats,
