@@ -302,13 +302,24 @@ async function sendUpsellReminder(phone, order, match, config) {
       ? '$' + match.precioComplemento.toLocaleString('es-CL')
       : '';
 
-    const mensaje = '🌸 *¡Gracias por tu compra en Yeppo!*\n\n' +
-      'Noté que compraste *' + match.par.producto + '*. ' +
-      '¿Te interesa agregar *' + complementoNombre + '*' +
-      (precioFormateado ? ' (' + precioFormateado + ')' : '') +
-      ' a tu rutina?\n\n' +
-      'Es el complemento perfecto. Si quieres, te lo puedo agregar con un descuento especial 🥰\n\n' +
-      'Responde este mensaje y te ayudo.';
+    let mensaje;
+    if (match.btsCampaign) {
+      mensaje = '🎫 *¡Participa por entradas para BTS ARIRANG!*\n\n' +
+        'Tu pedido va en *$' + parseFloat(order.total_price).toLocaleString('es-CL') + '*. ' +
+        'Agregando *' + complementoNombre + '*' +
+        (precioFormateado ? ' (' + precioFormateado + ')' : '') +
+        ' alcanzas los $20.000 y participas en el sorteo por entradas para ver a BTS en el Estadio Nacional 🏟️\n\n' +
+        'El 17 de octubre 2026. Más de 600 clientes ya están participando. ¿Te lo agrego?\n\n' +
+        'Responde *sí* y te ayudo.';
+    } else {
+      mensaje = '🌸 *¡Gracias por tu compra en Yeppo!*\n\n' +
+        'Noté que compraste *' + match.par.producto + '*. ' +
+        '¿Te interesa agregar *' + complementoNombre + '*' +
+        (precioFormateado ? ' (' + precioFormateado + ')' : '') +
+        ' a tu rutina?\n\n' +
+        'Es el complemento perfecto. Si quieres, te lo puedo agregar con un descuento especial 🥰\n\n' +
+        'Responde este mensaje y te ayudo.';
+    }
 
     logger.log('[upsell] Enviando recordatorio a ' + phone + ': ' + complementoNombre);
 
@@ -328,15 +339,27 @@ async function sendUpsellReminder(phone, order, match, config) {
     }
 
     // Notificar en Slack
-    await slack.sendNotification(
-      '📬 *Upsell enviado*\n' +
-      'Cliente: ' + phone + '\n' +
-      'Pedido: ' + (order ? order.name : 'N/A') + '\n' +
-      'Compró: ' + match.par.producto + '\n' +
-      'Sugerido: ' + complementoNombre +
-      (precioFormateado ? ' (' + precioFormateado + ')' : ''),
-      config
-    );
+    if (match.btsCampaign) {
+      await slack.sendNotification(
+        '🎫 *Upsell BTS enviado*\n' +
+        'Cliente: ' + phone + '\n' +
+        'Pedido: ' + (order ? order.name : 'N/A') + '\n' +
+        'Total pedido: $' + parseFloat(order.total_price).toLocaleString('es-CL') + '\n' +
+        'Sugerido: ' + complementoNombre +
+        (precioFormateado ? ' (' + precioFormateado + ')' : ''),
+        config
+      );
+    } else {
+      await slack.sendNotification(
+        '📬 *Upsell enviado*\n' +
+        'Cliente: ' + phone + '\n' +
+        'Pedido: ' + (order ? order.name : 'N/A') + '\n' +
+        'Compró: ' + match.par.producto + '\n' +
+        'Sugerido: ' + complementoNombre +
+        (precioFormateado ? ' (' + precioFormateado + ')' : ''),
+        config
+      );
+    }
 
   } catch (err) {
     logger.log('[upsell] Error en sendUpsellReminder: ' + err.message);
