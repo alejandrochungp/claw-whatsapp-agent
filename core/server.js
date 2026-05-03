@@ -864,6 +864,10 @@ async function handleMessage(message, value, config, business) {
   } else if (type === 'interactive') {
     userText = message.interactive.button_reply?.title ||
                message.interactive.list_reply?.title  || '';
+  } else if (type === 'button') {
+    // Quick-reply button desde template (ej: upsell_bts_sorteo)
+    userText = message.button?.text || message.button?.payload || '';
+    logger.log(`[button] Quick reply de ${from}: "${userText}"`);
   } else if (type === 'audio') {
     const mediaId = message.audio?.id;
     if (mediaId) {
