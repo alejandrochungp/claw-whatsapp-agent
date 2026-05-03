@@ -204,6 +204,22 @@ async function clearUpsellPending(phone) {
   }
 }
 
+async function updateUpsellStatus(phone, status) {
+  const pending = await getUpsellPending(phone);
+  if (!pending) return;
+  pending.status = status;
+  pending.updatedAt = Date.now();
+  if (useRedis) {
+    try {
+      const ttl = await redisClient.ttl(upsellKey(phone));
+      await redisClient.setEx(upsellKey(phone), ttl > 0 ? ttl : UPSELL_TTL_SECS, JSON.stringify(pending));
+    } catch { /* no-op */ }
+  } else {
+    const conv = ramStore.get(phone);
+    if (conv) conv.context._upsell = pending;
+  }
+}
+
 // Esperar a que Redis conecte, con timeout
 function waitForRedis(timeoutMs = 5000) {
   if (useRedis) return Promise.resolve(); // ya conectado
@@ -259,7 +275,7 @@ async function getNonProductiveCount(phone) {
 module.exports = {
   addMessage, getHistory, getContext, updateContext, isReturning,
   setCampaignContext, getCampaignContext,
-  setUpsellPending, getUpsellPending, clearUpsellPending,
+  setUpsellPending, getUpsellPending, clearUpsellPending, updateUpsellStatus,
   waitForRedis,
   incrementRepeatCount, resetRepeatCount, getRepeatCount,
   incrementNonProductiveCount, resetNonProductiveCount, getNonProductiveCount,

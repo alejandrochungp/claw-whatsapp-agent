@@ -372,9 +372,261 @@ async function sendUpsellReminder(phone, order, match, config) {
       );
     }
 
+    // Guardar upsell pendiente para que quickReply lo detecte al responder
+    const pendingData = {
+      orderId: String(order.id),
+      orderName: order.name,
+      status: 'sent',
+      match: {
+        producto: match.par.producto || null,
+        complemento: complementoNombre,
+        variantId: match.par.variantId,
+        precio: match.precioComplemento || 0
+      },
+      btsCampaign: match.btsCampaign || false
+    };
+    await memory.setUpsellPending(phone, pendingData);
+    logger.log('[upsell] Upsell pendiente guardado para ' + phone + ': ' + complementoNombre);
+
+    // Trackear evento
+    try {
+      const upsellStats = require('./upsell-stats');
+      await upsellStats.trackEvent('sent', phone, {
+        complemento: complementoNombre,
+        orderName: order.name,
+        btsCampaign: match.btsCampaign || false
+      });
+    } catch (e) { /* non-blocking */ }
+
   } catch (err) {
     logger.log('[upsell] Error en sendUpsellReminder: ' + err.message);
     // Fallback graceful: si falla el envío, no hacer nada más
+  }
+}
+
+// ── handleUpsellAccepted ──────────────────────────────────────────────────────
+/**
+ * Cliente aceptó el upsell. Agrega el producto al pedido en Shopify y notifica.
+ */
+async function handleUpsellAccepted(phone, order, match, config) {
+  try {
+    const shopifyToken = config?.shopifyToken || process.env.SHOPIFY_TOKEN;
+    const shopifyDomain = config?.shopifyDomain || process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+
+    if (!shopifyToken || !order.id) {
+      logger.log('[upsell] handleUpsellAccepted sin token o order.id');
+      return;
+    }
+
+    const variantId = match.par?.variantId;
+    if (!variantId) {
+      logger.log('[upsell] handleUpsellAccepted sin variantId');
+      return;
+    }
+
+    // 1. Agregar line item al pedido en Shopify
+    const axios = require('axios');
+    const shopUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}.json`;
+    
+    logger.log('[upsell] Agregando producto a pedido ' + order.name + ': variantId=' + variantId);
+
+    await axios.put(shopUrl, {
+      order: {
+        id: order.id,
+        line_items: [
+          { variant_id: parseInt(variantId), quantity: 1 }
+        ]
+      }
+    }, {
+      headers: {
+        'X-Shopify-Access-Token': shopifyToken,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
+    });
+
+    logger.log('[upsell] Producto agregado exitosamente al pedido ' + order.name);
+
+    // 2. Enviar invoice al cliente
+    const invoiceUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}/send_invoice.json`;
+    await axios.post(invoiceUrl, {}, {
+      headers: {
+        'X-Shopify-Access-Token': shopifyToken,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
+    });
+
+    logger.log('[upsell] Invoice enviado para pedido ' + order.name);
+
+    // 3. Confirmar al cliente por WhatsApp
+    const complementoNombre = match.par?.complemento || 'el producto';
+    const precio = match.precioComplemento || 0;
+    const precioStr = precio ? ' ($' + Math.round(precio).toLocaleString('es-CL') + ')' : '';
+    const confirmMsg = '✅ *¡Listo!* Agregué *' + complementoNombre + '*' + precioStr +
+      ' a tu pedido #' + order.name + '.\n\n' +
+      'Te envié el link de pago actualizado. Si tienes cualquier duda, escríbeme.';
+
+    await meta.sendText(phone, confirmMsg, config);
+
+    // 4. Marcar como aceptado
+    await memory.updateUpsellStatus(phone, 'accepted');
+
+    // 5. Notificar Slack
+    await slack.sendNotification(
+      '✅ *Upsell ACEPTADO*\n' +
+      'Cliente: ' + phone + '\n' +
+      'Pedido: ' + order.name + '\n' +
+      'Producto: ' + complementoNombre +
+      (precioStr ? ' ' + precioStr : ''),
+      config
+    );
+
+    // 6. Trackear evento
+    try {
+      const upsellStats = require('./upsell-stats');
+      await upsellStats.trackEvent('accepted', phone, {
+        complemento: complementoNombre,
+        orderName: order.name,
+        btsCampaign: match.btsCampaign || false
+      });
+    } catch (e) { /* non-blocking */ }
+
+    logger.log('[upsell] Upsell aceptado procesado: ' + order.name + ' → ' + complementoNombre);
+
+  } catch (err) {
+    logger.log('[upsell] Error en handleUpsellAccepted: ' + err.message);
+    
+    // Notificar error en Slack
+    await slack.sendNotification(
+      '⚠️ *Error al procesar upsell aceptado*\n' +
+      'Cliente: ' + phone + '\n' +
+      'Pedido: ' + (order?.name || 'N/A') + '\n' +
+      'Error: ' + err.message,
+      config
+    ).catch(() => {});
+
+    // Informar al cliente
+    await meta.sendText(phone,
+      '¡Gracias por tu interés! Tuve un pequeño problema técnico al agregar el producto. ' +
+      'No te preocupes, el equipo lo revisará y te contactará pronto 🙏',
+      config
+    ).catch(() => {});
+  }
+}
+
+// ── revertUpsell ──────────────────────────────────────────────────────────────
+/**
+ * Revertir upsell: cliente rechazó después de haber aceptado.
+ * Intenta quitar el line item del pedido en Shopify y reenviar invoice.
+ */
+async function revertUpsell(phone, order, match, config, reason) {
+  try {
+    const shopifyToken = config?.shopifyToken || process.env.SHOPIFY_TOKEN;
+    const shopifyDomain = config?.shopifyDomain || process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+
+    if (!shopifyToken || !order.id) {
+      logger.log('[upsell] revertUpsell sin token o order.id');
+      return;
+    }
+
+    logger.log('[upsell] Revirtiendo upsell para pedido ' + order.name + ': ' + (reason || 'sin razón'));
+
+    // 1. Obtener line items actuales del pedido
+    const axios = require('axios');
+    const shopUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}.json`;
+    const getRes = await axios.get(shopUrl, {
+      headers: {
+        'X-Shopify-Access-Token': shopifyToken,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
+    });
+
+    const currentOrder = getRes.data.order;
+    const variantId = match.par?.variantId;
+    
+    // 2. Quitar el line item que coincide con el variantId del upsell
+    if (variantId && currentOrder.line_items) {
+      const keptItems = currentOrder.line_items
+        .filter(li => String(li.variant_id) !== String(variantId))
+        .map(li => ({
+          variant_id: li.variant_id,
+          quantity: li.quantity
+        }));
+
+      if (keptItems.length < currentOrder.line_items.length) {
+        await axios.put(shopUrl, {
+          order: {
+            id: order.id,
+            line_items: keptItems
+          }
+        }, {
+          headers: {
+            'X-Shopify-Access-Token': shopifyToken,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
+        });
+
+        // Reenviar invoice actualizado
+        const invoiceUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}/send_invoice.json`;
+        await axios.post(invoiceUrl, {}, {
+          headers: {
+            'X-Shopify-Access-Token': shopifyToken,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
+        }).catch(() => {});
+
+        logger.log('[upsell] Producto removido del pedido ' + order.name);
+      }
+    }
+
+    // 3. Limpiar estado
+    await memory.clearUpsellPending(phone);
+
+    // 4. Mensaje al cliente
+    await meta.sendText(phone,
+      'Entendido, dejamos tu pedido como estaba originalmente. Cualquier cosa me avisas 😊',
+      config
+    ).catch(() => {});
+
+    // 5. Notificar Slack
+    await slack.sendNotification(
+      '🔄 *Upsell REVERTIDO*\n' +
+      'Cliente: ' + phone + '\n' +
+      'Pedido: ' + order.name + '\n' +
+      'Razón: ' + (reason || 'rechazo del cliente'),
+      config
+    );
+
+    // 6. Trackear evento
+    try {
+      const upsellStats = require('./upsell-stats');
+      await upsellStats.trackEvent('reverted', phone, {
+        complemento: match.par?.complemento,
+        orderName: order.name,
+        reason: reason || 'rejected'
+      });
+    } catch (e) { /* non-blocking */ }
+
+    logger.log('[upsell] Upsell revertido: ' + order.name);
+
+  } catch (err) {
+    logger.log('[upsell] Error en revertUpsell: ' + err.message);
+    
+    // Limpiar estado aunque falle
+    await memory.clearUpsellPending(phone).catch(() => {});
+    
+    await slack.sendNotification(
+      '⚠️ *Error al revertir upsell*\n' +
+      'Cliente: ' + phone + '\n' +
+      'Pedido: ' + (order?.name || 'N/A') + '\n' +
+      'Error: ' + err.message + '\n' +
+      'REVISAR MANUALMENTE EN SHOPIFY',
+      config
+    ).catch(() => {});
   }
 }
 
@@ -451,6 +703,8 @@ module.exports = {
   findBTSComplement,
   handleNewOrder,
   sendUpsellReminder,
+  handleUpsellAccepted,
+  revertUpsell,
   getStats,
   MAX_UPSELL_PCT,
   COMPLEMENTOS

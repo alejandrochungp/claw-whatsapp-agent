@@ -10,8 +10,9 @@ const fs   = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-const KEY_PATH       = path.join(__dirname, '../../../../../.secrets/claude_yeppo_key.txt');
-const CLAUDE_API_KEY = fs.readFileSync(KEY_PATH, 'utf8').trim();
+const DEEPSEEK_KEY_PATH = path.join(__dirname, '../../../../../.secrets/deepseek_key.txt');
+const DEEPSEEK_API_KEY  = fs.readFileSync(DEEPSEEK_KEY_PATH, 'utf8').trim();
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 
 const OUT_DIR      = path.join(__dirname, '..', 'knowledge');
 const KB_PATH      = path.join(OUT_DIR, 'knowledge_base.json');
@@ -61,25 +62,29 @@ console.log('Despues de limpiar:', allConvs.length, 'convs utiles\n');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function callClaude(userPrompt, systemPrompt, model) {
+async function callAI(userPrompt, systemPrompt, isFinal) {
+  // Usar deepseek-v4-pro para todo (batches + sintesis final)
+  const model = 'deepseek-v4-pro';
+  const maxTokens = isFinal ? 8192 : 2048;
   const res = await axios.post(
-    'https://api.anthropic.com/v1/messages',
+    DEEPSEEK_BASE_URL + '/chat/completions',
     {
-      model: model || 'claude-haiku-4-5',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }]
+      model,
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
     },
     {
       headers: {
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
+        'Authorization': 'Bearer ' + DEEPSEEK_API_KEY,
         'Content-Type': 'application/json'
       },
-      timeout: 120000
+      timeout: 180000
     }
   );
-  return res.data.content[0].text;
+  return res.data.choices[0].message.content;
 }
 
 const SYSTEM_BATCH = 'Eres un analista de atencion al cliente. Analiza estas conversaciones reales de Yeppo (tienda de cosmeticos coreanos en Patronato, Santiago) y extrae informacion util de forma concisa.';
@@ -98,7 +103,7 @@ async function processBatches(conversations, batchSize) {
     const text = batch.map((c, idx) => '[' + (i + idx + 1) + '] ' + c.dialogue).join('\n\n---\n\n');
 
     try {
-      const result = await callClaude(
+      const result = await callAI(
         'Analiza estas ' + batch.length + ' conversaciones y extrae de forma concisa:\n\n' +
         '1. PREGUNTAS FRECUENTES: pregunta exacta + respuesta tipica del equipo (con tono real)\n' +
         '2. POLITICAS mencionadas (despacho, devoluciones, horarios, mayoristas, etc.)\n' +
@@ -108,7 +113,7 @@ async function processBatches(conversations, batchSize) {
         'Solo extrae lo que REALMENTE aparece en estas conversaciones. Se especifico.\n\n' +
         'CONVERSACIONES:\n' + text,
         SYSTEM_BATCH,
-        'claude-haiku-4-5'
+        false
       );
       results.push(result);
       console.log('OK');
@@ -158,9 +163,14 @@ async function main() {
 
   const combinedAnalysis = allBatchResults.filter(Boolean).join('\n\n===\n\n');
 
-  console.log('\nGenerando documento final con Claude Sonnet...');
+  // Guardar analisis intermedio por si la sintesis falla
+  const intermedioPath = path.join(OUT_DIR, 'knowledge_batch_analysis.txt');
+  fs.writeFileSync(intermedioPath, combinedAnalysis, 'utf8');
+  console.log('Analisis intermedio guardado: ' + intermedioPath + ' (' + combinedAnalysis.length + ' chars)');
 
-  const finalDoc = await callClaude(
+  console.log('\nGenerando documento final con DeepSeek...');
+
+  const finalDoc = await callAI(
     'Tienes el analisis de ' + allConvs.length + ' conversaciones reales de atencion al cliente de Yeppo (cosmeticos coreanos, Patronato, Santiago). Estas incluyen conversaciones historicas de Crisp y conversaciones recientes del bot de WhatsApp.\n\n' +
     'ANALISIS DE TODOS LOS BATCHES:\n' + combinedAnalysis + '\n\n' +
     'Genera el DOCUMENTO FINAL DE CONOCIMIENTO para un agente de IA de WhatsApp.\n\n' +
@@ -184,7 +194,7 @@ async function main() {
     'Mecanica: Monto minimo $20.000 CLP en una o varias compras durante mayo. Sorteo el 29 de mayo 2026. Inscripcion en https://docs.google.com/forms/d/e/1FAIpQLSfXxYN6PY9Z2iaEua46BImqAzuVrmoJSjkhxM_yZh5WfeDd8A/viewform\n\n' +
     'Si el cliente pregunta por BTS, el sorteo o la promocion de mayo, explicar y entregar el link de inscripcion. Si el cliente acaba de comprar mas de $20.000, mencionarlo proactivamente.',
     'Eres un experto en atencion al cliente de Yeppo, tienda de cosmeticos coreanos en Santiago de Chile. Generas documentos de conocimiento para agentes de IA. El documento debe ser en texto plano sin markdown.',
-    'claude-sonnet-4-6'
+    true
   );
 
   // Guardar
