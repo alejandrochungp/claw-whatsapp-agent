@@ -470,6 +470,17 @@ function getRecentTake(phone) {
   return false;
 }
 
+/**
+ * Enviar notificación simple a Slack (upsells, alertas, etc.)
+ * Si hay canal en config, lo usa; si no, usa el canal general del tenant.
+ */
+async function sendNotification(text, config) {
+  if (!SLACK_TOKEN) return;
+  const channel = resolveChannel(config);
+  if (!channel) return;
+  await slackPost({ channel, text });
+}
+
 module.exports = {
   logConversation,
   notifyHandoff,
@@ -480,6 +491,7 @@ module.exports = {
   getActiveConversation,
   getRecentTake,
   handleSlackCommand,
+  sendNotification,
   saveThreadExternal: saveThread,
   deleteThreadFromRedis,
   phoneToThread,
