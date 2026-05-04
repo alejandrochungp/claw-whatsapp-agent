@@ -461,11 +461,10 @@ function shopifyGraphQL(query, variables) {
   });
 }
 
-async function getOrderLocationId(orderId) {
-  try {
-    const r = await shopifyRequest('GET', `/orders/${orderId}.json?fields=id,fulfillments,location_id`);
-    return r?.order?.fulfillments?.[0]?.location_id || r?.order?.location_id || null;
-  } catch { return null; }
+// Upsells son siempre para pedidos web → siempre despachan desde Bodega Central
+const BODEGA_CENTRAL_LOCATION_ID = '70187188373';
+async function getOrderLocationId(_orderId) {
+  return BODEGA_CENTRAL_LOCATION_ID;
 }
 
 // â”€â”€ handleUpsellAccepted â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
