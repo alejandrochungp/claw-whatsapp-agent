@@ -1371,6 +1371,10 @@ async function revertUpsell(phone, order, match, config, reason) {
         }
       }
     `, { id: calcOrderId, lineItemId: lineItemGid });
+    if (!removeResult?.data?.orderEditRemoveLineItem) {
+      logger.log('[upsell] orderEditRemoveLineItem returned: ' + JSON.stringify(removeResult?.data || removeResult));
+      throw new Error('orderEditRemoveLineItem returned null');
+    }
     const err2 = removeResult?.data?.orderEditRemoveLineItem?.userErrors;
     if (err2?.length) throw new Error(err2.map(e => e.message).join(', '));
 
@@ -1383,6 +1387,10 @@ async function revertUpsell(phone, order, match, config, reason) {
         }
       }
     `, { id: calcOrderId });
+    if (!commitResult?.data?.orderEditCommit) {
+      logger.log('[upsell] orderEditCommit returned: ' + JSON.stringify(commitResult?.data || commitResult));
+      throw new Error('orderEditCommit returned null');
+    }
     const err3 = commitResult?.data?.orderEditCommit?.userErrors;
     if (err3?.length) throw new Error(err3.map(e => e.message).join(', '));
 
