@@ -404,105 +404,204 @@ async function sendUpsellReminder(phone, order, match, config) {
   }
 }
 
+// ── Helpers GraphQL/REST Shopify (para Order Editing) ───────────────────────────
+const https = require('https');
+
+function shopifyRequest(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const token = process.env.SHOPIFY_TOKEN;
+    const store = process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+    const data  = body ? JSON.stringify(body) : null;
+    const options = {
+      hostname: store,
+      path:     `/admin/api/2024-01${path}`,
+      method,
+      headers: {
+        'X-Shopify-Access-Token': token,
+        'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
+      }
+    };
+    const req = https.request(options, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => { try { resolve(JSON.parse(raw)); } catch { resolve(null); } });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('shopify timeout')); });
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+function shopifyGraphQL(query, variables) {
+  return new Promise((resolve, reject) => {
+    const token = process.env.SHOPIFY_TOKEN;
+    const store = process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+    const data  = JSON.stringify({ query, variables });
+    const options = {
+      hostname: store,
+      path:     '/admin/api/2024-01/graphql.json',
+      method:   'POST',
+      headers:  {
+        'X-Shopify-Access-Token': token,
+        'Content-Type':           'application/json',
+        'Content-Length':         Buffer.byteLength(data)
+      }
+    };
+    const req = https.request(options, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => { try { resolve(JSON.parse(raw)); } catch { resolve(null); } });
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('GraphQL timeout')); });
+    req.write(data);
+    req.end();
+  });
+}
+
+async function getOrderLocationId(orderId) {
+  try {
+    const r = await shopifyRequest('GET', `/orders/${orderId}.json?fields=id,fulfillments,location_id`);
+    return r?.order?.fulfillments?.[0]?.location_id || r?.order?.location_id || null;
+  } catch { return null; }
+}
+
 // ── handleUpsellAccepted ──────────────────────────────────────────────────────
 /**
- * Cliente aceptó el upsell. Agrega el producto al pedido en Shopify y notifica.
+ * Cliente aceptó el upsell. Agrega el producto via GraphQL Order Editing API.
+ * Mismo método que funcionó el 2026-03-25 (commit 22f11e8).
  */
 async function handleUpsellAccepted(phone, order, match, config) {
   try {
-    const shopifyToken = config?.shopifyToken || process.env.SHOPIFY_TOKEN;
-    const shopifyDomain = config?.shopifyDomain || process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
-
-    if (!shopifyToken || !order.id) {
-      logger.log('[upsell] handleUpsellAccepted sin token o order.id');
-      return;
-    }
+    if (!order.id) { logger.log('[upsell] handleUpsellAccepted sin order.id'); return; }
 
     const variantId = match.par?.variantId;
-    if (!variantId) {
-      logger.log('[upsell] handleUpsellAccepted sin variantId');
-      return;
+    if (!variantId) { logger.log('[upsell] handleUpsellAccepted sin variantId'); return; }
+
+    const orderGid  = `gid://shopify/Order/${order.id}`;
+    const variantGid = `gid://shopify/ProductVariant/${variantId}`;
+
+    // location_id del pedido original (para mover el fulfillment order)
+    const locationId  = await getOrderLocationId(order.id);
+    const locationGid = locationId ? `gid://shopify/Location/${locationId}` : null;
+    if (locationId) logger.log('[upsell] Usando location: ' + locationId);
+
+    logger.log('[upsell] Editando pedido ' + order.name + ': variantId=' + variantId);
+
+    // 1. orderEditBegin
+    const beginResult = await shopifyGraphQL(`
+      mutation orderEditBegin($id: ID!) {
+        orderEditBegin(id: $id) {
+          calculatedOrder { id }
+          userErrors { field message }
+        }
+      }
+    `, { id: orderGid });
+    const errors1 = beginResult?.data?.orderEditBegin?.userErrors;
+    if (errors1?.length) throw new Error(errors1.map(e => e.message).join(', '));
+    const calcOrderId = beginResult?.data?.orderEditBegin?.calculatedOrder?.id;
+    if (!calcOrderId) throw new Error('No se obtuvo calculatedOrder ID');
+
+    // 2. orderEditAddVariant
+    const addVars = { id: calcOrderId, variantId: variantGid, quantity: 1 };
+    const addMutation = locationGid
+      ? `mutation orderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!, $locationId: ID!) {
+          orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity, locationId: $locationId) {
+            calculatedOrder { id } userErrors { field message }
+          }
+        }`
+      : `mutation orderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!) {
+          orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity) {
+            calculatedOrder { id } userErrors { field message }
+          }
+        }`;
+    if (locationGid) addVars.locationId = locationGid;
+    const addResult = await shopifyGraphQL(addMutation, addVars);
+    const errors2 = addResult?.data?.orderEditAddVariant?.userErrors;
+    if (errors2?.length) throw new Error(errors2.map(e => e.message).join(', '));
+
+    // 3. orderEditCommit (sin notificar al cliente — lo hace el bot por WhatsApp)
+    const commitResult = await shopifyGraphQL(`
+      mutation orderEditCommit($id: ID!) {
+        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell WhatsApp — complemento agregado") {
+          order { id name }
+          userErrors { field message }
+        }
+      }
+    `, { id: calcOrderId });
+    const errors3 = commitResult?.data?.orderEditCommit?.userErrors;
+    if (errors3?.length) throw new Error(errors3.map(e => e.message).join(', '));
+
+    // 4. Mover fulfillment order a la misma ubicación del pedido original
+    if (locationId) {
+      try {
+        const foResult = await shopifyRequest('GET', `/orders/${order.id}/fulfillment_orders.json`);
+        const openFOs = (foResult?.fulfillment_orders || []).filter(fo =>
+          fo.status === 'open' && fo.assigned_location_id !== locationId &&
+          fo.line_items?.some(li => li.variant_id?.toString() === variantId.toString())
+        );
+        for (const fo of openFOs) {
+          await shopifyRequest('POST', `/fulfillment_orders/${fo.id}/move.json`, {
+            fulfillment_order: { new_location_id: locationId }
+          });
+          logger.log('[upsell] FO ' + fo.id + ' movido → ' + locationId);
+        }
+      } catch (e) { logger.log('[upsell] Warning: no se pudo mover FO: ' + e.message); }
     }
 
-    // 1. Agregar line item via Order Editing API (la única que funciona en pedidos pagados)
-    const axios = require('axios');
-    const baseUrl = `https://${shopifyDomain}/admin/api/2024-01`;
-    const authHeaders = { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' };
+    // 5. Enviar invoice al cliente por email (GraphQL)
+    const invoiceResult = await shopifyGraphQL(`
+      mutation orderInvoiceSend($id: ID!) {
+        orderInvoiceSend(id: $id) {
+          order { id name email }
+          userErrors { field message }
+        }
+      }
+    `, { id: orderGid }).catch(e => { logger.log('[upsell] invoice catch: ' + e.message); return null; });
+    const invoiceErrors = invoiceResult?.data?.orderInvoiceSend?.userErrors;
+    const invoiceOrder  = invoiceResult?.data?.orderInvoiceSend?.order;
+    const invoiceSent   = !invoiceErrors?.length && !!invoiceOrder;
+    if (invoiceSent) {
+      logger.log('[upsell] ✅ Factura enviada a: ' + invoiceOrder.email);
+    } else if (invoiceErrors?.length) {
+      logger.log('[upsell] ⚠️ Invoice error: ' + JSON.stringify(invoiceErrors));
+    }
 
-    logger.log('[upsell] Agregando producto a pedido ' + order.name + ': variantId=' + variantId);
-
-    // 1a. Abrir sesión de edición
-    const beginRes = await axios.post(`${baseUrl}/orders/${order.id}/edits.json`, {
-      order_edit: { start_reason: 'upsell', notify_customer: false }
-    }, { headers: authHeaders, timeout: 15000 });
-
-    const editId = beginRes.data?.order_edit?.id;
-    if (!editId) throw new Error('No se obtuvo editId de Shopify');
-    logger.log('[upsell] Sesión de edición abierta: ' + editId);
-
-    // 1b. Agregar variante
-    await axios.post(`${baseUrl}/orders/${order.id}/edits/${editId}/add_variant.json`, {
-      quantity: 1, variant_id: parseInt(variantId)
-    }, { headers: authHeaders, timeout: 15000 });
-
-    // 1c. Confirmar edición + enviar invoice al cliente
-    await axios.post(`${baseUrl}/orders/${order.id}/edits/${editId}/commit.json`, {
-      order_edit: { notify_customer: true, staffNote: 'Upsell BTS aceptado por cliente' }
-    }, { headers: authHeaders, timeout: 15000 });
-
-    logger.log('[upsell] Pedido ' + order.name + ' editado y cliente notificado vía Shopify');
-
-    // 3. Confirmar al cliente por WhatsApp
+    // 6. Confirmar al cliente por WhatsApp
     const complementoNombre = match.par?.complemento || 'el producto';
     const precio = match.precioComplemento || 0;
     const precioStr = precio ? ' ($' + Math.round(precio).toLocaleString('es-CL') + ')' : '';
-    const confirmMsg = '✅ *¡Listo Alejandro!* Agregué *' + complementoNombre + '*' + precioStr +
-      ' a tu pedido #' + order.name + '.\n\n' +
-      'Shopify te va a llegar un correo con el resumen actualizado. Cualquier duda me avisas 🙏';
+    const msgCliente = invoiceSent
+      ? '✅ *¡Listo!* Agregué *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nTe llegó un email con el link para pagar la diferencia. Una vez confirmado lo despachamos todo junto 🙏'
+      : '✅ *¡Listo!* Agregué *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nEl equipo te contactará para coordinar el pago adicional 🙏';
+    await meta.sendText(phone, msgCliente, config);
 
-    await meta.sendText(phone, confirmMsg, config);
-
-    // 4. Marcar como aceptado
+    // 7. Marcar como aceptado y notificar Slack/stats
     await memory.updateUpsellStatus(phone, 'accepted');
-
-    // 5. Notificar Slack
     await slack.sendNotification(
-      '✅ *Upsell ACEPTADO*\n' +
-      'Cliente: ' + phone + '\n' +
-      'Pedido: ' + order.name + '\n' +
-      'Producto: ' + complementoNombre +
-      (precioStr ? ' ' + precioStr : ''),
-      config
-    );
-
-    // 6. Trackear evento
-    try {
-      const upsellStats = require('./upsell-stats');
-      await upsellStats.trackEvent('accepted', phone, {
-        complemento: complementoNombre,
-        orderName: order.name,
-        btsCampaign: match.btsCampaign || false
-      });
-    } catch (e) { /* non-blocking */ }
-
-    logger.log('[upsell] Upsell aceptado procesado: ' + order.name + ' → ' + complementoNombre);
-
-  } catch (err) {
-    logger.log('[upsell] Error en handleUpsellAccepted: ' + err.message);
-    
-    // Notificar error en Slack
-    await slack.sendNotification(
-      '⚠️ *Error al procesar upsell aceptado*\n' +
-      'Cliente: ' + phone + '\n' +
-      'Pedido: ' + (order?.name || 'N/A') + '\n' +
-      'Error: ' + err.message,
+      '✅ *Upsell ACEPTADO*\nCliente: ' + phone + '\nPedido: ' + order.name +
+      '\nProducto: ' + complementoNombre + (precioStr ? ' ' + precioStr : '') +
+      (invoiceSent ? '\nFactura enviada ✅' : '\n⚠️ Factura no enviada'),
       config
     ).catch(() => {});
+    try {
+      const upsellStats = require('./upsell-stats');
+      await upsellStats.trackEvent('accepted', phone, { complemento: complementoNombre, orderName: order.name });
+    } catch (e) { /* non-blocking */ }
 
-    // Informar al cliente
+    logger.log('[upsell] ✅ Upsell aceptado: ' + order.name + ' → ' + complementoNombre + (invoiceSent ? ' + factura' : ''));
+
+  } catch (err) {
+    logger.log('[upsell] ❌ Error en handleUpsellAccepted: ' + err.message);
+    await slack.sendNotification(
+      '⚠️ *Error al procesar upsell aceptado*\nCliente: ' + phone +
+      '\nPedido: ' + (order?.name || 'N/A') + '\nError: ' + err.message,
+      config
+    ).catch(() => {});
     await meta.sendText(phone,
-      '¡Gracias por tu interés! Tuve un pequeño problema técnico al agregar el producto. ' +
-      'No te preocupes, el equipo lo revisará y te contactará pronto 🙏',
+      '¡Gracias por tu interés! Tuve un pequeño problema técnico. El equipo lo revisará y te contactará pronto 🙏',
       config
     ).catch(() => {});
   }
