@@ -448,7 +448,7 @@ async function handleNewOrder(order, config) {
 
       if (orderTotal < 20000 && upsellCampaignConfig) {
 
-        const btsMatch = findBTSComplement(orderTotal, upsellCampaignConfig);
+        const btsMatch = await findBTSComplement(orderTotal, upsellCampaignConfig);
 
         if (btsMatch) {
 
@@ -1579,7 +1579,7 @@ async function getStats() {
 
 // â”€â”€ Exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function findBTSComplement(orderTotal, config) {
+async function findBTSComplement(orderTotal, config) {
 
   if (!config || !config.btsCampaign || !config.cheapProducts) return null;
 
@@ -1620,6 +1620,16 @@ function findBTSComplement(orderTotal, config) {
   for (const prod of cheapProducts) {
 
     const price = parseFloat(prod.price);
+
+    // Verificar stock antes de sugerir
+    try {
+      const invRes = await shopifyRequest('GET', '/variants/' + prod.variantId + '.json?fields=id,inventory_quantity');
+      const qty = invRes?.variant?.inventory_quantity;
+      if (qty !== undefined && qty <= 0) {
+        logger.log('[upsell] Producto sin stock, omitiendo: ' + prod.name + ' (qty=' + qty + ')');
+        continue;
+      }
+    } catch (e) { /* si falla verificacion, continuar igual */ }
 
     if (orderTotal + price >= 20000) {
 
