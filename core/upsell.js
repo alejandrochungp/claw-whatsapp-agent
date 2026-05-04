@@ -1379,9 +1379,10 @@ async function revertUpsell(phone, order, match, config, reason) {
     if (err2?.length) throw new Error(err2.map(e => e.message).join(', '));
 
     // 3. orderEditCommit
+    const staffNote = 'Upsell revertido \u2014 ' + (reason || '');
     const commitResult = await shopifyGraphQL(`
       mutation orderEditCommitR($id: ID!) {
-        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell revertido — " + (reason || '')) {
+        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "${staffNote}") {
           order { id name }
           userErrors { field message }
         }
