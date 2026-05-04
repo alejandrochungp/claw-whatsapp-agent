@@ -1362,20 +1362,20 @@ async function revertUpsell(phone, order, match, config, reason) {
     const lineItemGid = targetEdge.node.id;
     logger.log('[upsell] Line item a remover: ' + lineItemGid);
 
-    // 2. orderEditRemoveLineItem para quitar el complemento
+    // 2. orderEditSetQuantity (quantity=0 para remover line item)
     const removeResult = await shopifyGraphQL(`
-      mutation orderEditRemoveLineItem($id: ID!, $lineItemId: ID!) {
-        orderEditRemoveLineItem(id: $id, lineItemId: $lineItemId) {
+      mutation orderEditSetQty($id: ID!, $lineItemId: ID!, $quantity: Int!) {
+        orderEditSetQuantity(id: $id, lineItemId: $lineItemId, quantity: $quantity) {
           calculatedOrder { id }
           userErrors { field message }
         }
       }
-    `, { id: calcOrderId, lineItemId: lineItemGid });
-    if (!removeResult?.data?.orderEditRemoveLineItem) {
-      logger.log('[upsell] orderEditRemoveLineItem returned: ' + JSON.stringify(removeResult?.data || removeResult));
-      throw new Error('orderEditRemoveLineItem returned null');
+    `, { id: calcOrderId, lineItemId: lineItemGid, quantity: 0 });
+    if (!removeResult?.data?.orderEditSetQuantity) {
+      logger.log('[upsell] orderEditSetQuantity returned: ' + JSON.stringify(removeResult?.data || removeResult));
+      throw new Error('orderEditSetQuantity returned null');
     }
-    const err2 = removeResult?.data?.orderEditRemoveLineItem?.userErrors;
+    const err2 = removeResult?.data?.orderEditSetQuantity?.userErrors;
     if (err2?.length) throw new Error(err2.map(e => e.message).join(', '));
 
     // 3. orderEditCommit
