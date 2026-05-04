@@ -214,6 +214,27 @@ function start(config, business) {
     }
   });
 
+  // ── GET /admin/shopify-debug ─ diagnóstico locations + FOs ─────────────────────
+  app.get('/admin/shopify-debug', async (req, res) => {
+    try {
+      const axios = require('axios');
+      const tok = process.env.SHOPIFY_TOKEN;
+      const domain = process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+      const h = { 'X-Shopify-Access-Token': tok };
+      const orderId = req.query.orderId || '6917108236437';
+      const [locsRes, orderRes, fosRes] = await Promise.all([
+        axios.get(`https://${domain}/admin/api/2024-01/locations.json`, { headers: h, timeout: 10000 }),
+        axios.get(`https://${domain}/admin/api/2024-01/orders/${orderId}.json?fields=id,name,location_id,fulfillments`, { headers: h, timeout: 10000 }),
+        axios.get(`https://${domain}/admin/api/2024-01/orders/${orderId}/fulfillment_orders.json`, { headers: h, timeout: 10000 })
+      ]);
+      res.json({
+        locations: (locsRes.data.locations || []).map(l => ({ id: l.id, name: l.name, active: l.active, city: l.city })),
+        order: { id: orderRes.data.order?.id, name: orderRes.data.order?.name, location_id: orderRes.data.order?.location_id, fulfillments: orderRes.data.order?.fulfillments },
+        fulfillment_orders: (fosRes.data.fulfillment_orders || []).map(fo => ({ id: fo.id, status: fo.status, assigned_location_id: fo.assigned_location_id, assigned_location: fo.assigned_location?.name, line_items: fo.line_items?.map(li => ({ variant_id: li.variant_id, title: li.name })) }))
+      });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── GET /admin/upsell/stats ───────────────────────────────────────────────────
   app.get('/admin/upsell/stats', async (req, res) => {
     const upsellStats = require('./upsell-stats');
