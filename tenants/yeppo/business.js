@@ -35,7 +35,7 @@ async function quickReply(userText, context, history) {
     const rechaza = /(?:^|[\s,.!?¿¡])(no me interesa|no gracias|no quiero|nop|paso|no)(?:$|[\s,.!?¿¡])/i.test(text);
 
     if (acepta) {
-      const orderMock = { id: upsellPending.orderId, name: upsellPending.orderName, total_price: '0', customer: {} };
+      const orderMock = { id: upsellPending.orderId, name: upsellPending.orderName, total_price: '0', order_status_url: upsellPending.orderStatusUrl || null, customer: { id: upsellPending.customerId || null } };
       const matchMock = {
         item: { title: upsellPending.match?.producto },
         par:  { complemento: upsellPending.match?.complemento, razon: '', variantId: upsellPending.match?.variantId },

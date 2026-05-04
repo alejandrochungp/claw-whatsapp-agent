@@ -754,6 +754,10 @@ async function sendUpsellReminder(phone, order, match, config) {
 
       orderName: order.name,
 
+      orderStatusUrl: order.order_status_url || null,
+
+      customerId: order.customer?.id || null,
+
       status: 'sent',
 
       match: {
@@ -1138,20 +1142,30 @@ async function handleUpsellAccepted(phone, order, match, config) {
 
 
 
-    // 6. Confirmar al cliente por WhatsApp
+    // 6. Confirmar al cliente por WhatsApp (con link de pago)
 
     const complementoNombre = match.par?.complemento || 'el producto';
-
     const precio = match.precioComplemento || 0;
-
     const precioStr = precio ? ' ($' + Math.round(precio).toLocaleString('es-CL') + ')' : '';
 
-    const msgCliente = invoiceSent
+    // Link de pago: viene del pendingData (order_status_url guardado al enviar reminder)
+    // Si no está en el mock, consultar Shopify directamente
+    let paymentLink = order.order_status_url || null;
+    if (!paymentLink) {
+      try {
+        const freshOrder = await shopifyRequest('GET', '/orders/' + order.id + '.json?fields=id,order_status_url');
+        paymentLink = freshOrder?.order?.order_status_url || null;
+      } catch (e) { logger.log('[upsell] Warning: no se pudo obtener order_status_url: ' + e.message); }
+    }
 
-      ? '\u2705 *\u00a1Listo!* Agregu\u00e9 *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nTe lleg\u00f3 un email con el link para pagar la diferencia. Una vez confirmado lo despachamos todo junto \ud83d\ude4f'
-
-      : '\u2705 *\u00a1Listo!* Agregu\u00e9 *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nEl equipo te contactar\u00e1 para coordinar el pago adicional \ud83d\ude4f';
-
+    let msgCliente;
+    if (paymentLink) {
+      msgCliente = '\u2705 *\u00a1Listo!* Agregu\u00e9 *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nPaga el saldo aqu\u00ed:\n' + paymentLink + '\n\nUna vez confirmado lo despachamos todo junto \ud83d\ude4f';
+    } else if (invoiceSent) {
+      msgCliente = '\u2705 *\u00a1Listo!* Agregu\u00e9 *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nTe lleg\u00f3 un email con el link para pagar la diferencia. Una vez confirmado lo despachamos todo junto \ud83d\ude4f';
+    } else {
+      msgCliente = '\u2705 *\u00a1Listo!* Agregu\u00e9 *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nEl equipo te contactar\u00e1 para coordinar el pago adicional \ud83d\ude4f';
+    }
     await meta.sendMessage(phone, msgCliente, config);
 
 
