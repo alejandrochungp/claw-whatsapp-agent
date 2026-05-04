@@ -1320,113 +1320,81 @@ async function revertUpsell(phone, order, match, config, reason) {
 
 
 
-    logger.log('[upsell] Revirtiendo upsell para pedido ' + order.name + ': ' + (reason || 'sin razÃ³n'));
-
-
-
-    // 1. Obtener line items actuales del pedido
-
-    const axios = require('axios');
-
-    const shopUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}.json`;
-
-    const getRes = await axios.get(shopUrl, {
-
-      headers: {
-
-        'X-Shopify-Access-Token': shopifyToken,
-
-        'Content-Type': 'application/json'
-
-      },
-
-      timeout: 15000
-
-    });
-
-
-
-    const currentOrder = getRes.data.order;
-
     const variantId = match.par?.variantId;
+    if (!variantId) { logger.log('[upsell] revertUpsell sin variantId'); return; }
 
-    
+    logger.log('[upsell] Revirtiendo upsell para pedido ' + order.name + ': ' + (reason || 'sin razón'));
 
-    // 2. Quitar el line item que coincide con el variantId del upsell
+    // 1. Iniciar edición con GraphQL (orderEditBegin + orderEditSetQuantity + orderEditCommit)
+    const orderGid = 'gid://shopify/Order/' + order.id;
+    const variantGid = 'gid://shopify/ProductVariant/' + variantId;
 
-    if (variantId && currentOrder.line_items) {
-
-      const keptItems = currentOrder.line_items
-
-        .filter(li => String(li.variant_id) !== String(variantId))
-
-        .map(li => ({
-
-          variant_id: li.variant_id,
-
-          quantity: li.quantity
-
-        }));
-
-
-
-      if (keptItems.length < currentOrder.line_items.length) {
-
-        await axios.put(shopUrl, {
-
-          order: {
-
-            id: order.id,
-
-            line_items: keptItems
-
+    const beginResult = await shopifyGraphQL(`
+      mutation orderEditBeginR($id: ID!) {
+        orderEditBegin(id: $id) {
+          calculatedOrder {
+            id
+            lineItems(first: 50) {
+              edges {
+                node {
+                  id
+                  variant { id }
+                }
+              }
+            }
           }
-
-        }, {
-
-          headers: {
-
-            'X-Shopify-Access-Token': shopifyToken,
-
-            'Content-Type': 'application/json'
-
-          },
-
-          timeout: 15000
-
-        });
-
-
-
-        // Reenviar invoice actualizado
-
-        const invoiceUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}/send_invoice.json`;
-
-        await axios.post(invoiceUrl, {}, {
-
-          headers: {
-
-            'X-Shopify-Access-Token': shopifyToken,
-
-            'Content-Type': 'application/json'
-
-          },
-
-          timeout: 15000
-
-        }).catch(() => {});
-
-
-
-        logger.log('[upsell] Producto removido del pedido ' + order.name);
-
+          userErrors { field message }
+        }
       }
+    `, { id: orderGid });
+    const err1 = beginResult?.data?.orderEditBegin?.userErrors;
+    if (err1?.length) throw new Error(err1.map(e => e.message).join(', '));
 
+    const calcOrderId = beginResult?.data?.orderEditBegin?.calculatedOrder?.id;
+    if (!calcOrderId) throw new Error('No se obtuvo calculatedOrder ID');
+
+    const lineItemEdges = beginResult?.data?.orderEditBegin?.calculatedOrder?.lineItems?.edges || [];
+    const targetEdge = lineItemEdges.find(edge => edge.node?.variant?.id === variantGid);
+    if (!targetEdge) {
+      logger.log('[upsell] No se encontró el line item del complemento');
+      throw new Error('Line item del upsell no encontrado');
     }
+    const lineItemGid = targetEdge.node.id;
+    logger.log('[upsell] Line item a remover: ' + lineItemGid);
 
+    // 2. orderEditSetQuantity (quantity=0 para remover)
+    const removeResult = await shopifyGraphQL(`
+      mutation orderEditSetQty($id: ID!, $lineItemId: ID!, $quantity: Int!) {
+        orderEditSetQuantity(id: $id, lineItemId: $lineItemId, quantity: $quantity) {
+          calculatedOrder { id }
+          userErrors { field message }
+        }
+      }
+    `, { id: calcOrderId, lineItemId: lineItemGid, quantity: 0 });
+    const err2 = removeResult?.data?.orderEditSetQuantity?.userErrors;
+    if (err2?.length) throw new Error(err2.map(e => e.message).join(', '));
 
+    // 3. orderEditCommit
+    await shopifyGraphQL(`
+      mutation orderEditCommitR($id: ID!) {
+        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell revertido — " + (reason || '')) {
+          order { id name }
+          userErrors { field message }
+        }
+      }
+    `, { id: calcOrderId });
 
-    // 3. Limpiar estado
+    // 4. Enviar invoice actualizada
+    await shopifyGraphQL(`
+      mutation orderInvoiceSendR($id: ID!) {
+        orderInvoiceSend(id: $id) {
+          order { id }
+          userErrors { field message }
+        }
+      }
+    `, { id: orderGid }).catch(() => {});
+
+    logger.log('[upsell] Complemento removido del pedido ' + order.name);
 
     await memory.clearUpsellPending(phone);
 
