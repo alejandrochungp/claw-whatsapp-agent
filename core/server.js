@@ -228,7 +228,7 @@ function start(config, business) {
           line_items: [{ variant_id: variantId, quantity: 1 }],
           customer: { email: 'a.chungpark@gmail.com' },
           shipping_address: { first_name: 'Alejandro', last_name: 'Chung', address1: 'Test QA', city: 'Santiago', province: 'Regi\u00f3n Metropolitana', country: 'CL', zip: '7500000', phone: '+56966283141' },
-          financial_status: 'paid', source_name: 'web', note: 'QA upsell test'
+          financial_status: 'paid', tags: 'qa-upsell-test', note: 'QA upsell test'
         }
       }, { headers: h, timeout: 15000 });
       const o = r.data.order;
