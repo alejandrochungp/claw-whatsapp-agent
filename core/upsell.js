@@ -1,24 +1,24 @@
-/**
- * core/upsell.js — Lógica de upselling post-compra
+﻿/**
+ * core/upsell.js â€” LÃ³gica de upselling post-compra
  *
  * Procesa webhooks de Shopify (order_paid) y determina si corresponde
- * enviar un mensaje de upsell al cliente 1 hora después del pedido.
+ * enviar un mensaje de upsell al cliente 1 hora despuÃ©s del pedido.
  *
  * El complemento sugerido no puede superar MAX_UPSELL_PCT (50%) del
- * producto más caro del pedido original, para evitar ofrecer productos
- * desproporcionadamente más costosos.
+ * producto mÃ¡s caro del pedido original, para evitar ofrecer productos
+ * desproporcionadamente mÃ¡s costosos.
  */
 
 const memory = require('./memory');
 const meta   = require('./meta');
 const slack  = require('./slack');
 const logger = require('./logger');
-const shopifyCatalog = require('./shopify').catalog || []; // catálogo compartido
+const shopifyCatalog = require('./shopify').catalog || []; // catÃ¡logo compartido
 
-// ── Constante de filtro ───────────────────────────────────────────────────────
-const MAX_UPSELL_PCT = 0.5; // 50% — el complemento no puede superar este % del precio referencia
+// â”€â”€ Constante de filtro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const MAX_UPSELL_PCT = 0.5; // 50% â€” el complemento no puede superar este % del precio referencia
 
-// ── Configuración de campañas especiales de upsell ────────────────────────────
+// â”€â”€ ConfiguraciÃ³n de campaÃ±as especiales de upsell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let upsellCampaignConfig = null;
 try {
   upsellCampaignConfig = require(`../tenants/${process.env.TENANT}/upsell_config.json`);
@@ -26,8 +26,8 @@ try {
   logger.log('[upsell] No upsell_config.json for tenant ' + process.env.TENANT + ', campaign upsell disabled');
 }
 
-// ── Productos complementarios predefinidos ────────────────────────────────────
-// Cada entrada mapea un producto comprado (título) a uno o más complementos.
+// â”€â”€ Productos complementarios predefinidos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Cada entrada mapea un producto comprado (tÃ­tulo) a uno o mÃ¡s complementos.
 // VariantId es opcional; si no se especifica, se usa la primera variante.
 const COMPLEMENTOS = [
   {
@@ -92,7 +92,7 @@ const COMPLEMENTOS = [
   }
 ];
 
-// ── Obtener precio de un producto desde el catálogo ──────────────────────────
+// â”€â”€ Obtener precio de un producto desde el catÃ¡logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getProductPrice(productTitle) {
   if (!shopifyCatalog || !shopifyCatalog.length) return null;
 
@@ -103,12 +103,12 @@ function getProductPrice(productTitle) {
 
   if (!product || !product.variants || !product.variants.length) return null;
 
-  // Primera variante, precio en pesos chilenos (Shopify lo envía como string)
+  // Primera variante, precio en pesos chilenos (Shopify lo envÃ­a como string)
   const price = parseFloat(product.variants[0].price);
   return isNaN(price) ? null : price;
 }
 
-// ── Obtener el precio del producto más caro del pedido ────────────────────────
+// â”€â”€ Obtener el precio del producto mÃ¡s caro del pedido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getMaxLineItemPrice(order) {
   if (!order || !order.line_items || !order.line_items.length) return null;
 
@@ -121,7 +121,7 @@ function getMaxLineItemPrice(order) {
   return maxPrice > 0 ? maxPrice : null;
 }
 
-// ── findComplemento ───────────────────────────────────────────────────────────
+// â”€â”€ findComplemento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /**
  * Busca un complemento adecuado para el pedido.
  *
@@ -129,9 +129,9 @@ function getMaxLineItemPrice(order) {
  * 1. Itera sobre line_items del pedido.
  * 2. Para cada item comprado, busca si existe un par en COMPLEMENTOS.
  * 3. Si existe, valida que el precio del complemento no supere
- *    MAX_UPSELL_PCT del producto más caro del pedido.
+ *    MAX_UPSELL_PCT del producto mÃ¡s caro del pedido.
  * 4. Si pasa el filtro, retorna el match.
- * 5. Si ningún par pasa, retorna null (sin upsell).
+ * 5. Si ningÃºn par pasa, retorna null (sin upsell).
  *
  * @param {object} order - pedido de Shopify con line_items
  * @returns {object|null} { par, variantId, precioComplemento, precioReferencia }
@@ -143,9 +143,9 @@ function findComplemento(order) {
   }
 
   const maxPrice = getMaxLineItemPrice(order);
-  logger.log('[upsell] Precio referencia (producto más caro): ' + (maxPrice ? '$' + maxPrice : 'N/A'));
+  logger.log('[upsell] Precio referencia (producto mÃ¡s caro): ' + (maxPrice ? '$' + maxPrice : 'N/A'));
 
-  // Recolectar todos los títulos de productos comprados
+  // Recolectar todos los tÃ­tulos de productos comprados
   const purchasedTitles = order.line_items.map(item => (item.title || '').trim());
 
   for (const itemTitle of purchasedTitles) {
@@ -155,11 +155,11 @@ function findComplemento(order) {
 
     if (!match) continue;
 
-    // ── Obtener precio del complemento desde el catálogo ──────────────────
+    // â”€â”€ Obtener precio del complemento desde el catÃ¡logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const precioComplemento = getProductPrice(match.complemento);
 
     if (precioComplemento === null) {
-      logger.log('[upsell] Precio no encontrado para complemento: ' + match.complemento + ' — se omite filtro y se permite');
+      logger.log('[upsell] Precio no encontrado para complemento: ' + match.complemento + ' â€” se omite filtro y se permite');
       // Fallback: si no podemos obtener el precio, permitimos el complemento
       return {
         par: match,
@@ -169,7 +169,7 @@ function findComplemento(order) {
       };
     }
 
-    // ── Validar filtro de precio ──────────────────────────────────────────
+    // â”€â”€ Validar filtro de precio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (maxPrice !== null && maxPrice > 0) {
       const ratio = precioComplemento / maxPrice;
       if (ratio > MAX_UPSELL_PCT) {
@@ -184,7 +184,7 @@ function findComplemento(order) {
                  ' ($' + precioComplemento + ' vs $' + maxPrice + ')');
     }
 
-    // ── Match válido ─────────────────────────────────────────────────────
+    // â”€â”€ Match vÃ¡lido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     return {
       par: match,
       variantId: match.variantId || null,
@@ -193,14 +193,14 @@ function findComplemento(order) {
     };
   }
 
-  logger.log('[upsell] Ningún complemento pasó el filtro de precio');
+  logger.log('[upsell] NingÃºn complemento pasÃ³ el filtro de precio');
   return null;
 }
 
-// ── handleNewOrder ────────────────────────────────────────────────────────────
+// â”€â”€ handleNewOrder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /**
  * Recibe un pedido nuevo pagado, busca complemento, guarda en Redis
- * y agenda recordatorio para 1 hora después.
+ * y agenda recordatorio para 1 hora despuÃ©s.
  */
 async function handleNewOrder(order, config) {
   try {
@@ -211,7 +211,7 @@ async function handleNewOrder(order, config) {
 
     const customerPhone = order.customer?.phone || order.shipping_address?.phone || order.billing_address?.phone;
     if (!customerPhone) {
-      logger.log('[upsell] Pedido #' + order.name + ' sin teléfono, upsell descartado');
+      logger.log('[upsell] Pedido #' + order.name + ' sin telÃ©fono, upsell descartado');
       return;
     }
 
@@ -231,16 +231,16 @@ async function handleNewOrder(order, config) {
         }
       }
       if (!complemento) {
-        logger.log('[upsell] Pedido #' + order.name + ' sin complemento válido');
+        logger.log('[upsell] Pedido #' + order.name + ' sin complemento vÃ¡lido');
         return;
       }
     }
 
     logger.log('[upsell] Match para pedido #' + order.name +
-               ': ' + complemento.par.producto + ' → ' + complemento.par.complemento +
+               ': ' + complemento.par.producto + ' â†’ ' + complemento.par.complemento +
                (complemento.precioComplemento ? ' ($' + complemento.precioComplemento + ')' : ''));
 
-    // Guardar intención de upsell en Redis (TTL 2 horas)
+    // Guardar intenciÃ³n de upsell en Redis (TTL 2 horas)
     const upsellData = {
       orderId: String(order.id),
       orderName: order.name,
@@ -260,7 +260,7 @@ async function handleNewOrder(order, config) {
       logger.log('[upsell] Guardado en Redis: ' + key);
     }
 
-    // Agendar recordatorio (1 hora después)
+    // Agendar recordatorio (1 hora despuÃ©s)
     setTimeout(async () => {
       await sendUpsellReminder(customerPhone, order, complemento, config);
     }, 60 * 60 * 1000); // 1 hora
@@ -272,9 +272,9 @@ async function handleNewOrder(order, config) {
   }
 }
 
-// ── sendUpsellReminder ────────────────────────────────────────────────────────
+// â”€â”€ sendUpsellReminder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /**
- * Envía el mensaje de upsell al cliente por WhatsApp.
+ * EnvÃ­a el mensaje de upsell al cliente por WhatsApp.
  */
 async function sendUpsellReminder(phone, order, match, config) {
   try {
@@ -284,7 +284,7 @@ async function sendUpsellReminder(phone, order, match, config) {
     }
 
     const redis = memory.getRedisClient ? memory.getRedisClient() : null;
-    // Verificar si ya se envió
+    // Verificar si ya se enviÃ³
     if (redis && order) {
       const key = 'upsell:' + order.id;
       const existing = await redis.get(key);
@@ -304,20 +304,20 @@ async function sendUpsellReminder(phone, order, match, config) {
 
     let mensaje;
     if (match.btsCampaign) {
-      mensaje = '🎫 *¡Participa por entradas para BTS ARIRANG!*\n\n' +
+      mensaje = 'ðŸŽ« *Â¡Participa por entradas para BTS ARIRANG!*\n\n' +
         'Tu pedido va en *$' + parseFloat(order.total_price).toLocaleString('es-CL') + '*. ' +
         'Agregando *' + complementoNombre + '*' +
         (precioFormateado ? ' (' + precioFormateado + ')' : '') +
-        ' alcanzas los $20.000 y participas en el sorteo por entradas para ver a BTS en el Estadio Nacional 🏟️\n\n' +
-        'El 17 de octubre 2026. Más de 600 clientes ya están participando. ¿Te lo agrego?\n\n' +
-        'Responde *sí* y te ayudo.';
+        ' alcanzas los $20.000 y participas en el sorteo por entradas para ver a BTS en el Estadio Nacional ðŸŸï¸\n\n' +
+        'El 17 de octubre 2026. MÃ¡s de 600 clientes ya estÃ¡n participando. Â¿Te lo agrego?\n\n' +
+        'Responde *sÃ­* y te ayudo.';
     } else {
-      mensaje = '🌸 *¡Gracias por tu compra en Yeppo!*\n\n' +
-        'Noté que compraste *' + match.par.producto + '*. ' +
-        '¿Te interesa agregar *' + complementoNombre + '*' +
+      mensaje = 'ðŸŒ¸ *Â¡Gracias por tu compra en Yeppo!*\n\n' +
+        'NotÃ© que compraste *' + match.par.producto + '*. ' +
+        'Â¿Te interesa agregar *' + complementoNombre + '*' +
         (precioFormateado ? ' (' + precioFormateado + ')' : '') +
         ' a tu rutina?\n\n' +
-        'Es el complemento perfecto. Si quieres, te lo puedo agregar con un descuento especial 🥰\n\n' +
+        'Es el complemento perfecto. Si quieres, te lo puedo agregar con un descuento especial ðŸ¥°\n\n' +
         'Responde este mensaje y te ayudo.';
     }
 
@@ -333,7 +333,7 @@ async function sendUpsellReminder(phone, order, match, config) {
         ]}
       ]);
     } else {
-      await meta.sendText(phone, mensaje, config);
+      await meta.sendMessage(phone, mensaje, config);
     }
 
     // Marcar como enviado en Redis
@@ -345,14 +345,14 @@ async function sendUpsellReminder(phone, order, match, config) {
         data.enviado = true;
         data.sentAt = new Date().toISOString();
         await redis.set(key, JSON.stringify(data));
-        await redis.expire(key, 3600); // extender 1 hora más
+        await redis.expire(key, 3600); // extender 1 hora mÃ¡s
       }
     }
 
     // Notificar en Slack
     if (match.btsCampaign) {
       await slack.sendNotification(
-        '🎫 *Upsell BTS enviado*\n' +
+        'ðŸŽ« *Upsell BTS enviado*\n' +
         'Cliente: ' + phone + '\n' +
         'Pedido: ' + (order ? order.name : 'N/A') + '\n' +
         'Total pedido: $' + parseFloat(order.total_price).toLocaleString('es-CL') + '\n' +
@@ -362,10 +362,10 @@ async function sendUpsellReminder(phone, order, match, config) {
       );
     } else {
       await slack.sendNotification(
-        '📬 *Upsell enviado*\n' +
+        'ðŸ“¬ *Upsell enviado*\n' +
         'Cliente: ' + phone + '\n' +
         'Pedido: ' + (order ? order.name : 'N/A') + '\n' +
-        'Compró: ' + match.par.producto + '\n' +
+        'ComprÃ³: ' + match.par.producto + '\n' +
         'Sugerido: ' + complementoNombre +
         (precioFormateado ? ' (' + precioFormateado + ')' : ''),
         config
@@ -400,11 +400,11 @@ async function sendUpsellReminder(phone, order, match, config) {
 
   } catch (err) {
     logger.log('[upsell] Error en sendUpsellReminder: ' + err.message);
-    // Fallback graceful: si falla el envío, no hacer nada más
+    // Fallback graceful: si falla el envÃ­o, no hacer nada mÃ¡s
   }
 }
 
-// ── Helpers GraphQL/REST Shopify (para Order Editing) ───────────────────────────
+// â”€â”€ Helpers GraphQL/REST Shopify (para Order Editing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const https = require('https');
 
 function shopifyRequest(method, path, body) {
@@ -468,10 +468,10 @@ async function getOrderLocationId(orderId) {
   } catch { return null; }
 }
 
-// ── handleUpsellAccepted ──────────────────────────────────────────────────────
+// â”€â”€ handleUpsellAccepted â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /**
- * Cliente aceptó el upsell. Agrega el producto via GraphQL Order Editing API.
- * Mismo método que funcionó el 2026-03-25 (commit 22f11e8).
+ * Cliente aceptÃ³ el upsell. Agrega el producto via GraphQL Order Editing API.
+ * Mismo mÃ©todo que funcionÃ³ el 2026-03-25 (commit 22f11e8).
  */
 async function handleUpsellAccepted(phone, order, match, config) {
   try {
@@ -522,10 +522,10 @@ async function handleUpsellAccepted(phone, order, match, config) {
     const errors2 = addResult?.data?.orderEditAddVariant?.userErrors;
     if (errors2?.length) throw new Error(errors2.map(e => e.message).join(', '));
 
-    // 3. orderEditCommit (sin notificar al cliente — lo hace el bot por WhatsApp)
+    // 3. orderEditCommit (sin notificar al cliente â€” lo hace el bot por WhatsApp)
     const commitResult = await shopifyGraphQL(`
       mutation orderEditCommit($id: ID!) {
-        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell WhatsApp — complemento agregado") {
+        orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell WhatsApp â€” complemento agregado") {
           order { id name }
           userErrors { field message }
         }
@@ -534,7 +534,7 @@ async function handleUpsellAccepted(phone, order, match, config) {
     const errors3 = commitResult?.data?.orderEditCommit?.userErrors;
     if (errors3?.length) throw new Error(errors3.map(e => e.message).join(', '));
 
-    // 4. Mover fulfillment order a la misma ubicación del pedido original
+    // 4. Mover fulfillment order a la misma ubicaciÃ³n del pedido original
     if (locationId) {
       try {
         const foResult = await shopifyRequest('GET', `/orders/${order.id}/fulfillment_orders.json`);
@@ -546,7 +546,7 @@ async function handleUpsellAccepted(phone, order, match, config) {
           await shopifyRequest('POST', `/fulfillment_orders/${fo.id}/move.json`, {
             fulfillment_order: { new_location_id: locationId }
           });
-          logger.log('[upsell] FO ' + fo.id + ' movido → ' + locationId);
+          logger.log('[upsell] FO ' + fo.id + ' movido â†’ ' + locationId);
         }
       } catch (e) { logger.log('[upsell] Warning: no se pudo mover FO: ' + e.message); }
     }
@@ -564,9 +564,9 @@ async function handleUpsellAccepted(phone, order, match, config) {
     const invoiceOrder  = invoiceResult?.data?.orderInvoiceSend?.order;
     const invoiceSent   = !invoiceErrors?.length && !!invoiceOrder;
     if (invoiceSent) {
-      logger.log('[upsell] ✅ Factura enviada a: ' + invoiceOrder.email);
+      logger.log('[upsell] âœ… Factura enviada a: ' + invoiceOrder.email);
     } else if (invoiceErrors?.length) {
-      logger.log('[upsell] ⚠️ Invoice error: ' + JSON.stringify(invoiceErrors));
+      logger.log('[upsell] âš ï¸ Invoice error: ' + JSON.stringify(invoiceErrors));
     }
 
     // 6. Confirmar al cliente por WhatsApp
@@ -574,16 +574,16 @@ async function handleUpsellAccepted(phone, order, match, config) {
     const precio = match.precioComplemento || 0;
     const precioStr = precio ? ' ($' + Math.round(precio).toLocaleString('es-CL') + ')' : '';
     const msgCliente = invoiceSent
-      ? '✅ *¡Listo!* Agregué *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nTe llegó un email con el link para pagar la diferencia. Una vez confirmado lo despachamos todo junto 🙏'
-      : '✅ *¡Listo!* Agregué *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nEl equipo te contactará para coordinar el pago adicional 🙏';
-    await meta.sendText(phone, msgCliente, config);
+      ? 'âœ… *Â¡Listo!* AgreguÃ© *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nTe llegÃ³ un email con el link para pagar la diferencia. Una vez confirmado lo despachamos todo junto ðŸ™'
+      : 'âœ… *Â¡Listo!* AgreguÃ© *' + complementoNombre + '*' + precioStr + ' a tu pedido #' + order.name + '.\n\nEl equipo te contactarÃ¡ para coordinar el pago adicional ðŸ™';
+    await meta.sendMessage(phone, msgCliente, config);
 
     // 7. Marcar como aceptado y notificar Slack/stats
     await memory.updateUpsellStatus(phone, 'accepted');
     await slack.sendNotification(
-      '✅ *Upsell ACEPTADO*\nCliente: ' + phone + '\nPedido: ' + order.name +
+      'âœ… *Upsell ACEPTADO*\nCliente: ' + phone + '\nPedido: ' + order.name +
       '\nProducto: ' + complementoNombre + (precioStr ? ' ' + precioStr : '') +
-      (invoiceSent ? '\nFactura enviada ✅' : '\n⚠️ Factura no enviada'),
+      (invoiceSent ? '\nFactura enviada âœ…' : '\nâš ï¸ Factura no enviada'),
       config
     ).catch(() => {});
     try {
@@ -591,25 +591,25 @@ async function handleUpsellAccepted(phone, order, match, config) {
       await upsellStats.trackEvent('accepted', phone, { complemento: complementoNombre, orderName: order.name });
     } catch (e) { /* non-blocking */ }
 
-    logger.log('[upsell] ✅ Upsell aceptado: ' + order.name + ' → ' + complementoNombre + (invoiceSent ? ' + factura' : ''));
+    logger.log('[upsell] âœ… Upsell aceptado: ' + order.name + ' â†’ ' + complementoNombre + (invoiceSent ? ' + factura' : ''));
 
   } catch (err) {
-    logger.log('[upsell] ❌ Error en handleUpsellAccepted: ' + err.message);
+    logger.log('[upsell] âŒ Error en handleUpsellAccepted: ' + err.message);
     await slack.sendNotification(
-      '⚠️ *Error al procesar upsell aceptado*\nCliente: ' + phone +
+      'âš ï¸ *Error al procesar upsell aceptado*\nCliente: ' + phone +
       '\nPedido: ' + (order?.name || 'N/A') + '\nError: ' + err.message,
       config
     ).catch(() => {});
-    await meta.sendText(phone,
-      '¡Gracias por tu interés! Tuve un pequeño problema técnico. El equipo lo revisará y te contactará pronto 🙏',
+    await meta.sendMessage(phone,
+      'Â¡Gracias por tu interÃ©s! Tuve un pequeÃ±o problema tÃ©cnico. El equipo lo revisarÃ¡ y te contactarÃ¡ pronto ðŸ™',
       config
     ).catch(() => {});
   }
 }
 
-// ── revertUpsell ──────────────────────────────────────────────────────────────
+// â”€â”€ revertUpsell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /**
- * Revertir upsell: cliente rechazó después de haber aceptado.
+ * Revertir upsell: cliente rechazÃ³ despuÃ©s de haber aceptado.
  * Intenta quitar el line item del pedido en Shopify y reenviar invoice.
  */
 async function revertUpsell(phone, order, match, config, reason) {
@@ -622,7 +622,7 @@ async function revertUpsell(phone, order, match, config, reason) {
       return;
     }
 
-    logger.log('[upsell] Revirtiendo upsell para pedido ' + order.name + ': ' + (reason || 'sin razón'));
+    logger.log('[upsell] Revirtiendo upsell para pedido ' + order.name + ': ' + (reason || 'sin razÃ³n'));
 
     // 1. Obtener line items actuales del pedido
     const axios = require('axios');
@@ -679,17 +679,17 @@ async function revertUpsell(phone, order, match, config, reason) {
     await memory.clearUpsellPending(phone);
 
     // 4. Mensaje al cliente
-    await meta.sendText(phone,
-      'Entendido, dejamos tu pedido como estaba originalmente. Cualquier cosa me avisas 😊',
+    await meta.sendMessage(phone,
+      'Entendido, dejamos tu pedido como estaba originalmente. Cualquier cosa me avisas ðŸ˜Š',
       config
     ).catch(() => {});
 
     // 5. Notificar Slack
     await slack.sendNotification(
-      '🔄 *Upsell REVERTIDO*\n' +
+      'ðŸ”„ *Upsell REVERTIDO*\n' +
       'Cliente: ' + phone + '\n' +
       'Pedido: ' + order.name + '\n' +
-      'Razón: ' + (reason || 'rechazo del cliente'),
+      'RazÃ³n: ' + (reason || 'rechazo del cliente'),
       config
     );
 
@@ -712,7 +712,7 @@ async function revertUpsell(phone, order, match, config, reason) {
     await memory.clearUpsellPending(phone).catch(() => {});
     
     await slack.sendNotification(
-      '⚠️ *Error al revertir upsell*\n' +
+      'âš ï¸ *Error al revertir upsell*\n' +
       'Cliente: ' + phone + '\n' +
       'Pedido: ' + (order?.name || 'N/A') + '\n' +
       'Error: ' + err.message + '\n' +
@@ -722,9 +722,9 @@ async function revertUpsell(phone, order, match, config, reason) {
   }
 }
 
-// ── getStats ──────────────────────────────────────────────────────────────────
+// â”€â”€ getStats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /**
- * Retorna estadísticas de upsells (para endpoint /admin/upsell/stats)
+ * Retorna estadÃ­sticas de upsells (para endpoint /admin/upsell/stats)
  */
 async function getStats() {
   try {
@@ -757,7 +757,7 @@ async function getStats() {
   }
 }
 
-// ── Exports ───────────────────────────────────────────────────────────────────
+// â”€â”€ Exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function findBTSComplement(orderTotal, config) {
   if (!config || !config.btsCampaign || !config.cheapProducts) return null;
   const campaign = config.btsCampaign;
