@@ -424,48 +424,41 @@ async function handleUpsellAccepted(phone, order, match, config) {
       return;
     }
 
-    // 1. Agregar line item al pedido en Shopify
+    // 1. Agregar line item via Order Editing API (la única que funciona en pedidos pagados)
     const axios = require('axios');
-    const shopUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}.json`;
-    
+    const baseUrl = `https://${shopifyDomain}/admin/api/2024-01`;
+    const authHeaders = { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' };
+
     logger.log('[upsell] Agregando producto a pedido ' + order.name + ': variantId=' + variantId);
 
-    await axios.put(shopUrl, {
-      order: {
-        id: order.id,
-        line_items: [
-          { variant_id: parseInt(variantId), quantity: 1 }
-        ]
-      }
-    }, {
-      headers: {
-        'X-Shopify-Access-Token': shopifyToken,
-        'Content-Type': 'application/json'
-      },
-      timeout: 15000
-    });
+    // 1a. Abrir sesión de edición
+    const beginRes = await axios.post(`${baseUrl}/orders/${order.id}/edits.json`, {
+      order_edit: { start_reason: 'upsell', notify_customer: false }
+    }, { headers: authHeaders, timeout: 15000 });
 
-    logger.log('[upsell] Producto agregado exitosamente al pedido ' + order.name);
+    const editId = beginRes.data?.order_edit?.id;
+    if (!editId) throw new Error('No se obtuvo editId de Shopify');
+    logger.log('[upsell] Sesión de edición abierta: ' + editId);
 
-    // 2. Enviar invoice al cliente
-    const invoiceUrl = `https://${shopifyDomain}/admin/api/2024-01/orders/${order.id}/send_invoice.json`;
-    await axios.post(invoiceUrl, {}, {
-      headers: {
-        'X-Shopify-Access-Token': shopifyToken,
-        'Content-Type': 'application/json'
-      },
-      timeout: 15000
-    });
+    // 1b. Agregar variante
+    await axios.post(`${baseUrl}/orders/${order.id}/edits/${editId}/add_variant.json`, {
+      quantity: 1, variant_id: parseInt(variantId)
+    }, { headers: authHeaders, timeout: 15000 });
 
-    logger.log('[upsell] Invoice enviado para pedido ' + order.name);
+    // 1c. Confirmar edición + enviar invoice al cliente
+    await axios.post(`${baseUrl}/orders/${order.id}/edits/${editId}/commit.json`, {
+      order_edit: { notify_customer: true, staffNote: 'Upsell BTS aceptado por cliente' }
+    }, { headers: authHeaders, timeout: 15000 });
+
+    logger.log('[upsell] Pedido ' + order.name + ' editado y cliente notificado vía Shopify');
 
     // 3. Confirmar al cliente por WhatsApp
     const complementoNombre = match.par?.complemento || 'el producto';
     const precio = match.precioComplemento || 0;
     const precioStr = precio ? ' ($' + Math.round(precio).toLocaleString('es-CL') + ')' : '';
-    const confirmMsg = '✅ *¡Listo!* Agregué *' + complementoNombre + '*' + precioStr +
+    const confirmMsg = '✅ *¡Listo Alejandro!* Agregué *' + complementoNombre + '*' + precioStr +
       ' a tu pedido #' + order.name + '.\n\n' +
-      'Te envié el link de pago actualizado. Si tienes cualquier duda, escríbeme.';
+      'Shopify te va a llegar un correo con el resumen actualizado. Cualquier duda me avisas 🙏';
 
     await meta.sendText(phone, confirmMsg, config);
 
