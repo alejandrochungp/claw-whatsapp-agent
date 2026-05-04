@@ -1362,20 +1362,20 @@ async function revertUpsell(phone, order, match, config, reason) {
     const lineItemGid = targetEdge.node.id;
     logger.log('[upsell] Line item a remover: ' + lineItemGid);
 
-    // 2. orderEditSetQuantity (quantity=0 para remover)
+    // 2. orderEditRemoveLineItem para quitar el complemento
     const removeResult = await shopifyGraphQL(`
-      mutation orderEditSetQty($id: ID!, $lineItemId: ID!, $quantity: Int!) {
-        orderEditSetQuantity(id: $id, lineItemId: $lineItemId, quantity: $quantity) {
+      mutation orderEditRemoveLineItem($id: ID!, $lineItemId: ID!) {
+        orderEditRemoveLineItem(id: $id, lineItemId: $lineItemId) {
           calculatedOrder { id }
           userErrors { field message }
         }
       }
-    `, { id: calcOrderId, lineItemId: lineItemGid, quantity: 0 });
-    const err2 = removeResult?.data?.orderEditSetQuantity?.userErrors;
+    `, { id: calcOrderId, lineItemId: lineItemGid });
+    const err2 = removeResult?.data?.orderEditRemoveLineItem?.userErrors;
     if (err2?.length) throw new Error(err2.map(e => e.message).join(', '));
 
     // 3. orderEditCommit
-    await shopifyGraphQL(`
+    const commitResult = await shopifyGraphQL(`
       mutation orderEditCommitR($id: ID!) {
         orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Upsell revertido — " + (reason || '')) {
           order { id name }
@@ -1383,6 +1383,8 @@ async function revertUpsell(phone, order, match, config, reason) {
         }
       }
     `, { id: calcOrderId });
+    const err3 = commitResult?.data?.orderEditCommit?.userErrors;
+    if (err3?.length) throw new Error(err3.map(e => e.message).join(', '));
 
     // 4. Enviar invoice actualizada
     await shopifyGraphQL(`
