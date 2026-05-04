@@ -215,6 +215,27 @@ function start(config, business) {
   });
 
   // ── GET /admin/shopify-debug ─ diagnóstico locations + FOs ─────────────────────
+  // ── POST /admin/create-qa-order ─ crea pedido de prueba limpio ─────────────────────
+  app.post('/admin/create-qa-order', async (req, res) => {
+    try {
+      const axios = require('axios');
+      const tok = process.env.SHOPIFY_TOKEN;
+      const domain = process.env.SHOPIFY_DOMAIN || '59c6fd-2.myshopify.com';
+      const h = { 'X-Shopify-Access-Token': tok, 'Content-Type': 'application/json' };
+      const variantId = req.body.variantId || 45988542054549; // 100 Collagen Reedle Shot
+      const r = await axios.post(`https://${domain}/admin/api/2024-01/orders.json`, {
+        order: {
+          line_items: [{ variant_id: variantId, quantity: 1 }],
+          customer: { email: 'a.chungpark@gmail.com' },
+          shipping_address: { first_name: 'Alejandro', last_name: 'Chung', address1: 'Test QA', city: 'Santiago', province: 'Regi\u00f3n Metropolitana', country: 'CL', zip: '7500000', phone: '+56966283141' },
+          financial_status: 'paid', source_name: 'web', note: 'QA upsell test'
+        }
+      }, { headers: h, timeout: 15000 });
+      const o = r.data.order;
+      res.json({ ok: true, name: o.name, id: o.id, total: o.total_price });
+    } catch (err) { res.status(500).json({ error: err.response?.data || err.message }); }
+  });
+
   app.get('/admin/shopify-debug', async (req, res) => {
     try {
       const axios = require('axios');
