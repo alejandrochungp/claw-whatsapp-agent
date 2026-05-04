@@ -962,6 +962,18 @@ async function getOrderLocationId(_orderId) {
 // Despues de que el cliente acepta, programa:
 //   - Reminder a 2h si sigue sin pagar
 //   - Revert automatico a 5h si sigue sin pagar
+// Envia mensaje directo de seguimiento sin sobreescribir el pending
+async function sendFollowupDirectMessage(phone, config) {
+  try {
+    const pending = await memory.getUpsellPending(phone);
+    if (!pending || pending.status !== 'accepted') return;
+    const complemento = pending.match?.complemento || 'el producto';
+    const payLink = pending.orderStatusUrl || '';
+    const msg = '\u23f0 *Recordatorio:* \u00bfYa pudiste pagar el saldo de *' + complemento + '*?' + (payLink ? '\n\n' + payLink : '') + '\n\nSi no puedes, no te preocupes \ud83d\ude4f';
+    await meta.sendMessage(phone, msg, config);
+  } catch (e) { logger.log('[upsell-followup] Error enviando reminder: ' + e.message); }
+}
+
 function scheduleUpsellFollowup(phone, order, match, config) {
   // Reminder a 2h
   setTimeout(async () => {
@@ -976,9 +988,10 @@ function scheduleUpsellFollowup(phone, order, match, config) {
         if (next9 <= now) next9.setDate(next9.getDate() + 1);
         const delay = next9 - now;
         logger.log('[upsell-followup] Quiet hours \u2014 postponiendo reminder ' + Math.round(delay/60000) + 'min');
-        setTimeout(() => sendUpsellReminder(phone, order, match, config).catch(e => logger.log('[upsell-followup] reminder error: ' + e.message)), delay);
+        setTimeout(() => sendFollowupDirectMessage(phone, config).catch(e => logger.log('[upsell-followup] reminder error: ' + e.message)), delay);
       } else {
-        await sendUpsellReminder(phone, order, match, config);
+        await sendFollowupDirectMessage(phone, config);
+        logger.log('[upsell-followup] Reminder enviado a ' + phone);
       }
     } catch (e) { logger.log('[upsell-followup] Error en reminder timeout: ' + e.message); }
   }, REMINDER_AFTER_MS);
