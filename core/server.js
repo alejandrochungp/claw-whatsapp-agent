@@ -198,7 +198,7 @@ function start(config, business) {
       const upsellConfig = upsellMod.campaignConfig;
       // Buscar el mejor complemento BTS para ese pedido
       const total = parseFloat(order.total_price || 0);
-      const btsMatch = upsellMod.findBTSComplement(total, upsellConfig);
+      const btsMatch = await upsellMod.findBTSComplement(total, upsellConfig);
       if (!btsMatch) return res.status(400).json({ error: 'No hay complemento BTS para este pedido', total });
       const matchFull = {
         item: { title: order.line_items?.[0]?.title || '' },
