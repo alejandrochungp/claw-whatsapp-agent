@@ -35,6 +35,14 @@ const shopifyCatalog = require('./shopify').catalog || []; // catÃ¡logo compar
 // â”€â”€ Constante de filtro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MAX_UPSELL_PCT = 0.5; // 50% â€” el complemento no puede superar este % del precio referencia
+const REMINDER_AFTER_MS = process.env.UPSELL_TEST_MODE === 'true' ? 30000 : 2 * 60 * 60 * 1000; // 2h (30s en test)
+const REVERT_AFTER_MS   = process.env.UPSELL_TEST_MODE === 'true' ? 60000 : 5 * 60 * 60 * 1000; // 5h (60s en test)
+
+function isQuietHours() {
+  const hour = parseInt(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago', hour: 'numeric', hour12: false }));
+  return hour >= 23 || hour < 9;
+}
+
 
 
 
@@ -950,6 +958,44 @@ async function getOrderLocationId(_orderId) {
 
  */
 
+// \u2500\u2500 scheduleUpsellFollowup \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Despues de que el cliente acepta, programa:
+//   - Reminder a 2h si sigue sin pagar
+//   - Revert automatico a 5h si sigue sin pagar
+function scheduleUpsellFollowup(phone, order, match, config) {
+  // Reminder a 2h
+  setTimeout(async () => {
+    try {
+      const pending = await memory.getUpsellPending(phone);
+      if (!pending || pending.status !== 'accepted') return; // ya pago o fue cancelado
+      if (isQuietHours()) {
+        // Postponer al siguiente 09:00 Chile
+        const now = new Date();
+        const next9 = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+        next9.setHours(9, 0, 0, 0);
+        if (next9 <= now) next9.setDate(next9.getDate() + 1);
+        const delay = next9 - now;
+        logger.log('[upsell-followup] Quiet hours \u2014 postponiendo reminder ' + Math.round(delay/60000) + 'min');
+        setTimeout(() => sendUpsellReminder(phone, order, match, config).catch(e => logger.log('[upsell-followup] reminder error: ' + e.message)), delay);
+      } else {
+        await sendUpsellReminder(phone, order, match, config);
+      }
+    } catch (e) { logger.log('[upsell-followup] Error en reminder timeout: ' + e.message); }
+  }, REMINDER_AFTER_MS);
+
+  // Revert automatico a 5h
+  setTimeout(async () => {
+    try {
+      const pending = await memory.getUpsellPending(phone);
+      if (!pending || pending.status !== 'accepted') return; // ya pago o fue cancelado
+      logger.log('[upsell-followup] Revirtiendo upsell por falta de pago: ' + (order?.name || pending.orderName));
+      await revertUpsell(phone, order, match, config, 'no_payment_5h');
+    } catch (e) { logger.log('[upsell-followup] Error en revert timeout: ' + e.message); }
+  }, REVERT_AFTER_MS);
+
+  logger.log('[upsell-followup] Followup programado para ' + phone + ' \u2014 reminder en 2h, revert en 5h');
+}
+
 async function handleUpsellAccepted(phone, order, match, config) {
 
   try {
@@ -1195,6 +1241,9 @@ async function handleUpsellAccepted(phone, order, match, config) {
     } catch (e) { /* non-blocking */ }
 
 
+
+    // Programar reminder (2h) y revert automatico (5h) si no paga
+    scheduleUpsellFollowup(phone, order, match, config);
 
     logger.log('[upsell] âœ… Upsell aceptado: ' + order.name + ' â†’ ' + complementoNombre + (invoiceSent ? ' + factura' : ''));
 
