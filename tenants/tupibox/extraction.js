@@ -1,17 +1,23 @@
 /**
- * Extracción inteligente de datos usando Claude AI
- * Pide a la IA que estructure datos después de capturarlos conversacionalmente.
+ * Extracción inteligente de datos usando IA (DeepSeek primario, Claude fallback)
+ *
+ * Orden de prioridad:
+ *   1. DeepSeek V4 Pro (DEEPSEEK_API_KEY) — ~10x más barato
+ *   2. Claude Haiku    (CLAUDE_API_KEY)   — fallback si DeepSeek falla
  *
  * Nota: usa axios directo (no core/ai.js) porque core/ai.ask() está diseñado
  * para conversaciones completas con historial de tenant — no para prompts
- * de extracción one-shot. Se reutiliza la misma CLAUDE_API_KEY del entorno.
+ * de extracción one-shot.
  */
 
 const axios = require('axios');
 const logger = require('../../core/logger');
 
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
-const CLAUDE_MODEL = 'claude-3-5-haiku-20241022'; // Modelo rápido y económico para extracción
+// ── Credenciales ─────────────────────────────────────────────────────────────
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const CLAUDE_API_KEY   = process.env.CLAUDE_API_KEY;
+const DEEPSEEK_MODEL   = 'deepseek-chat';
+const CLAUDE_MODEL     = 'claude-3-5-haiku-20241022';
 
 /**
  * Extraer datos estructurados de una conversación
@@ -19,16 +25,15 @@ const CLAUDE_MODEL = 'claude-3-5-haiku-20241022'; // Modelo rápido y económico
  * @returns {Object} Datos extraídos estructurados
  */
 async function extractFromConversation(conversationHistory) {
-  if (!CLAUDE_API_KEY) {
-    logger.log('⚠️ [extraction] CLAUDE_API_KEY no configurada, extracción desactivada');
+  if (!DEEPSEEK_API_KEY && !CLAUDE_API_KEY) {
+    logger.log('⚠️ [extraction] Ninguna API key configurada, extracción desactivada');
     return {};
   }
 
   try {
     // Construir transcript de la conversación
-    // Soporta tanto { from, message } (formato tupibox-fresh) como { role, text } (formato core)
     const transcript = conversationHistory
-      .slice(-6) // Últimos 6 mensajes
+      .slice(-6)
       .map(msg => {
         const isUser = msg.from === 'user' || msg.role === 'user';
         const text   = msg.message || msg.text || '';
@@ -77,38 +82,71 @@ IMPORTANTE:
 
 Responde SOLO con el JSON, sin explicaciones ni markdown.`;
 
-    const response = await axios.post(
-      'https://api.anthropic.com/v1/messages',
-      {
-        model: CLAUDE_MODEL,
-        max_tokens: 500,
-        messages: [
+    // ── 1. DeepSeek (primario) ────────────────────────────────────────────
+    if (DEEPSEEK_API_KEY) {
+      try {
+        const response = await axios.post(
+          'https://api.deepseek.com/v1/chat/completions',
           {
-            role: 'user',
-            content: extractionPrompt
+            model: DEEPSEEK_MODEL,
+            max_tokens: 500,
+            messages: [
+              { role: 'user', content: extractionPrompt }
+            ]
+          },
+          {
+            headers: {
+              'Authorization': 'Bearer ' + DEEPSEEK_API_KEY,
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000
           }
-        ]
-      },
-      {
-        headers: {
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json'
-        },
-        timeout: 10000 // 10 segundos
+        );
+
+        const content = response.data.choices[0]?.message?.content?.trim() || '';
+        const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        const extracted = JSON.parse(jsonText);
+
+        logger.log(`[extraction] DeepSeek: ${Object.keys(extracted).length} campos extraídos`);
+        return extracted;
+
+      } catch (dsError) {
+        logger.log(`[extraction] DeepSeek falló: ${dsError.message}, intentando Claude...`);
+        // Cae al fallback Claude
       }
-    );
+    }
 
-    const content = response.data.content[0].text.trim();
+    // ── 2. Claude (fallback) ──────────────────────────────────────────────
+    if (CLAUDE_API_KEY) {
+      const response = await axios.post(
+        'https://api.anthropic.com/v1/messages',
+        {
+          model: CLAUDE_MODEL,
+          max_tokens: 500,
+          messages: [
+            { role: 'user', content: extractionPrompt }
+          ]
+        },
+        {
+          headers: {
+            'x-api-key': CLAUDE_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json'
+          },
+          timeout: 10000
+        }
+      );
 
-    // Limpiar markdown si existe
-    const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      const content = response.data.content[0].text.trim();
+      const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      const extracted = JSON.parse(jsonText);
 
-    const extracted = JSON.parse(jsonText);
+      logger.log(`[extraction] Claude: ${Object.keys(extracted).length} campos extraídos`);
+      return extracted;
+    }
 
-    logger.log(`✅ [extraction] Extracción IA: ${Object.keys(extracted).length} campos`);
-
-    return extracted;
+    logger.log('⚠️ [extraction] Sin API key disponible');
+    return {};
 
   } catch (error) {
     logger.log(`❌ [extraction] Error en extracción IA: ${error.message}`);
@@ -124,14 +162,12 @@ function mapToSheetFormat(extracted) {
 
   if (extracted.dogName) mapped.dogName = extracted.dogName;
   if (extracted.weight) {
-    // Normalizar peso a formato "XX kg"
     const weightNum = extracted.weight.toString().replace(/[^\d.]/g, '');
     mapped.weight = `${weightNum} kg`;
   }
   if (extracted.breed) mapped.breed = extracted.breed;
   if (extracted.sex) mapped.sex = extracted.sex;
 
-  // Edad: priorizar birthDate, luego ageYears + ageMonths
   if (extracted.birthDate) {
     mapped.birthDate = extracted.birthDate;
   } else if (extracted.ageYears !== undefined) {
@@ -140,7 +176,6 @@ function mapToSheetFormat(extracted) {
     const totalMonths = (years * 12) + months;
     mapped.ageInMonths = totalMonths.toString();
 
-    // Calcular fecha aproximada de nacimiento
     const today = new Date();
     const birthDate = new Date(today);
     birthDate.setMonth(birthDate.getMonth() - totalMonths);
@@ -149,7 +184,6 @@ function mapToSheetFormat(extracted) {
 
   if (extracted.activityLevel) mapped.activityLevel = extracted.activityLevel;
 
-  // Alergias - normalizar valores
   if (extracted.allergies) {
     const allergyLower = extracted.allergies.toLowerCase();
     if (allergyLower.includes('no') || allergyLower.includes('ninguna') || allergyLower.includes('sin')) {
@@ -159,30 +193,21 @@ function mapToSheetFormat(extracted) {
     }
   }
 
-  // Preferencia proteína - normalizar valores
   if (extracted.proteinPreference) {
     const prefLower = extracted.proteinPreference.toLowerCase();
     if (prefLower.includes('da lo mismo') || prefLower.includes('sin preferencia') || prefLower.includes('cualquier')) {
       mapped.proteinPreference = 'Sin preferencia';
     } else {
-      // Normalizar nombres de proteínas
       const proteinMap = {
-        'pollo': 'Pollo',
-        'res': 'Res',
-        'cerdo': 'Cerdo',
-        'pescado': 'Pescado',
-        'cordero': 'Cordero',
-        'pavo': 'Pavo'
+        'pollo': 'Pollo', 'res': 'Res', 'cerdo': 'Cerdo',
+        'pescado': 'Pescado', 'cordero': 'Cordero', 'pavo': 'Pavo'
       };
-
       for (const [key, value] of Object.entries(proteinMap)) {
         if (prefLower.includes(key)) {
           mapped.proteinPreference = value;
           break;
         }
       }
-
-      // Si no encontró match, usar textual
       if (!mapped.proteinPreference) {
         mapped.proteinPreference = extracted.proteinPreference;
       }
