@@ -1438,7 +1438,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
 
     if (aiResult.response) {
       replyText = aiResult.response;
-      logger.log(`ðŸ¤- Claude respondiÃ³ (costo: $${aiResult.cost?.toFixed(4) || '?'})`);
+      logger.log(`ðŸ¤- ${aiResult.model === 'deepseek-chat' ? 'DeepSeek' : 'Claude'} respondiÃ³ (costo: $${aiResult.cost?.toFixed(4) || '?'})`);
     } else {
       replyText = aiResult.fallback || config.fallbackMessage;
     }
