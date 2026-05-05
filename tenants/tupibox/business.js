@@ -83,11 +83,12 @@ function buildSystemPrompt(context) {
       prompt += `Ejemplo: "ya que conoces TupiBox, Fresh es la versión de alimentación — mismo cuidado pero en comida diaria para [nombre perro]"\n`;
     }
 
-    // Si tenemos los 6 datos, agregar el link pre-cargado
-    if (context.dogName && context.weight && (context.ageYears || context.ageMonths) && context.activityLevel) {
-      const prefillUrl = buildPrefillUrl(context);
-      prompt += `\n👉 Link formulario pre-cargado: ${prefillUrl}\n`;
-      prompt += `Usa este link cuando el cliente quiera hacer el pedido (solo después de capturar todos los datos).`;
+    // NO incluir el link en el prompt — el sistema lo manda automático
+    // cuando detecta que están los 6 datos. Así evitamos que Claude invente URLs.
+    if (context.dogName && context.weight && (context.ageYears || context.ageMonths) && context.activityLevel && !context.prefillUrlSent) {
+      prompt += `\n⚠️ Datos completos: ya tienes nombre, peso, edad y actividad.\n`;
+      prompt += `Dile al cliente: "ya tengo todo! te mando el link ahora" — el sistema lo envía automático.\n`;
+      prompt += `NO inventes links ni URLs bajo ninguna circunstancia.`;
     }
   }
 
@@ -129,6 +130,9 @@ function isBusinessHours() {
  * Llamado por el core después de enviar la respuesta al cliente.
  */
 async function afterReply(phone, userText, botReply, history, context) {
+  const logger = require('../../core/logger');
+  const memory = require('../../core/memory');
+
   try {
     // 1. Capturar lead si es nuevo
     const isNew = await sheets.isNewLead(phone);
@@ -148,11 +152,29 @@ async function afterReply(phone, userText, botReply, history, context) {
       if (Object.keys(extracted).length > 0) {
         const mapped = extraction.mapToSheetFormat ? extraction.mapToSheetFormat(extracted) : extracted;
         await sheets.updateLead(phone, mapped);
+
+        // Actualizar contexto Redis con los datos extraídos
+        await memory.updateContext(phone, mapped);
+        logger.log(`[sheets] Contexto actualizado con ${Object.keys(mapped).length} campos`);
+
+        // 3. Si tenemos los 6 datos y aún no se envió el link, enviarlo ahora
+        const merged = { ...context, ...mapped };
+        if (!context.prefillUrlSent && hasRequiredFields(merged)) {
+          const url = buildPrefillUrl(merged);
+          const meta = require('../../core/meta');
+          const config = require('./config');
+
+          await meta.sendMessage(phone,
+            `aquí va 👉 ${url}\n\nya está pre-cargado con los datos de ${merged.dogName}, solo confirmas y listo 🐾\n\ncualquier duda me avisas!`,
+            config
+          );
+          await memory.updateContext(phone, { prefillUrlSent: true });
+          logger.log(`[sheets] Link enviado a ${phone} para ${merged.dogName}`);
+        }
       }
     }
   } catch (err) {
     // No crítico — no bloquear el flujo
-    const logger = require('../../core/logger');
     logger.log(`[sheets] afterReply error: ${err.message}`);
   }
 }
@@ -214,6 +236,10 @@ async function enrichContext(phone, savedContext) {
     logger.log(`[sheets] enrichContext error: ${e.message}`);
     return {};
   }
+}
+
+function hasRequiredFields(ctx) {
+  return !!(ctx.dogName && ctx.weight && (ctx.ageYears || ctx.ageMonths) && ctx.activityLevel);
 }
 
 module.exports = { quickReply, buildSystemPrompt, afterReply, enrichContext };

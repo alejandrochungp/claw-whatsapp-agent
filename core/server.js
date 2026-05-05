@@ -1453,6 +1453,8 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   // 3c. Hook post-respuesta del tenant (opcional — solo si está definido)
   if (typeof business.afterReply === 'function') {
     const freshHistory = await memory.getHistory(from, 6);
+    // Se espera para que pueda enviar mensajes de seguimiento (ej: link de TupiBox)
+    // antes del delay humano y el envío principal
     business.afterReply(from, userText, replyText, freshHistory, context)
       .catch(e => logger.log(`[tenant:afterReply] ${e.message}`));
   }
