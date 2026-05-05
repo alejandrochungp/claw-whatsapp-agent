@@ -239,7 +239,7 @@ async function enrichContext(phone, savedContext) {
 }
 
 function hasRequiredFields(ctx) {
-  return !!(ctx.dogName && ctx.weight && (ctx.ageYears || ctx.ageMonths) && ctx.activityLevel);
+  return !!(ctx.dogName && ctx.weight && (ctx.ageYears || ctx.ageMonths || ctx.ageInMonths || ctx.birthDate) && ctx.activityLevel);
 }
 
 module.exports = { quickReply, buildSystemPrompt, afterReply, enrichContext };
