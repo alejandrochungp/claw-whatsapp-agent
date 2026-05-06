@@ -151,6 +151,41 @@ function start(config, business) {
     }
   });
 
+  // POST /admin/wa-template - crear template WhatsApp
+  app.post('/admin/wa-template', async (req, res) => {
+    const { name, category, language, components } = req.body;
+    if (!name || !category || !language || !components) {
+      return res.status(400).json({ error: 'name, category, language, components requeridos' });
+    }
+    const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const wabaId  = process.env.WHATSAPP_WABA_ID || process.env.WABA_ID;
+    try {
+      const axios = require('axios');
+      // Auto-detect WABA ID from phone number if not configured
+      let effectiveWabaId = wabaId;
+      if (!effectiveWabaId) {
+        const phoneId = process.env.PHONE_NUMBER_ID || '1048275305032155';
+        const infoRes = await axios.get(
+          'https://graph.facebook.com/v22.0/' + phoneId,
+          { params: { fields: 'id,name' }, headers: { Authorization: 'Bearer ' + waToken } }
+        );
+        // Not directly available, try to get from business account
+        // Use TupiBox WABA ID as fallback
+        effectiveWabaId = '2708465026162080';
+      }
+      const r = await axios.post(
+        'https://graph.facebook.com/v22.0/' + effectiveWabaId + '/message_templates',
+        { name, category, language, components },
+        { headers: { Authorization: 'Bearer ' + waToken, 'Content-Type': 'application/json' } }
+      );
+      logger.log('[admin] Template WhatsApp creado: ' + name + ' -> ' + (r.data.id || 'OK'));
+      res.json({ ok: true, data: r.data });
+    } catch (e) {
+      logger.log('[admin] Error creando template ' + name + ': ' + (e.response?.data?.error?.message || e.message));
+      res.json({ ok: false, error: e.response?.data || e.message });
+    }
+  });
+
   // â"€â"€ GET /admin/logs â€" Ãºltimos logs del servidor â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   app.get('/admin/logs', (req, res) => {
     const n = parseInt(req.query.n) || 50;
