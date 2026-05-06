@@ -161,18 +161,7 @@ function start(config, business) {
     const wabaId  = process.env.WHATSAPP_WABA_ID || process.env.WABA_ID;
     try {
       const axios = require('axios');
-      // Auto-detect WABA ID from phone number if not configured
-      let effectiveWabaId = wabaId;
-      if (!effectiveWabaId) {
-        const phoneId = process.env.PHONE_NUMBER_ID || '1048275305032155';
-        const infoRes = await axios.get(
-          'https://graph.facebook.com/v22.0/' + phoneId,
-          { params: { fields: 'id,name' }, headers: { Authorization: 'Bearer ' + waToken } }
-        );
-        // Not directly available, try to get from business account
-        // Use TupiBox WABA ID as fallback
-        effectiveWabaId = '2708465026162080';
-      }
+      let effectiveWabaId = wabaId || '2708465026162080';
       const r = await axios.post(
         'https://graph.facebook.com/v22.0/' + effectiveWabaId + '/message_templates',
         { name, category, language, components },
