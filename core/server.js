@@ -502,6 +502,21 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     res.json({ ok: true });
   });
 
+  // GET /admin/redis-get/:phone — ver datos crudos de Redis para un telefono
+  app.get('/admin/redis-get/:phone', async (req, res) => {
+    try {
+      const rClient = memory.redis;
+      if (!rClient) return res.json({ ok: false, error: 'Redis no conectado' });
+      const phone = req.params.phone;
+      const key = 'tupibox:conv:' + phone;
+      const raw = await rClient.get(key);
+      const altRaw = await rClient.get(phone);
+      res.json({ ok: true, key, redisData: raw ? 'present (' + raw.length + 'b)' : 'MISSING', altKey: phone, altData: altRaw ? 'present' : 'MISSING' });
+    } catch (e) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /admin/redis-keys — raw Redis keys (debug)
   app.get('/admin/redis-keys', async (req, res) => {
     try {
