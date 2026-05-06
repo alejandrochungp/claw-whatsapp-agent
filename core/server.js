@@ -510,8 +510,18 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
       const phone = req.params.phone;
       const key = 'tupibox:conv:' + phone;
       const raw = await rClient.get(key);
-      const altRaw = await rClient.get(phone);
-      res.json({ ok: true, key, redisData: raw ? 'present (' + raw.length + 'b)' : 'MISSING', altKey: phone, altData: altRaw ? 'present' : 'MISSING' });
+      if (!raw) return res.json({ ok: true, key, found: false });
+      const conv = JSON.parse(raw);
+      const lastMsg = conv.history && conv.history.length > 0 ? conv.history[conv.history.length - 1] : null;
+      res.json({
+        ok: true, key, found: true,
+        updatedAt: conv.updatedAt || null,
+        historyCount: conv.history?.length || 0,
+        lastMessageTs: lastMsg?.ts || null,
+        lastMessageRole: lastMsg?.role || null,
+        lastMessageSample: lastMsg?.text?.slice(0, 80) || null,
+        contextKeys: Object.keys(conv.context || {})
+      });
     } catch (e) {
       res.json({ ok: false, error: e.message });
     }
