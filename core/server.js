@@ -234,6 +234,7 @@ function start(config, business) {
   const FOLLOWUP_TEMPLATE = 'tupibox_seguimiento_24h_v5';
   const FOLLOWUP_COOLDOWN_MS = 30 * 86400 * 1000;  // 30 dias
 
+  // Pre-filtro rápido: keywords de desinterés obvio
   const DISINTEREST_KEYWORDS = [
     'no gracias', 'no me interesa', 'no era lo que buscaba',
     'no estoy interesado', 'no estoy interesada', 'muy caro',
@@ -241,11 +242,66 @@ function start(config, business) {
     'no quiero', 'chao', 'bye', 'gracias pero no'
   ];
 
-  function isDisinterested(history) {
+  function quickReject(history) {
     if (!history || history.length === 0) return false;
     const userMsgs = history.filter(m => m.role === 'user').slice(-3);
     const combined = userMsgs.map(m => (m.text || '').toLowerCase()).join(' ');
     return DISINTEREST_KEYWORDS.some(kw => combined.includes(kw));
+  }
+
+  // Clasificacion con LLM (DeepSeek): INTERESADO | EVALUANDO | DESCARTAR
+  async function classifyInterestWithLLM(phone, history) {
+    if (!history || history.length === 0) return 'DESCARTAR';
+    const lastMessages = history.slice(-6).map(m =>
+      (m.role === 'user' ? 'Cliente' : 'Bot') + ': ' + (m.text || '')
+    ).join('\n');
+    
+    const prompt = `Eres un clasificador de leads para TupiBox Fresh (comida natural para perros en Chile).
+Analiza esta conversacion y clasifica al lead en UNA sola categoria:
+
+- INTERESADO: mostro interes genuino en el producto, hizo preguntas especificas, parecia cerca de comprar
+- EVALUANDO: mostro algo de interes pero dijo que lo iba a pensar, revisar, o necesitaba mas tiempo
+- DESCARTAR: mostro desinteres claro, dijo que no le servia, no era lo que buscaba, o corto la conversacion
+
+CONVERSACION:
+${lastMessages}
+
+Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
+
+    try {
+      const axios = require('axios');
+      const r = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 10,
+        temperature: 0
+      }, {
+        headers: {
+          'Authorization': 'Bearer ' + (process.env.DEEPSEEK_API_KEY || ''),
+          'Content-Type': 'application/json'
+        }
+      });
+      const result = (r.data?.choices?.[0]?.message?.content || '').trim().toUpperCase();
+      if (result.includes('INTERESADO')) return 'INTERESADO';
+      if (result.includes('EVALUANDO')) return 'EVALUANDO';
+      return 'DESCARTAR';
+    } catch (e) {
+      // Si falla el LLM, ser conservador: no enviar
+      logger.log('[followup] LLM fallback para ' + phone + ': ' + e.message);
+      return 'DESCARTAR';
+    }
+  }
+
+  async function shouldSendFollowup(phone, history) {
+    // Fase 1: pre-filtro rapido (gratis)
+    if (quickReject(history)) {
+      logger.log('[followup] Keyword rechazo ' + phone);
+      return false;
+    }
+    // Fase 2: LLM clasifica
+    const result = await classifyInterestWithLLM(phone, history);
+    logger.log('[followup] LLM: ' + phone + ' = ' + result);
+    return result === 'INTERESADO' || result === 'EVALUANDO';
   }
 
   async function runFollowupScan() {
@@ -277,8 +333,8 @@ function start(config, business) {
             }
           } catch (_) {}
 
-          if (isDisinterested(history)) {
-            logger.log('[followup] Desinteres ' + phone + ' - skip');
+          const ok = await shouldSendFollowup(phone, history);
+          if (!ok) {
             continue;
           }
 
