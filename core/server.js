@@ -502,6 +502,27 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     res.json({ ok: true });
   });
 
+  // GET /admin/redis-keys — raw Redis keys (debug)
+  app.get('/admin/redis-keys', async (req, res) => {
+    try {
+      const keys = [];
+      const rClient = memory.redis;
+      if (rClient) {
+        let cursor = '0';
+        let scanned = 0;
+        do {
+          const result = await rClient.scan(Number(cursor), { MATCH: '*', COUNT: 50 });
+          cursor = result.cursor;
+          scanned += result.keys.length;
+          for (const k of result.keys) keys.push(k);
+        } while (cursor !== '0' && cursor !== 0 && scanned < 500);
+      }
+      res.json({ ok: true, totalScanned: keys.length, sample: keys.slice(0, 30) });
+    } catch (e) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /admin/conversations — listar todas las conversaciones activas (debug)
   app.get('/admin/conversations', async (req, res) => {
     try {
