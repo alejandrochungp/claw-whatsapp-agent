@@ -176,7 +176,45 @@ function start(config, business) {
   });
 
   // â"€â"€ GET /admin/logs â€" Ãºltimos logs del servidor â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-  app.get('/admin/logs', (req, res) => {
+  // POST /admin/send-template - enviar template WhatsApp
+  app.post('/admin/send-template', async (req, res) => {
+    const { to, template_name, language_code, body_params } = req.body;
+    if (!to || !template_name) {
+      return res.status(400).json({ error: 'to, template_name requeridos' });
+    }
+    const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneId = process.env.PHONE_NUMBER_ID || '1048275305032155';
+    try {
+      const axios = require('axios');
+      const payload = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'template',
+        template: {
+          name: template_name,
+          language: { code: language_code || 'es' }
+        }
+      };
+      if (body_params && body_params.length > 0) {
+        payload.template.components = [{
+          type: 'body',
+          parameters: body_params.map(p => ({ type: 'text', text: p }))
+        }];
+      }
+      const r = await axios.post(
+        'https://graph.facebook.com/v22.0/' + phoneId + '/messages',
+        payload,
+        { headers: { Authorization: 'Bearer ' + waToken, 'Content-Type': 'application/json' } }
+      );
+      logger.log('[admin] Template enviado: ' + template_name + ' -> ' + to);
+      res.json({ ok: true, data: r.data });
+    } catch (e) {
+      logger.log('[admin] Error enviando template: ' + (e.response?.data?.error?.message || e.message));
+      res.json({ ok: false, error: e.response?.data || e.message });
+    }
+  });
+
+    app.get('/admin/logs', (req, res) => {
     const n = parseInt(req.query.n) || 50;
     res.json({ logs: logger.getRecentLogs(n) });
   });
