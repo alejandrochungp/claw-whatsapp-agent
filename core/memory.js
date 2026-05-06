@@ -75,14 +75,17 @@ setInterval(() => {
 // ─── API pública ─────────────────────────────────────────────────────────────
 
 async function addMessage(phone, text, role) {
+  const now = Date.now();
   if (useRedis) {
     const conv = (await redisGet(phone)) || { history: [], context: {} };
-    conv.history.push({ role, text, ts: Date.now() });
+    conv.history.push({ role, text, ts: now });
+    conv.updatedAt = now;
     if (conv.history.length > MAX_HISTORY) conv.history.shift();
     await redisSet(phone, conv);
   } else {
     const conv = ramGetOrCreate(phone);
-    conv.history.push({ role, text, ts: Date.now() });
+    conv.history.push({ role, text, ts: now });
+    conv.updatedAt = now;
     if (conv.history.length > MAX_HISTORY) conv.history.shift();
   }
 }
@@ -306,11 +309,11 @@ async function setSentTemplate(phone, templateName) {
 async function getActiveConversations(maxAgeMs) {
   const phones = new Set();
   const prefix = TENANT_PREFIX + 'conv:';
+  const now = Date.now();
   if (!useRedis) {
     for (const [phone, conv] of ramStore.entries()) {
-      if (conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
-        phones.add(phone);
-      }
+      const lastTs = conv.updatedAt || (conv.history && conv.history.length > 0 ? conv.history[conv.history.length - 1].ts : 0);
+      if (lastTs && now - lastTs < maxAgeMs) phones.add(phone);
     }
     return Array.from(phones);
   }
@@ -327,12 +330,11 @@ async function getActiveConversations(maxAgeMs) {
         try {
           const raw = await redisClient.get(k);
           const conv = JSON.parse(raw);
-          if (conv && conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
-            phones.add(phone);
-          }
+          const lastTs = conv.updatedAt || (conv.history && conv.history.length > 0 ? conv.history[conv.history.length - 1].ts : 0);
+          if (lastTs && now - lastTs < maxAgeMs) phones.add(phone);
         } catch (_) {}
       }
-    } while (cursor !== 0 && cursor !== '0');
+    } while (cursor !== '0' && cursor !== 0);
     return Array.from(phones);
   } catch (e) {
     console.error('[memory] Error scanning conversations:', e.message);
