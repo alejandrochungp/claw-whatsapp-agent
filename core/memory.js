@@ -278,8 +278,8 @@ async function getNonProductiveCount(phone) {
 async function getConversation(phone) {
   if (useRedis) {
     try {
-      const raw = await redisClient.get(phone);
-      return raw ? JSON.parse(raw) : null;
+      const raw = await redisGet(phone);
+      return raw || null;
     } catch (_) { return null; }
   }
   return ramStore.get(phone) || null;
@@ -305,6 +305,7 @@ async function setSentTemplate(phone, templateName) {
 // Obtener todas las conversaciones activas (para escaneo de seguimiento)
 async function getActiveConversations(maxAgeMs) {
   const phones = new Set();
+  const prefix = TENANT_PREFIX + 'conv:';
   if (!useRedis) {
     for (const [phone, conv] of ramStore.entries()) {
       if (conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
@@ -317,23 +318,19 @@ async function getActiveConversations(maxAgeMs) {
     let cursor = '0';
     do {
       const result = await redisClient.scan(Number(cursor), {
-        MATCH: '*',
+        MATCH: prefix + '*',
         COUNT: 100
       });
       cursor = result.cursor;
-      for (const key of result.keys) {
-        // Skip internal keys (tpl:, ctx: prefijos, etc.)
-        if (key.startsWith('tpl:') || key.startsWith('_')) continue;
-        // Check if it looks like a phone number (numberic or + prefix)
-        if (/^\+?\d{8,15}$/.test(key)) {
-          try {
-            const raw = await redisClient.get(key);
-            const conv = JSON.parse(raw);
-            if (conv && conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
-              phones.add(key);
-            }
-          } catch (_) {}
-        }
+      for (const k of result.keys) {
+        const phone = k.startsWith(prefix) ? k.slice(prefix.length) : k;
+        try {
+          const raw = await redisClient.get(k);
+          const conv = JSON.parse(raw);
+          if (conv && conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
+            phones.add(phone);
+          }
+        } catch (_) {}
       }
     } while (cursor !== 0 && cursor !== '0');
     return Array.from(phones);
