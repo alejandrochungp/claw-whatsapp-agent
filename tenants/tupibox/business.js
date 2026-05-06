@@ -83,6 +83,13 @@ function buildSystemPrompt(context) {
       prompt += `Ejemplo: "ya que conoces TupiBox, Fresh es la versión de alimentación — mismo cuidado pero en comida diaria para [nombre perro]"\n`;
     }
 
+    // Template de seguimiento: el usuario responde a un mensaje que enviamos
+    if (context.tplFollowup) {
+      const tpl = context.tplFollowup;
+      prompt += `\n📨 SEGUIMIENTO: este usuario respondió a nuestro mensaje de seguimiento "${tpl.template}" que enviamos hace ${tpl.repliedAfterMin} minutos.\n`;
+      prompt += `El usuario fue reactivado por este mensaje automático. Asume que retomó el interés. Pregúntale en qué quedó o si necesita ayuda para decidir.\n`;
+    }
+
     // NO incluir el link en el prompt — el sistema lo manda automático
     // cuando detecta que están los 6 datos. Así evitamos que Claude invente URLs.
     if (context.dogName && context.weight && (context.ageYears || context.ageMonths) && context.activityLevel && !context.prefillUrlSent) {
