@@ -219,6 +219,7 @@ function start(config, business) {
         { headers: { Authorization: 'Bearer ' + waToken, 'Content-Type': 'application/json' } }
       );
       logger.log('[admin] Template enviado: ' + template_name + ' -> ' + to);
+      await memory.setSentTemplate(to, template_name);
       res.json({ ok: true, data: r.data });
     } catch (e) {
       logger.log('[admin] Error enviando template: ' + (e.response?.data?.error?.message || e.message));
@@ -1128,7 +1129,20 @@ async function handleMessage(message, value, config, business) {
     await memory.updateContext(from, { canSendAudio: true });
   }
 
-  // Para imÃ¡genes, el historial ya fue guardado en el bloque de imagen â€" no duplicar
+  
+  // Template de seguimiento: detectar si el usuario responde a un template enviado
+  const tplData = await memory.getSentTemplate(from);
+  if (tplData) {
+    try {
+      const tpl = JSON.parse(tplData);
+      const elapsedMin = Math.round((Date.now() - tpl.sent_at) / 60000);
+      logger.log('[tpl] Respuesta a template ' + tpl.template + ' de ' + from + ' (' + elapsedMin + 'min despues)');
+      await memory.updateContext(from, {
+        tplFollowup: { template: tpl.template, repliedAfterMin: elapsedMin }
+      });
+    } catch (_) {}
+  }
+// Para imÃ¡genes, el historial ya fue guardado en el bloque de imagen â€" no duplicar
   if (!userText.startsWith('[imagen]')) {
     await memory.addMessage(from, userText, 'user');
   }

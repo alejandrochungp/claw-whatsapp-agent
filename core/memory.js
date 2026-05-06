@@ -273,6 +273,41 @@ async function getNonProductiveCount(phone) {
   return ctx._nonProductiveCount || 0;
 }
 
+// ─── Template seguimiento tracking ─────────────────────────────────────────
+async function setSentTemplate(phone, templateName) {
+  const key = `tpl:${phone}`;
+  const data = JSON.stringify({ template: templateName, sent_at: Date.now() });
+  if (!useRedis) {
+    // RAM fallback
+    if (!global.__tplSent) global.__tplSent = {};
+    global.__tplSent[phone] = data;
+    setTimeout(() => { delete global.__tplSent[phone]; }, 48 * 3600_000);
+    return;
+  }
+  try {
+    await redisClient.set(key, data, { EX: 48 * 3600 });
+  } catch (e) {
+    console.error('[memory] Error setSentTemplate:', e.message);
+  }
+}
+
+async function getSentTemplate(phone) {
+  const key = `tpl:${phone}`;
+  if (!useRedis) {
+    const raw = global.__tplSent?.[phone];
+    if (raw) { delete global.__tplSent[phone]; return raw; }
+    return null;
+  }
+  try {
+    const raw = await redisClient.get(key);
+    if (raw) await redisClient.del(key);
+    return raw || null;
+  } catch (e) {
+    console.error('[memory] Error getSentTemplate:', e.message);
+    return null;
+  }
+}
+
 module.exports = {
   addMessage, getHistory, getContext, updateContext, isReturning,
   setCampaignContext, getCampaignContext,
@@ -280,5 +315,6 @@ module.exports = {
   waitForRedis,
   incrementRepeatCount, resetRepeatCount, getRepeatCount,
   incrementNonProductiveCount, resetNonProductiveCount, getNonProductiveCount,
+  setSentTemplate, getSentTemplate,
   get redis() { return redisClient; }
 };
