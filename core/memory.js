@@ -274,6 +274,17 @@ async function getNonProductiveCount(phone) {
 }
 
 // ─── Template seguimiento tracking ─────────────────────────────────────────
+// Obtener conversación completa (history + context + updatedAt)
+async function getConversation(phone) {
+  if (useRedis) {
+    try {
+      const raw = await redisClient.get(phone);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+  return ramStore.get(phone) || null;
+}
+
 async function setSentTemplate(phone, templateName) {
   const key = `tpl:${phone}`;
   const data = JSON.stringify({ template: templateName, sent_at: Date.now() });
@@ -288,6 +299,47 @@ async function setSentTemplate(phone, templateName) {
     await redisClient.set(key, data, { EX: 48 * 3600 });
   } catch (e) {
     console.error('[memory] Error setSentTemplate:', e.message);
+  }
+}
+
+// Obtener todas las conversaciones activas (para escaneo de seguimiento)
+async function getActiveConversations(maxAgeMs) {
+  const phones = new Set();
+  if (!useRedis) {
+    for (const [phone, conv] of ramStore.entries()) {
+      if (conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
+        phones.add(phone);
+      }
+    }
+    return Array.from(phones);
+  }
+  try {
+    let cursor = '0';
+    do {
+      const result = await redisClient.scan(Number(cursor), {
+        MATCH: '*',
+        COUNT: 100
+      });
+      cursor = result.cursor;
+      for (const key of result.keys) {
+        // Skip internal keys (tpl:, ctx: prefijos, etc.)
+        if (key.startsWith('tpl:') || key.startsWith('_')) continue;
+        // Check if it looks like a phone number (numberic or + prefix)
+        if (/^\+?\d{8,15}$/.test(key)) {
+          try {
+            const raw = await redisClient.get(key);
+            const conv = JSON.parse(raw);
+            if (conv && conv.updatedAt && Date.now() - conv.updatedAt < maxAgeMs) {
+              phones.add(key);
+            }
+          } catch (_) {}
+        }
+      }
+    } while (cursor !== 0 && cursor !== '0');
+    return Array.from(phones);
+  } catch (e) {
+    console.error('[memory] Error scanning conversations:', e.message);
+    return [];
   }
 }
 
@@ -316,5 +368,6 @@ module.exports = {
   incrementRepeatCount, resetRepeatCount, getRepeatCount,
   incrementNonProductiveCount, resetNonProductiveCount, getNonProductiveCount,
   setSentTemplate, getSentTemplate,
+  getActiveConversations, getConversation,
   get redis() { return redisClient; }
 };

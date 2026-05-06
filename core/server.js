@@ -227,6 +227,97 @@ function start(config, business) {
     }
   });
 
+  // ─── Follow-up automático 24h (solo TupiBox) ──────────────────────────
+  let followupTimer = null;
+  const FOLLOWUP_INTERVAL_MS = 30 * 60 * 1000;  // cada 30 min
+  const FOLLOWUP_INACTIVITY_MS = 24 * 60 * 60 * 1000;  // 24h inactividad
+  const FOLLOWUP_TEMPLATE = 'tupibox_seguimiento_24h_v5';
+  const FOLLOWUP_COOLDOWN_MS = 30 * 86400 * 1000;  // 30 dias
+
+  const DISINTEREST_KEYWORDS = [
+    'no gracias', 'no me interesa', 'no era lo que buscaba',
+    'no estoy interesado', 'no estoy interesada', 'muy caro',
+    'demasiado caro', 'paso', 'no por ahora', 'no necesito',
+    'no quiero', 'chao', 'bye', 'gracias pero no'
+  ];
+
+  function isDisinterested(history) {
+    if (!history || history.length === 0) return false;
+    const userMsgs = history.filter(m => m.role === 'user').slice(-3);
+    const combined = userMsgs.map(m => (m.text || '').toLowerCase()).join(' ');
+    return DISINTEREST_KEYWORDS.some(kw => combined.includes(kw));
+  }
+
+  async function runFollowupScan() {
+    if (process.env.TENANT !== 'tupibox') return;
+    try {
+      const phones = await memory.getActiveConversations(7 * 24 * 3600 * 1000);
+      if (!phones.length) return;
+      logger.log('[followup] Scan ' + phones.length + ' conversaciones');
+      
+      for (const phone of phones) {
+        try {
+          const conv = await memory.getConversation(phone);
+          if (!conv) continue;
+          const history = conv.history || [];
+          const context = conv.context || {};
+          const lastActivity = conv.updatedAt || 0;
+
+          if (Date.now() - lastActivity < FOLLOWUP_INACTIVITY_MS) continue;
+          if (history.length < 3) continue;
+
+          // Verificar cooldown
+          try {
+            const mem = require('./memory');
+            const rawSent = await mem.getSentTemplate(phone);  // no-op si no existe, solo para check
+            if (rawSent) {
+              // Check if too recent (<30 days)
+              const tpl = JSON.parse(rawSent);
+              if (Date.now() - tpl.sent_at < FOLLOWUP_COOLDOWN_MS) continue;
+            }
+          } catch (_) {}
+
+          if (isDisinterested(history)) {
+            logger.log('[followup] Desinteres ' + phone + ' - skip');
+            continue;
+          }
+
+          // Enviar template
+          const customerName = context.customerName || '';
+          const bodyParams = customerName ? [customerName] : [];
+          const axios = require('axios');
+          const waToken = process.env.WHATSAPP_ACCESS_TOKEN;
+          const phoneId = process.env.PHONE_NUMBER_ID || '1048275305032155';
+          const payload = {
+            messaging_product: 'whatsapp', to: phone, type: 'template',
+            template: { name: FOLLOWUP_TEMPLATE, language: { code: 'es' } }
+          };
+          if (bodyParams.length > 0) {
+            payload.template.components = [{ type: 'body', parameters: bodyParams.map(p => ({ type: 'text', text: p })) }];
+          }
+          
+          await axios.post('https://graph.facebook.com/v22.0/' + phoneId + '/messages', payload,
+            { headers: { Authorization: 'Bearer ' + waToken, 'Content-Type': 'application/json' } });
+          
+          await memory.setSentTemplate(phone, FOLLOWUP_TEMPLATE);
+          logger.log('[followup] Enviado a ' + phone + (customerName ? ' (' + customerName + ')' : ''));
+        } catch (e) {
+          // skip individual errors
+        }
+      }
+    } catch (e) {
+      logger.log('[followup] Error scan: ' + e.message);
+    }
+  }
+
+  // Iniciar timer solo en TupiBox
+  if (process.env.TENANT === 'tupibox' && process.env.FOLLOWUP_SCAN !== 'off') {
+    setTimeout(() => {
+      runFollowupScan();
+      followupTimer = setInterval(runFollowupScan, FOLLOWUP_INTERVAL_MS);
+    }, 60000);
+  }
+
     app.get('/admin/logs', (req, res) => {
     const n = parseInt(req.query.n) || 50;
     res.json({ logs: logger.getRecentLogs(n) });
