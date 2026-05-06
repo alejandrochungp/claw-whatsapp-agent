@@ -317,7 +317,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
           if (!conv) continue;
           const history = conv.history || [];
           const context = conv.context || {};
-          const lastActivity = conv.updatedAt || 0;
+          const lastActivity = conv.updatedAt || (history.length > 0 ? history[history.length - 1].ts : 0);
 
           if (Date.now() - lastActivity < FOLLOWUP_INACTIVITY_MS) continue;
           if (history.length < 3) continue;
@@ -548,7 +548,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
         if (!conv) continue;
         const history = conv.history || [];
         const context = conv.context || {};
-        const lastTs = conv.updatedAt || 0;
+        const lastTs = conv.updatedAt || (history.length > 0 ? history[history.length - 1].ts : 0);
         const hrsInactive = lastTs ? Math.round((Date.now() - lastTs) / 3600000 * 10) / 10 : null;
         result.push({
           phone,
