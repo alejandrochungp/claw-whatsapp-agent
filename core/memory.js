@@ -318,23 +318,16 @@ async function getActiveConversations(maxAgeMs) {
     return Array.from(phones);
   }
   try {
-    let cursor = '0';
-    do {
-      const result = await redisClient.scan(Number(cursor), {
-        MATCH: prefix + '*',
-        COUNT: 100
-      });
-      cursor = result.cursor;
-      for (const k of result.keys) {
-        const phone = k.startsWith(prefix) ? k.slice(prefix.length) : k;
-        try {
-          const raw = await redisClient.get(k);
-          const conv = JSON.parse(raw);
-          const lastTs = conv.updatedAt || (conv.history && conv.history.length > 0 ? conv.history[conv.history.length - 1].ts : 0);
-          if (lastTs && now - lastTs < maxAgeMs) phones.add(phone);
-        } catch (_) {}
-      }
-    } while (cursor !== '0' && cursor !== 0);
+    const keys = await redisClient.keys(prefix + '*');
+    for (const k of keys || []) {
+      const phone = k.startsWith(prefix) ? k.slice(prefix.length) : k;
+      try {
+        const raw = await redisClient.get(k);
+        const conv = JSON.parse(raw);
+        const lastTs = conv.updatedAt || (conv.history && conv.history.length > 0 ? conv.history[conv.history.length - 1].ts : 0);
+        if (lastTs && now - lastTs < maxAgeMs) phones.add(phone);
+      } catch (_) {}
+    }
     return Array.from(phones);
   } catch (e) {
     console.error('[memory] Error scanning conversations:', e.message);
