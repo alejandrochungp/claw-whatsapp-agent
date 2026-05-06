@@ -502,6 +502,34 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     res.json({ ok: true });
   });
 
+  // GET /admin/conversations — listar todas las conversaciones activas (debug)
+  app.get('/admin/conversations', async (req, res) => {
+    try {
+      const phones = await memory.getActiveConversations(7 * 24 * 3600 * 1000);
+      const result = [];
+      for (const phone of phones) {
+        const conv = await memory.getConversation(phone);
+        if (!conv) continue;
+        const history = conv.history || [];
+        const context = conv.context || {};
+        const lastTs = conv.updatedAt || 0;
+        const hrsInactive = lastTs ? Math.round((Date.now() - lastTs) / 3600000 * 10) / 10 : null;
+        result.push({
+          phone,
+          name: context.customerName || null,
+          messages: history.length,
+          hrsInactive,
+          hasDog: !!(context.dogName),
+          plan: context.plan || null
+        });
+      }
+      result.sort((a, b) => (a.hrsInactive || 999) - (b.hrsInactive || 999));
+      res.json({ ok: true, count: result.length, conversations: result });
+    } catch (e) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   // ── POST /admin/reset-context â€" limpiar contexto de un nÃºmero (solo pruebas) â"€â"€
   app.post('/admin/reset-context', async (req, res) => {
     const { phone } = req.body;
