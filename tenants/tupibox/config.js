@@ -23,4 +23,7 @@ module.exports = {
   offHoursMessage:  'ahora estamos fuera de horario (lun-vie 10:00-18:00).\n\nte anotamos y apenas abramos te respondemos. si es urgente igual escríbenos.',
 
   mailerliteToken: process.env.MAILERLITE_TOKEN,
+
+  mercadoPagoBackendUrl:   process.env.MERCADOPAGO_BACKEND_URL    || 'https://tupibox-mercadopago-1b381874968c.herokuapp.com',
+  mercadoPagoAccessToken:  process.env.MERCADOPAGO_ACCESS_TOKEN,
 };

@@ -7,6 +7,7 @@
 
 const fs         = require('fs');
 const path       = require('path');
+const axios      = require('axios');
 const sheets     = require('./sheets');
 const extraction = require('./extraction');
 
@@ -34,6 +35,13 @@ async function quickReply(userText, context, history) {
   //   };
   // }
 
+  // ── Returning user keywords → dejar que la IA maneje con contexto ────────
+  if (/^(continuar|continuemos|dale|si|me interesa|quiero comprar)$/.test(text)) {
+    if (context?.dogName && context?.weight && context?.activityLevel) {
+      return null; // AI maneja con contexto enriquecido (returning user)
+    }
+  }
+
   // ── Pedir humano ─────────────────────────────────────────────────────────
   if (/humano|persona|equipo|ayuda/.test(text)) {
     const isOpen = isBusinessHours();
@@ -49,6 +57,14 @@ async function quickReply(userText, context, history) {
       ? `Claro, te ayudo con el pedido #${context.orderNumber}.\n\npara ver el estado actualizado necesito conectarte con el equipo.\n\nescribe "humano" y te responden altiro.`
       : 'Claro, te ayudo con tu pedido.\n\npara ver el estado necesito conectarte con el equipo.\n\nescribe "humano" y te responden altiro.';
     return { text: msg, notifySlack: true };
+  }
+
+  // ── Respuesta indiferente en paso de proteína/alergias → sin preferencia ─
+  if (/no\s*s[eé]|da\s*(lo\s*mismo|igual)|cualquiera|lo\s*que\s*sea|ninguna|sin\s*preferencia/.test(text)) {
+    // Si ya tenemos datos base (nombre, peso, edad, actividad) → paso 5 o 6
+    if (context?.dogName && context?.weight && (context?.ageYears || context?.ageMonths) && context?.activityLevel) {
+      return null; // IA asume "sin preferencia" según instrucción en prompt
+    }
   }
 
   // ── Todo lo demás → IA ───────────────────────────────────────────────────
@@ -76,6 +92,13 @@ function buildSystemPrompt(context) {
     if (context.city)           prompt += `- Ciudad: ${context.city}\n`;
     if (context.orderNumber)    prompt += `- Pedido en seguimiento: #${context.orderNumber}\n`;
 
+    // Usuario con datos previos en Redis (cualquier fuente)
+    if (context.dogName && context.weight && context.activityLevel) {
+      prompt += `\n⭐ CLIENTE QUE VUELVE: este cliente ya tiene datos guardados (${context.dogName}, ${context.weight}kg, actividad ${context.activityLevel}).\n`;
+      prompt += `NO preguntes "que necesitas" o "Fresh o cajas tematicas". Saluda con: "hola de nuevo! seguimos con ${context.dogName}?"\n`;
+      prompt += `Si el cliente dice "si", "dale", "continuar", "ok", "me interesa" -> di "perfecto! retomemos. tenias a ${context.dogName}, ${context.weight}kg. quieres modificar algo o seguimos con el link?"\n`;
+    }
+
     // Cliente recurrente de TupiBox Original
     if (context.isReturningCustomer) {
       prompt += `\n⭐ CLIENTE RECURRENTE: tiene ${context.totalOrders || 'varios'} pedido(s) de TupiBox Original (cajas temáticas).\n`;
@@ -90,12 +113,10 @@ function buildSystemPrompt(context) {
       prompt += `El usuario fue reactivado por este mensaje automático. Asume que retomó el interés. Pregúntale en qué quedó o si necesita ayuda para decidir.\n`;
     }
 
-    // NO incluir el link en el prompt — el sistema lo manda automático
-    // cuando detecta que están los 6 datos. Así evitamos que Claude invente URLs.
+    // El sistema enviará los links de MercadoPago automáticamente cuando estén los datos.
     if (context.dogName && context.weight && (context.ageYears || context.ageMonths) && context.activityLevel && !context.prefillUrlSent) {
       prompt += `\n⚠️ Datos completos: ya tienes nombre, peso, edad y actividad.\n`;
-      prompt += `Dile al cliente: "ya tengo todo! te mando el link ahora" — el sistema lo envía automático.\n`;
-      prompt += `NO inventes links ni URLs bajo ninguna circunstancia.`;
+      prompt += `Dile al cliente: "ya tengo todo! te mando los links de pago ahora" — el sistema los envía automático via MercadoPago.\n`;
     }
   }
 
@@ -122,6 +143,86 @@ function buildPrefillUrl(ctx) {
   }
 
   return `${FORM_URL}?${params.toString()}&product_type=fresh`;
+}
+
+/**
+ * Calcular porciones mensuales según peso y actividad.
+ */
+function calcPortions(weight, activityLevel) {
+  const act = (activityLevel || 'medio').toLowerCase();
+  let ratio;
+  if (/alto|alta|high/.test(act))       ratio = 2.3;
+  else if (/bajo|baja|low/.test(act))   ratio = 1.4;
+  else                                   ratio = 1.9; // medio/default
+  return Math.ceil(parseFloat(weight) * ratio);
+}
+
+/**
+ * Llamar al backend MercadoPago y obtener links de pago.
+ * Retorna { portions, price1month, price3months, price6months, paymentLink, subscriptionLink }
+ * En caso de error parcial, los links fallidos quedan null.
+ */
+async function buildMercadoPagoLink(ctx) {
+  const config = require('./config');
+  const logger = require('../../core/logger');
+
+  const backendUrl = config.mercadoPagoBackendUrl;
+  const portions   = calcPortions(ctx.weight || 10, ctx.activityLevel);
+
+  const price1month  = portions * 5490;
+  const price3months = portions * 5216; // 5% dto
+  const price6months = portions * 4941; // 10% dto
+
+  const ageInMonths = ctx.ageMonths
+    ? parseInt(ctx.ageMonths)
+    : ctx.ageYears
+      ? Math.round(parseFloat(ctx.ageYears) * 12)
+      : null;
+
+  const dogData = {
+    petname:           ctx.dogName || '',
+    weight:            ctx.weight  || '',
+    ageInMonths,
+    activityLevel:     ctx.activityLevel || '',
+    allergies:         ctx.allergies || '',
+    proteinPreference: ctx.protein  || '',
+    portions,
+  };
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (config.mercadoPagoAccessToken) {
+    headers['Authorization'] = `Bearer ${config.mercadoPagoAccessToken}`;
+  }
+
+  let paymentLink      = null;
+  let subscriptionLink = null;
+
+  try {
+    const res = await axios.post(`${backendUrl}/payment`, {
+      ...dogData,
+      amount:      price1month,
+      currency_id: 'CLP',
+      title:       `TupiBox Fresh - ${ctx.dogName} - 1 mes`,
+      description: `Plan mensual: ${portions} envases`,
+    }, { headers, timeout: 10000 });
+    paymentLink = res.data?.init_point || null;
+  } catch (err) {
+    logger.log(`[mp] /payment error: ${err.message}`);
+  }
+
+  try {
+    const res = await axios.post(`${backendUrl}/create_subscription`, {
+      ...dogData,
+      amount:      price1month,
+      currency_id: 'CLP',
+      reason:      `TupiBox Fresh - ${ctx.dogName} - suscripcion mensual`,
+    }, { headers, timeout: 10000 });
+    subscriptionLink = res.data?.init_point || null;
+  } catch (err) {
+    logger.log(`[mp] /create_subscription error: ${err.message}`);
+  }
+
+  return { portions, price1month, price3months, price6months, paymentLink, subscriptionLink };
 }
 
 function isBusinessHours() {
@@ -151,6 +252,7 @@ async function afterReply(phone, userText, botReply, history, context) {
         message: userText,
         notes: `Primera conversación: ${new Date().toISOString()}`
       });
+      await memory.updateContext(phone, { last_bot_intent: 'initial_contact', last_bot_intent_ts: Date.now() });
     }
 
     // 2. Extracción inteligente si hay suficiente conversación
@@ -164,19 +266,46 @@ async function afterReply(phone, userText, botReply, history, context) {
         await memory.updateContext(phone, mapped);
         logger.log(`[sheets] Contexto actualizado con ${Object.keys(mapped).length} campos`);
 
-        // 3. Si tenemos los 6 datos y aún no se envió el link, enviarlo ahora
+        // 3. Si tenemos los datos requeridos y aún no se envió el link, enviarlo ahora
         const merged = { ...context, ...mapped };
         if (!context.prefillUrlSent && hasRequiredFields(merged)) {
-          const url = buildPrefillUrl(merged);
-          const meta = require('../../core/meta');
+          const meta   = require('../../core/meta');
           const config = require('./config');
 
-          await meta.sendMessage(phone,
-            `aquí va 👉 ${url}\n\nya está pre-cargado con los datos de ${merged.dogName}, solo confirmas y listo 🐾\n\ncualquier duda me avisas!`,
-            config
-          );
-          await memory.updateContext(phone, { prefillUrlSent: true });
+          let messageText;
+          let mpData = null;
+
+          try {
+            mpData = await buildMercadoPagoLink(merged);
+          } catch (err) {
+            logger.log(`[mp] buildMercadoPagoLink error: ${err.message}`);
+          }
+
+          if (mpData && (mpData.paymentLink || mpData.subscriptionLink)) {
+            const { dogName } = merged;
+            const { portions, price1month, price3months, price6months, paymentLink, subscriptionLink } = mpData;
+            const fmt = n => n.toLocaleString('es-CL');
+
+            messageText = `aqui van los links de pago para ${dogName} 🐾\n\n`;
+            messageText += `plan 1 mes: $${fmt(price1month)}/mes (${portions} envases)\n`;
+            if (paymentLink) messageText += `→ pago unico: ${paymentLink}\n`;
+            messageText += `\nplan 3 meses: $${fmt(price3months)}/mes (5% dto)\n`;
+            messageText += `plan 6 meses: $${fmt(price6months)}/mes (10% dto)\n`;
+            if (subscriptionLink) messageText += `→ suscripcion mensual: ${subscriptionLink}\n`;
+            messageText += `\ncualquier duda me avisas!`;
+          } else {
+            // Fallback al formulario pre-cargado
+            const url = buildPrefillUrl(merged);
+            messageText = `aqui va 👉 ${url}\n\nya esta pre-cargado con los datos de ${merged.dogName}, solo confirmas y listo 🐾\n\ncualquier duda me avisas!`;
+            logger.log(`[mp] usando fallback form URL para ${phone}`);
+          }
+
+          await meta.sendMessage(phone, messageText, config);
+          await memory.updateContext(phone, { prefillUrlSent: true, last_bot_intent: 'link_sent', last_bot_intent_ts: Date.now() });
           logger.log(`[sheets] Link enviado a ${phone} para ${merged.dogName}`);
+        } else if (!context.prefillUrlSent) {
+          // Aún capturando datos
+          await memory.updateContext(phone, { last_bot_intent: 'capturing_data', last_bot_intent_ts: Date.now() });
         }
       }
     }
