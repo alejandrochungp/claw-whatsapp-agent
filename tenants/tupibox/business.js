@@ -298,30 +298,32 @@ async function afterReply(phone, userText, botReply, history, context) {
     }
 
     // Trackear etapa del proceso para follow-up inteligente
-    const mergedCheck = { ...context, lastBotIntent: { stage: 'initial_contact', ts: Date.now() } };
+    await memory.updateContext(phone, {
+      lastBotIntent: { stage: 'initial_contact', ts: Date.now() }
+    });
 
     // 2. Extracción inteligente si hay suficiente conversación
-    if (history.length >= 4) {
-      const extracted = await extraction.extractFromConversation(history);
-      if (Object.keys(extracted).length > 0) {
-        const mapped = extraction.mapToSheetFormat ? extraction.mapToSheetFormat(extracted) : extracted;
-        await sheets.updateLead(phone, mapped);
+    const extracted = history.length >= 4
+      ? await extraction.extractFromConversation(history)
+      : {};
 
-        // Actualizar contexto Redis con los datos extraídos
-        await memory.updateContext(phone, mapped);
-        logger.log(`[sheets] Contexto actualizado con ${Object.keys(mapped).length} campos`);
+    let mapped = {};
+    if (Object.keys(extracted).length > 0) {
+      mapped = extraction.mapToSheetFormat ? extraction.mapToSheetFormat(extracted) : extracted;
+      await sheets.updateLead(phone, mapped);
+      await memory.updateContext(phone, mapped);
+      logger.log(`[sheets] Contexto actualizado con ${Object.keys(mapped).length} campos`);
+    }
 
-        // 3. Si tenemos los 6 datos y aún no se envió link MP, enviarlo ahora
-        const merged = { ...context, ...mapped };
-        if (!context.mpLinkSent && hasRequiredFields(merged)) {
-          await sendMercadoPagoLinks(phone, merged, memory, logger);
-        } else if (Object.keys(mapped).length > 0 && !hasRequiredFields(merged)) {
-          // Estamos en proceso de captura, guardar etapa
-          await memory.updateContext(phone, {
-            lastBotIntent: { stage: 'capturing_data', ts: Date.now() }
-          });
-        }
-      }
+    // 3. Enviar link MP si datos completos (desde enrichContext o extracción)
+    const merged = { ...context, ...mapped };
+    if (!context.mpLinkSent && hasRequiredFields(merged)) {
+      await sendMercadoPagoLinks(phone, merged, memory, logger);
+    } else if (history.length >= 2 && Object.keys(merged).length > 2 && !hasRequiredFields(merged)) {
+      // Estamos en proceso de captura
+      await memory.updateContext(phone, {
+        lastBotIntent: { stage: 'capturing_data', ts: Date.now() }
+      });
     }
   } catch (err) {
     logger.log(`[sheets] afterReply error: ${err.message}`);
@@ -496,5 +498,6 @@ function isBusinessHours() {
 
 module.exports = {
   quickReply, buildSystemPrompt, afterReply, enrichContext,
-  calculatePortions, calculatePricing, createMercadoPagoLinks, // exportadas para testing
+  calculatePortions, calculatePricing, createMercadoPagoLinks,
+  hasRequiredFields, sendMercadoPagoLinks, // exportadas para testing
 };
