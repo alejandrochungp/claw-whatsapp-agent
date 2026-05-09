@@ -284,6 +284,8 @@ async function afterReply(phone, userText, botReply, history, context) {
   const logger = require('../../core/logger');
   const memory = require('../../core/memory');
 
+  logger.log(`[afterReply] START phone=${phone} ctxKeys=${Object.keys(context||{}).length} histLen=${history.length} mpLinkSent=${context?.mpLinkSent}`);
+
   try {
     // 1. Capturar lead si es nuevo
     const isNew = await sheets.isNewLead(phone);
@@ -317,7 +319,9 @@ async function afterReply(phone, userText, botReply, history, context) {
 
     // 3. Enviar link MP si datos completos (desde enrichContext o extracción)
     const merged = { ...context, ...mapped };
+    logger.log(`[afterReply] merged keys=${Object.keys(merged).length} hasReq=${hasRequiredFields(merged)} dogName=${merged.dogName} weight=${merged.weight} actLevel=${merged.activityLevel} birthDate=${merged.birthDate}`);
     if (!context.mpLinkSent && hasRequiredFields(merged)) {
+      logger.log(`[afterReply] ✅ Disparando sendMercadoPagoLinks para ${phone}`);
       await sendMercadoPagoLinks(phone, merged, memory, logger);
     } else if (history.length >= 2 && Object.keys(merged).length > 2 && !hasRequiredFields(merged)) {
       // Estamos en proceso de captura
@@ -336,6 +340,8 @@ async function afterReply(phone, userText, botReply, history, context) {
  */
 async function sendMercadoPagoLinks(phone, ctx, memory, logger) {
   const config = require('./config');
+
+  logger.log(`[sendMP] START phone=${phone} dogName=${ctx.dogName} weight=${ctx.weight} act=${ctx.activityLevel}`);
 
   // Calcular edad en meses
   let ageInMonths = 24;
