@@ -2,7 +2,8 @@
  * tenants/tupibox/business.js
  *
  * Lógica de negocio TupiBox Fresh.
- * Mantiene paridad con el bot actual (server.js del repo viejo).
+ * v2.0 — Links MercadoPago directos, detección clientes recurrentes,
+ *        skip inteligente de preferencias, follow-up por etapa.
  */
 
 const fs         = require('fs');
@@ -13,34 +14,19 @@ const extraction = require('./extraction');
 
 const PROMPT_BASE = fs.readFileSync(path.join(__dirname, 'prompt.md'), 'utf8');
 
-// URL base del formulario de pedido
+// URL base del formulario (fallback si MP falla)
 const FORM_URL = process.env.FORM_URL || 'https://go.tupibox.com';
 
+// Backend MercadoPago en Heroku
+const MP_BACKEND_URL = process.env.MERCADOPAGO_BACKEND_URL || 'https://tupibox-mercadopago-1b381874968c.herokuapp.com';
+
 /**
- * Reglas rápidas sin LLM.
+ * Reglas rápidas sin LLM — solo cosas 100% deterministas.
  * Retorna null si no aplica → core usará IA.
  */
 async function quickReply(userText, context, history) {
   const text  = userText.toLowerCase().trim();
-  const isNew = history.length <= 1;
-
-  // REMOVIDO: saludos los maneja Claude (más natural)
-  // if (/^(hola|hi|buenas|buenos días|buenas tardes|buenas noches|saludos)$/.test(text)) {
-  //   if (!isNew) {
-  //     return { text: 'Hola de nuevo!\n\nen qué te puedo ayudar hoy?', useAI: false };
-  //   }
-  //   return {
-  //     text: 'Hola! qué gusto que nos escribas.\n\nte puedo ayudar con info sobre planes, hacer un pedido nuevo, consultar uno existente o conectarte con el equipo.\n\nqué necesitas?',
-  //     useAI: false
-  //   };
-  // }
-
-  // ── Returning user keywords → dejar que la IA maneje con contexto ────────
-  if (/^(continuar|continuemos|dale|si|me interesa|quiero comprar)$/.test(text)) {
-    if (context?.dogName && context?.weight && context?.activityLevel) {
-      return null; // AI maneja con contexto enriquecido (returning user)
-    }
-  }
+  const hasDogData = context && (context.dogName || context.weight);
 
   // ── Pedir humano ─────────────────────────────────────────────────────────
   if (/humano|persona|equipo|ayuda/.test(text)) {
@@ -59,12 +45,17 @@ async function quickReply(userText, context, history) {
     return { text: msg, notifySlack: true };
   }
 
-  // ── Respuesta indiferente en paso de proteína/alergias → sin preferencia ─
-  if (/no\s*s[eé]|da\s*(lo\s*mismo|igual)|cualquiera|lo\s*que\s*sea|ninguna|sin\s*preferencia/.test(text)) {
-    // Si ya tenemos datos base (nombre, peso, edad, actividad) → paso 5 o 6
-    if (context?.dogName && context?.weight && (context?.ageYears || context?.ageMonths) && context?.activityLevel) {
-      return null; // IA asume "sin preferencia" según instrucción en prompt
-    }
+  // ── Cliente con datos previos: detectar intención de "continuar" ─────────
+  // Estos keywords SOLO aplican si hay datos de perro en Redis
+  if (hasDogData && /^(si|dale|ok|continuar|continuemos|sigamos|listo|vamos|dale!)$/i.test(text.replace(/\W/g, '').trim())) {
+    // Dejar que la IA maneje con contexto completo — más natural
+    return null;
+  }
+
+  // ── Respuestas de desinterés en paso de alergias/proteína ─────────────────
+  if (/^(no s[eé]|da lo mismo|cualquiera|lo que sea|ninguna|ninguno|no tiene|sin preferencia|sin alergia)/i.test(text)) {
+    // Si estamos en etapa de captura, la IA decidirá si saltar
+    return null;
   }
 
   // ── Todo lo demás → IA ───────────────────────────────────────────────────
@@ -85,18 +76,18 @@ function buildSystemPrompt(context) {
     if (context.weight)         prompt += `- Peso: ${context.weight}kg\n`;
     if (context.ageYears)       prompt += `- Edad: ${context.ageYears} años\n`;
     if (context.ageMonths)      prompt += `- Edad: ${context.ageMonths} meses\n`;
+    if (context.ageInMonths)    prompt += `- Edad: ${context.ageInMonths} meses\n`;
     if (context.activityLevel)  prompt += `- Actividad: ${context.activityLevel}\n`;
     if (context.allergies)      prompt += `- Alergias: ${context.allergies}\n`;
     if (context.protein)        prompt += `- Proteína preferida: ${context.protein}\n`;
+    if (context.proteinPreference) prompt += `- Proteína preferida: ${context.proteinPreference}\n`;
     if (context.plan)           prompt += `- Plan actual/interesado: ${context.plan}\n`;
     if (context.city)           prompt += `- Ciudad: ${context.city}\n`;
     if (context.orderNumber)    prompt += `- Pedido en seguimiento: #${context.orderNumber}\n`;
 
-    // Usuario con datos previos en Redis (cualquier fuente)
-    if (context.dogName && context.weight && context.activityLevel) {
-      prompt += `\n⭐ CLIENTE QUE VUELVE: este cliente ya tiene datos guardados (${context.dogName}, ${context.weight}kg, actividad ${context.activityLevel}).\n`;
-      prompt += `NO preguntes "que necesitas" o "Fresh o cajas tematicas". Saluda con: "hola de nuevo! seguimos con ${context.dogName}?"\n`;
-      prompt += `Si el cliente dice "si", "dale", "continuar", "ok", "me interesa" -> di "perfecto! retomemos. tenias a ${context.dogName}, ${context.weight}kg. quieres modificar algo o seguimos con el link?"\n`;
+    // 🔄 Cliente que vuelve con datos previos
+    if (context.dogName && context.weight) {
+      prompt += `\n🔄 CLIENTE QUE VUELVE: este cliente ya tiene datos (${context.dogName}, ${context.weight}kg)${context.activityLevel ? ', ' + context.activityLevel : ''}. NO preguntes "qué necesitas", "conoces nuestros productos" ni "Fresh o cajas". Saluda con: "hola de nuevo! seguimos con ${context.dogName}?" o "qué bueno verte de vuelta! continuamos con ${context.dogName}?"\n`;
     }
 
     // Cliente recurrente de TupiBox Original
@@ -113,10 +104,21 @@ function buildSystemPrompt(context) {
       prompt += `El usuario fue reactivado por este mensaje automático. Asume que retomó el interés. Pregúntale en qué quedó o si necesita ayuda para decidir.\n`;
     }
 
-    // El sistema enviará los links de MercadoPago automáticamente cuando estén los datos.
-    if (context.dogName && context.weight && (context.ageYears || context.ageMonths) && context.activityLevel && !context.prefillUrlSent) {
+    // Etapa del proceso (para follow-up inteligente)
+    if (context.lastBotIntent) {
+      const intent = context.lastBotIntent;
+      prompt += `\n📍 ETAPA: ${intent.stage} (${intent.ts ? new Date(intent.ts).toLocaleString('es-CL', {timeZone:'America/Santiago'}) : 'desconocido'})\n`;
+      if (intent.stage === 'link_sent') {
+        prompt += 'El cliente recibió link de pago pero no ha comprado. Recuérdale que puede pagar ahora.\n';
+      } else if (intent.stage === 'capturing_data') {
+        prompt += 'Estábamos en proceso de capturar datos del perro. Retoma donde quedaste.\n';
+      }
+    }
+
+    // Datos completos: instrucción de enviar link MP
+    if (hasRequiredFields(context) && !context.mpLinkSent) {
       prompt += `\n⚠️ Datos completos: ya tienes nombre, peso, edad y actividad.\n`;
-      prompt += `Dile al cliente: "ya tengo todo! te mando los links de pago ahora" — el sistema los envía automático via MercadoPago.\n`;
+      prompt += `Dile al cliente: "ya tengo todo! te mando los links de pago ahora" — el sistema envía los links de MercadoPago automático.\n`;
     }
   }
 
@@ -124,118 +126,156 @@ function buildSystemPrompt(context) {
 }
 
 /**
- * Construir URL del formulario con parámetros pre-cargados.
+ * Calcular porciones mensuales usando la fórmula veterinaria RER.
+ * Misma fórmula que StepSix.vue del frontend.
  */
-function buildPrefillUrl(ctx) {
-  const params = new URLSearchParams();
+function calculatePortions(weight, ageInMonths, activityLevel) {
+  const w = parseFloat(weight) || 10;
+  const age = parseInt(ageInMonths) || 24;
+  const activity = activityLevel || 'Medio';
 
-  if (ctx.dogName)       params.set('petname', ctx.dogName);
-  if (ctx.weight)        params.set('weight', ctx.weight);
-  if (ctx.sex)           params.set('sex', ctx.sex);
-  if (ctx.activityLevel) params.set('activityLevel', ctx.activityLevel);
-  if (ctx.allergies && ctx.allergies !== 'Sin alergias') params.set('allergie', ctx.allergies);
+  // RER = 70 × weight^0.75
+  const rer = Math.round(70 * Math.pow(w, 0.75));
 
-  // Edad en meses
-  if (ctx.ageMonths) {
-    params.set('ageInMonths', ctx.ageMonths);
-  } else if (ctx.ageYears) {
-    params.set('ageInMonths', Math.round(parseFloat(ctx.ageYears) * 12));
-  }
+  // DER multiplier
+  let activityMult = 1.4;
+  if (activity === 'Bajo') activityMult = 1.2;
+  if (activity === 'Alto') activityMult = 1.6;
 
-  return `${FORM_URL}?${params.toString()}&product_type=fresh`;
+  let ageMult = 1.0;
+  if (age < 4) ageMult = 3.0;
+  else if (age < 12) ageMult = 2.0;
+  else if (age < 24) ageMult = 1.2;
+  else if (age >= 84) ageMult = 0.8;
+
+  const der = activityMult * ageMult;
+
+  // Daily calories = RER × DER
+  const dailyCalories = Math.round(rer * der);
+
+  // Daily grams = (dailyCalories / 122) × 100
+  const dailyGrams = Math.round((dailyCalories / 122) * 100);
+
+  // Monthly grams = dailyGrams × 30
+  const monthlyGrams = dailyGrams * 30;
+
+  // Portions = ceil(monthlyGrams / 500)
+  const portions = Math.ceil(monthlyGrams / 500);
+
+  return portions;
 }
 
 /**
- * Calcular porciones mensuales según peso y actividad.
+ * Calcular precios para 1, 3 y 6 meses.
+ * Fórmula idéntica a StepSix.vue.
  */
-function calcPortions(weight, activityLevel) {
-  const act = (activityLevel || 'medio').toLowerCase();
-  let ratio;
-  if (/alto|alta|high/.test(act))       ratio = 2.3;
-  else if (/bajo|baja|low/.test(act))   ratio = 1.4;
-  else                                   ratio = 1.9; // medio/default
-  return Math.ceil(parseFloat(weight) * ratio);
-}
+function calculatePricing(portions, deliveryFrequency) {
+  const pricePerUnit = 5490; // $5.490 por envase de 500g
+  const deliveryCharge = deliveryFrequency === '2x' ? 2990 : 0;
 
-/**
- * Llamar al backend MercadoPago y obtener links de pago.
- * Retorna { portions, price1month, price3months, price6months, paymentLink, subscriptionLink }
- * En caso de error parcial, los links fallidos quedan null.
- */
-async function buildMercadoPagoLink(ctx) {
-  const config = require('./config');
-  const logger = require('../../core/logger');
-
-  const backendUrl = config.mercadoPagoBackendUrl;
-  const portions   = calcPortions(ctx.weight || 10, ctx.activityLevel);
-
-  const price1month  = portions * 5490;
-  const price3months = portions * 5216; // 5% dto
-  const price6months = portions * 4941; // 10% dto
-
-  const ageInMonths = ctx.ageMonths
-    ? parseInt(ctx.ageMonths)
-    : ctx.ageYears
-      ? Math.round(parseFloat(ctx.ageYears) * 12)
-      : null;
-
-  const dogData = {
-    petname:           ctx.dogName || '',
-    weight:            ctx.weight  || '',
-    ageInMonths,
-    activityLevel:     ctx.activityLevel || '',
-    allergies:         ctx.allergies || '',
-    proteinPreference: ctx.protein  || '',
-    portions,
+  // Redondear hacia arriba terminando en 90
+  const roundTo90 = (price) => {
+    const hundreds = Math.ceil(price / 100);
+    return (hundreds * 100) - 10;
   };
 
-  const headers = { 'Content-Type': 'application/json' };
-  if (config.mercadoPagoAccessToken) {
-    headers['Authorization'] = `Bearer ${config.mercadoPagoAccessToken}`;
-  }
+  const base1Month = (pricePerUnit * portions) + deliveryCharge;
+  const base3Months = (Math.round(pricePerUnit * 0.95) * portions) + deliveryCharge;
+  const base6Months = (Math.round(pricePerUnit * 0.90) * portions) + deliveryCharge;
 
-  let paymentLink      = null;
-  let subscriptionLink = null;
-
-  try {
-    const res = await axios.post(`${backendUrl}/payment`, {
-      ...dogData,
-      amount:      price1month,
-      currency_id: 'CLP',
-      title:       `TupiBox Fresh - ${ctx.dogName} - 1 mes`,
-      description: `Plan mensual: ${portions} envases`,
-    }, { headers, timeout: 10000 });
-    paymentLink = res.data?.init_point || null;
-  } catch (err) {
-    logger.log(`[mp] /payment error: ${err.message}`);
-  }
-
-  try {
-    const res = await axios.post(`${backendUrl}/create_subscription`, {
-      ...dogData,
-      amount:      price1month,
-      currency_id: 'CLP',
-      reason:      `TupiBox Fresh - ${ctx.dogName} - suscripcion mensual`,
-    }, { headers, timeout: 10000 });
-    subscriptionLink = res.data?.init_point || null;
-  } catch (err) {
-    logger.log(`[mp] /create_subscription error: ${err.message}`);
-  }
-
-  return { portions, price1month, price3months, price6months, paymentLink, subscriptionLink };
-}
-
-function isBusinessHours() {
-  const now       = new Date();
-  const chileTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
-  const day  = chileTime.getDay();
-  const hour = chileTime.getHours();
-  return day >= 1 && day <= 5 && hour >= 10 && hour < 18;
+  return {
+    portions,
+    pricePerUnit,
+    oneMonth: roundTo90(base1Month),
+    threeMonths: roundTo90(base3Months),
+    sixMonths: roundTo90(base6Months),
+    oneMonthPerUnit: Math.round(roundTo90(base1Month) / portions),
+    threeMonthsPerUnit: Math.round(roundTo90(base3Months) / portions),
+    sixMonthsPerUnit: Math.round(roundTo90(base6Months) / portions),
+  };
 }
 
 /**
- * Hook post-respuesta: guardar lead + extraer datos con IA
- * Llamado por el core después de enviar la respuesta al cliente.
+ * Llamar al backend de MercadoPago para crear links de pago.
+ * Crea un pago único y una suscripción flexible.
+ */
+async function createMercadoPagoLinks(dogName, pricing, email) {
+  const logger = require('../../core/logger');
+
+  // Parámetros comunes
+  const description = `TupiBox Fresh - ${dogName} (${pricing.portions} envases/mes)`;
+  const payerEmail = email || 'cliente@tupibox.com';
+
+  const results = {
+    oneTimeUrl: null,
+    subscriptionUrl: null,
+    error: null,
+  };
+
+  try {
+    // 1. Pago único (1 mes)
+    const oneTimeResp = await axios.post(
+      `${MP_BACKEND_URL}/payment`,
+      {
+        items: [{
+          title: description + ' - 1 mes',
+          quantity: 1,
+          unit_price: pricing.oneMonth,
+          currency_id: 'CLP'
+        }],
+        payer: { email: payerEmail },
+        transaction_amount: pricing.oneMonth,
+        external_reference: `tupibox_fresh_${dogName.replace(/\s/g, '_')}_1m_${Date.now()}`,
+        statement_descriptor: 'TupiBox Fresh'
+      },
+      { timeout: 10000 }
+    );
+
+    if (oneTimeResp.data?.init_point) {
+      results.oneTimeUrl = oneTimeResp.data.init_point;
+      logger.log(`[mp] Pago único creado para ${dogName}: ${results.oneTimeUrl.slice(0, 50)}...`);
+    }
+  } catch (e) {
+    logger.log(`[mp] Error pago único: ${e.message}`);
+  }
+
+  try {
+    // 2. Suscripción mensual flexible
+    const subResp = await axios.post(
+      `${MP_BACKEND_URL}/create_subscription`,
+      {
+        reason: description + ' - Suscripción mensual',
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: 'months',
+          transaction_amount: pricing.oneMonth,
+          currency_id: 'CLP',
+          billing_day_proportional: false,
+        },
+        payer_email: payerEmail,
+        external_reference: `tupibox_fresh_${dogName.replace(/\s/g, '_')}_sub_${Date.now()}`,
+        statement_descriptor: 'TupiBox Fresh'
+      },
+      { timeout: 10000 }
+    );
+
+    if (subResp.data?.init_point) {
+      results.subscriptionUrl = subResp.data.init_point;
+      logger.log(`[mp] Suscripción creada para ${dogName}: ${results.subscriptionUrl.slice(0, 50)}...`);
+    }
+  } catch (e) {
+    logger.log(`[mp] Error suscripción: ${e.message}`);
+  }
+
+  if (!results.oneTimeUrl && !results.subscriptionUrl) {
+    results.error = 'No se pudieron crear links de MercadoPago';
+  }
+
+  return results;
+}
+
+/**
+ * Hook post-respuesta: guardar lead, extraer datos, enviar link MP.
  */
 async function afterReply(phone, userText, botReply, history, context) {
   const logger = require('../../core/logger');
@@ -252,8 +292,10 @@ async function afterReply(phone, userText, botReply, history, context) {
         message: userText,
         notes: `Primera conversación: ${new Date().toISOString()}`
       });
-      await memory.updateContext(phone, { last_bot_intent: 'initial_contact', last_bot_intent_ts: Date.now() });
     }
+
+    // Trackear etapa del proceso para follow-up inteligente
+    const mergedCheck = { ...context, lastBotIntent: { stage: 'initial_contact', ts: Date.now() } };
 
     // 2. Extracción inteligente si hay suficiente conversación
     if (history.length >= 4) {
@@ -266,58 +308,121 @@ async function afterReply(phone, userText, botReply, history, context) {
         await memory.updateContext(phone, mapped);
         logger.log(`[sheets] Contexto actualizado con ${Object.keys(mapped).length} campos`);
 
-        // 3. Si tenemos los datos requeridos y aún no se envió el link, enviarlo ahora
+        // 3. Si tenemos los 6 datos y aún no se envió link MP, enviarlo ahora
         const merged = { ...context, ...mapped };
-        if (!context.prefillUrlSent && hasRequiredFields(merged)) {
-          const meta   = require('../../core/meta');
-          const config = require('./config');
-
-          let messageText;
-          let mpData = null;
-
-          try {
-            mpData = await buildMercadoPagoLink(merged);
-          } catch (err) {
-            logger.log(`[mp] buildMercadoPagoLink error: ${err.message}`);
-          }
-
-          if (mpData && (mpData.paymentLink || mpData.subscriptionLink)) {
-            const { dogName } = merged;
-            const { portions, price1month, price3months, price6months, paymentLink, subscriptionLink } = mpData;
-            const fmt = n => n.toLocaleString('es-CL');
-
-            messageText = `aqui van los links de pago para ${dogName} 🐾\n\n`;
-            messageText += `plan 1 mes: $${fmt(price1month)}/mes (${portions} envases)\n`;
-            if (paymentLink) messageText += `→ pago unico: ${paymentLink}\n`;
-            messageText += `\nplan 3 meses: $${fmt(price3months)}/mes (5% dto)\n`;
-            messageText += `plan 6 meses: $${fmt(price6months)}/mes (10% dto)\n`;
-            if (subscriptionLink) messageText += `→ suscripcion mensual: ${subscriptionLink}\n`;
-            messageText += `\ncualquier duda me avisas!`;
-          } else {
-            // Fallback al formulario pre-cargado
-            const url = buildPrefillUrl(merged);
-            messageText = `aqui va 👉 ${url}\n\nya esta pre-cargado con los datos de ${merged.dogName}, solo confirmas y listo 🐾\n\ncualquier duda me avisas!`;
-            logger.log(`[mp] usando fallback form URL para ${phone}`);
-          }
-
-          await meta.sendMessage(phone, messageText, config);
-          await memory.updateContext(phone, { prefillUrlSent: true, last_bot_intent: 'link_sent', last_bot_intent_ts: Date.now() });
-          logger.log(`[sheets] Link enviado a ${phone} para ${merged.dogName}`);
-        } else if (!context.prefillUrlSent) {
-          // Aún capturando datos
-          await memory.updateContext(phone, { last_bot_intent: 'capturing_data', last_bot_intent_ts: Date.now() });
+        if (!context.mpLinkSent && hasRequiredFields(merged)) {
+          await sendMercadoPagoLinks(phone, merged, memory, logger);
+        } else if (Object.keys(mapped).length > 0 && !hasRequiredFields(merged)) {
+          // Estamos en proceso de captura, guardar etapa
+          await memory.updateContext(phone, {
+            lastBotIntent: { stage: 'capturing_data', ts: Date.now() }
+          });
         }
       }
     }
   } catch (err) {
-    // No crítico — no bloquear el flujo
     logger.log(`[sheets] afterReply error: ${err.message}`);
   }
 }
 
 /**
+ * Enviar links de MercadoPago al cliente por WhatsApp.
+ * Si falla, fallback al form prefill URL.
+ */
+async function sendMercadoPagoLinks(phone, ctx, memory, logger) {
+  const config = require('./config');
+
+  // Calcular edad en meses
+  let ageInMonths = 24;
+  if (ctx.ageInMonths) {
+    ageInMonths = parseInt(ctx.ageInMonths);
+  } else if (ctx.ageMonths) {
+    ageInMonths = parseInt(ctx.ageMonths);
+  } else if (ctx.ageYears) {
+    ageInMonths = Math.round(parseFloat(ctx.ageYears) * 12);
+  }
+
+  // Calcular porciones y precios
+  const portions = calculatePortions(ctx.weight, ageInMonths, ctx.activityLevel);
+  const pricing = calculatePricing(portions);
+
+  // Intentar crear links MP
+  const mpLinks = await createMercadoPagoLinks(ctx.dogName, pricing, ctx.email);
+
+  if (mpLinks.error || (!mpLinks.oneTimeUrl && !mpLinks.subscriptionUrl)) {
+    // Fallback: link al formulario
+    logger.log(`[mp] Fallback a form URL para ${phone}`);
+    const fallbackUrl = buildPrefillUrl(ctx);
+    const meta = require('../../core/meta');
+    await meta.sendMessage(phone,
+      `listo! aquí va el link para ${ctx.dogName} 🐾\n\n${fallbackUrl}\n\nestá pre-cargado con sus datos. cualquier duda me avisas!`,
+      config
+    );
+    await memory.updateContext(phone, {
+      mpLinkSent: true,
+      mpLinksCreated: false,
+      lastBotIntent: { stage: 'link_sent', ts: Date.now() },
+      pricing: pricing
+    });
+    return;
+  }
+
+  // Construir mensaje con links MP
+  const meta = require('../../core/meta');
+  let msg = `listo! aquí tienes los links de pago para ${ctx.dogName} 🐾\n\n`;
+
+  msg += `📊 ${portions} envases/mes (~${Math.round(portions * 500 / 1000)}kg)\n\n`;
+
+  msg += `💳 *Pago único — 1 mes:* $${pricing.oneMonth.toLocaleString('es-CL')}\n`;
+  if (mpLinks.oneTimeUrl) {
+    msg += `${mpLinks.oneTimeUrl}\n\n`;
+  }
+
+  msg += `🔄 *Suscripción mensual:* $${pricing.oneMonth.toLocaleString('es-CL')}/mes\n`;
+  if (mpLinks.subscriptionUrl) {
+    msg += `${mpLinks.subscriptionUrl}\n\n`;
+  }
+
+  msg += `📦 *Plan 3 meses:* $${pricing.threeMonths.toLocaleString('es-CL')}/mes (${pricing.threeMonthsPerUnit.toLocaleString('es-CL')}/envase)\n`;
+  msg += `📦 *Plan 6 meses:* $${pricing.sixMonths.toLocaleString('es-CL')}/mes (${pricing.sixMonthsPerUnit.toLocaleString('es-CL')}/envase)\n\n`;
+
+  msg += `o si prefieres hablamos por acá y armamos el plan a tu medida 😊`;
+
+  await meta.sendMessage(phone, msg, config);
+  await memory.updateContext(phone, {
+    mpLinkSent: true,
+    mpLinksCreated: true,
+    lastBotIntent: { stage: 'link_sent', ts: Date.now() },
+    pricing: pricing
+  });
+  logger.log(`[mp] Links MP enviados a ${phone} para ${ctx.dogName}`);
+}
+
+/**
+ * Construir URL del formulario con parámetros pre-cargados (fallback).
+ */
+function buildPrefillUrl(ctx) {
+  const params = new URLSearchParams();
+
+  if (ctx.dogName)       params.set('petname', ctx.dogName);
+  if (ctx.weight)        params.set('weight', ctx.weight);
+  if (ctx.sex)           params.set('sex', ctx.sex);
+  if (ctx.activityLevel) params.set('activityLevel', ctx.activityLevel);
+  if (ctx.allergies && ctx.allergies !== 'Sin alergias') params.set('allergie', ctx.allergies);
+
+  if (ctx.ageMonths) {
+    params.set('ageInMonths', ctx.ageMonths);
+  } else if (ctx.ageYears) {
+    params.set('ageInMonths', Math.round(parseFloat(ctx.ageYears) * 12));
+  } else if (ctx.ageInMonths) {
+    params.set('ageInMonths', ctx.ageInMonths);
+  }
+
+  return `${FORM_URL}?${params.toString()}&product_type=fresh`;
+}
+
+/**
  * enrichContext — Carga datos del cliente desde Sheets al primer mensaje.
- * El core lo llama una vez y guarda el resultado en Redis (tenantEnriched=true).
  */
 async function enrichContext(phone, savedContext) {
   try {
@@ -325,17 +430,17 @@ async function enrichContext(phone, savedContext) {
     let data = null;
     let source = null;
 
-    // 1. Fresh Subscribers (cliente activo Fresh — máxima prioridad)
+    // 1. Fresh Subscribers
     data = await sheets.getCustomer(phone);
     if (data) { source = 'fresh_subscriber'; }
 
-    // 2. Fresh Leads (prospecto Fresh)
+    // 2. Fresh Leads
     if (!data) {
       data = await sheets.getLead(phone);
       if (data) { source = 'fresh_lead'; }
     }
 
-    // 3. TupiBox Original (cliente histórico de cajas)
+    // 3. TupiBox Original
     if (!data) {
       data = await sheets.getOriginalCustomer(phone);
       if (data) { source = 'tupibox_original'; }
@@ -345,7 +450,6 @@ async function enrichContext(phone, savedContext) {
 
     logger.log(`[sheets] enrichContext: cliente encontrado en ${source}`);
 
-    // Mapear campos al contexto Redis
     const ctx = { dataSource: source };
     if (data.name)          ctx.customerName   = data.name;
     if (data.dogName)       ctx.dogName        = data.dogName;
@@ -356,11 +460,12 @@ async function enrichContext(phone, savedContext) {
     if (data.activityLevel) ctx.activityLevel  = data.activityLevel;
     if (data.allergies)     ctx.allergies      = data.allergies;
     if (data.protein)       ctx.protein        = data.protein;
+    if (data.proteinPreference) ctx.protein    = data.proteinPreference;
     if (data.plan)          ctx.plan           = data.plan;
     if (data.status)        ctx.status         = data.status;
     if (data.city)          ctx.city           = data.city;
     if (data.email)         ctx.email          = data.email;
-    // Cliente Original: indicar que es recurrente y cuántos pedidos tiene
+
     if (source === 'tupibox_original') {
       ctx.isReturningCustomer = true;
       ctx.totalOrders = data.totalOrders;
@@ -378,4 +483,15 @@ function hasRequiredFields(ctx) {
   return !!(ctx.dogName && ctx.weight && (ctx.ageYears || ctx.ageMonths || ctx.ageInMonths || ctx.birthDate) && ctx.activityLevel);
 }
 
-module.exports = { quickReply, buildSystemPrompt, afterReply, enrichContext };
+function isBusinessHours() {
+  const now       = new Date();
+  const chileTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const day  = chileTime.getDay();
+  const hour = chileTime.getHours();
+  return day >= 1 && day <= 5 && hour >= 10 && hour < 18;
+}
+
+module.exports = {
+  quickReply, buildSystemPrompt, afterReply, enrichContext,
+  calculatePortions, calculatePricing, createMercadoPagoLinks, // exportadas para testing
+};
