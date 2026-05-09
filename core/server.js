@@ -581,8 +581,11 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone requerido' });
     await memory.updateContext(phone, {
+      // Shopify
       shopifyChecked: false, shopifyContext: null, shopifySlackInfo: null, customerName: null,
-      upsellPendiente: false, upsellOrderId: null, upsellOrderName: null, upsellMatch: null
+      upsellPendiente: false, upsellOrderId: null, upsellOrderName: null, upsellMatch: null,
+      // TupiBox
+      mpLinkSent: false, mpLinksCreated: false
     });
     logger.log(`[admin] Contexto reseteado para ${phone}`);
     res.json({ ok: true, phone });
