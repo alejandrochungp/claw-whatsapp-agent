@@ -319,6 +319,13 @@ async function afterReply(phone, userText, botReply, history, context) {
 
     // 3. Enviar link MP si datos completos (desde enrichContext o extracción)
     const merged = { ...context, ...mapped };
+    // Si el usuario pide explícitamente links/pago, resetear flag para reenviar
+    const wantsPayment = /\b(pago|pagar|link|env[ií]a[mr]|m[eé]todo|transfer|depositar|cu[áa]nto)\b/i.test(userText);
+    if (wantsPayment && context.mpLinkSent) {
+      logger.log(`[afterReply] Usuario pide link → reseteando mpLinkSent`);
+      context.mpLinkSent = false;
+      await memory.updateContext(phone, { mpLinkSent: false });
+    }
     logger.log(`[afterReply] merged keys=${Object.keys(merged).length} hasReq=${hasRequiredFields(merged)} dogName=${merged.dogName} weight=${merged.weight} actLevel=${merged.activityLevel} birthDate=${merged.birthDate}`);
     if (!context.mpLinkSent && hasRequiredFields(merged)) {
       logger.log(`[afterReply] ✅ Disparando sendMercadoPagoLinks para ${phone}`);
