@@ -17,8 +17,11 @@ const PROMPT_BASE = fs.readFileSync(path.join(__dirname, 'prompt.md'), 'utf8');
 // URL base del formulario (fallback si MP falla)
 const FORM_URL = process.env.FORM_URL || 'https://go.tupibox.com';
 
-// Backend MercadoPago en Heroku
-const MP_BACKEND_URL = process.env.MERCADOPAGO_BACKEND_URL || 'https://tupibox-mercadopago-1b381874968c.herokuapp.com';
+// MercadoPago SDK — acceso directo a preferencias de checkout
+const { MercadoPagoConfig, Preference } = require('mercadopago');
+const MP_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
+const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+const preferenceClient = new Preference(mpClient);
 
 /**
  * Reglas rápidas sin LLM — solo cosas 100% deterministas.
@@ -196,73 +199,73 @@ function calculatePricing(portions, deliveryFrequency) {
 }
 
 /**
- * Llamar al backend de MercadoPago para crear links de pago.
- * Crea un pago único y una suscripción flexible.
+ * Crear preferencias de checkout MercadoPago directamente con el SDK.
+ * Una para pago único (1 mes) y otra con auto_recurring (suscripción mensual).
  */
 async function createMercadoPagoLinks(dogName, pricing, email) {
   const logger = require('../../core/logger');
 
-  // Parámetros comunes
   const description = `TupiBox Fresh - ${dogName} (${pricing.portions} envases/mes)`;
   const payerEmail = email || 'cliente@tupibox.com';
+  const extRef = `tupibox_fresh_${dogName.replace(/\s/g, '_')}_${Date.now()}`;
+  const baseUrl = 'https://go.tupibox.com';
 
-  const results = {
-    oneTimeUrl: null,
-    subscriptionUrl: null,
-    error: null,
-  };
+  const results = { oneTimeUrl: null, subscriptionUrl: null, error: null };
 
+  // Preferencia de pago único (1 mes)
   try {
-    // 1. Pago único (1 mes)
-    const oneTimeResp = await axios.post(
-      `${MP_BACKEND_URL}/payment`,
-      {
+    const oneTimePref = await preferenceClient.create({
+      body: {
         items: [{
-          title: description + ' - 1 mes',
+          id: `fresh_${pricing.portions}_1m`,
+          title: `${description} - 1 mes`,
           quantity: 1,
           unit_price: pricing.oneMonth,
           currency_id: 'CLP'
         }],
         payer: { email: payerEmail },
-        transaction_amount: pricing.oneMonth,
-        external_reference: `tupibox_fresh_${dogName.replace(/\s/g, '_')}_1m_${Date.now()}`,
-        statement_descriptor: 'TupiBox Fresh'
-      },
-      { timeout: 10000 }
-    );
-
-    if (oneTimeResp.data?.init_point) {
-      results.oneTimeUrl = oneTimeResp.data.init_point;
-      logger.log(`[mp] Pago único creado para ${dogName}: ${results.oneTimeUrl.slice(0, 50)}...`);
-    }
+        statement_descriptor: 'TUPIBOX FRESH',
+        external_reference: `${extRef}_1m`,
+        back_urls: { success: `${baseUrl}/success`, pending: `${baseUrl}/pending`, failure: `${baseUrl}/failure` },
+        auto_return: 'approved',
+        payment_methods: { installments: 12, default_installments: 1 },
+        notification_url: 'https://tupibox-mercadopago-1b381874968c.herokuapp.com/webhook'
+      }
+    });
+    results.oneTimeUrl = oneTimePref.init_point;
+    logger.log(`[mp] Pago único: ${oneTimePref.init_point.slice(0, 60)}...`);
   } catch (e) {
     logger.log(`[mp] Error pago único: ${e.message}`);
   }
 
+  // Preferencia con auto_recurring (suscripción mensual)
   try {
-    // 2. Suscripción mensual flexible
-    const subResp = await axios.post(
-      `${MP_BACKEND_URL}/create_subscription`,
-      {
-        reason: description + ' - Suscripción mensual',
+    const subPref = await preferenceClient.create({
+      body: {
+        items: [{
+          id: `fresh_${pricing.portions}_sub`,
+          title: `${description} - Suscripción mensual`,
+          quantity: 1,
+          unit_price: pricing.oneMonth,
+          currency_id: 'CLP'
+        }],
+        payer: { email: payerEmail },
+        statement_descriptor: 'TUPIBOX FRESH',
+        external_reference: `${extRef}_sub`,
+        back_urls: { success: `${baseUrl}/success`, pending: `${baseUrl}/pending`, failure: `${baseUrl}/failure` },
+        auto_return: 'approved',
+        payment_methods: { installments: 12, default_installments: 1 },
         auto_recurring: {
           frequency: 1,
           frequency_type: 'months',
           transaction_amount: pricing.oneMonth,
-          currency_id: 'CLP',
-          billing_day_proportional: false,
+          currency_id: 'CLP'
         },
-        payer_email: payerEmail,
-        external_reference: `tupibox_fresh_${dogName.replace(/\s/g, '_')}_sub_${Date.now()}`,
-        statement_descriptor: 'TupiBox Fresh'
-      },
-      { timeout: 10000 }
-    );
-
-    if (subResp.data?.init_point) {
-      results.subscriptionUrl = subResp.data.init_point;
-      logger.log(`[mp] Suscripción creada para ${dogName}: ${results.subscriptionUrl.slice(0, 50)}...`);
-    }
+        notification_url: 'https://tupibox-mercadopago-1b381874968c.herokuapp.com/webhook'
+      }
+    });
+    results.subscriptionUrl = subPref.init_point;
+    logger.log(`[mp] Suscripción: ${subPref.init_point.slice(0, 60)}...`);
   } catch (e) {
     logger.log(`[mp] Error suscripción: ${e.message}`);
   }
