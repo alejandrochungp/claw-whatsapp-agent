@@ -576,6 +576,28 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     }
   });
 
+  // GET /admin/conversations-dump — full history for conversion analysis
+  app.get('/admin/conversations-dump', async (req, res) => {
+    try {
+      const phones = await memory.getActiveConversations(30 * 24 * 3600 * 1000);
+      const result = [];
+      for (const phone of phones) {
+        const conv = await memory.getConversation(phone);
+        if (!conv || !conv.history || conv.history.length === 0) continue;
+        result.push({
+          phone,
+          name: conv.context?.customerName || null,
+          dogName: conv.context?.dogName || null,
+          plan: conv.context?.plan || null,
+          history: conv.history
+        });
+      }
+      res.json({ ok: true, count: result.length, conversations: result });
+    } catch (e) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   // ── POST /admin/reset-context â€" limpiar contexto de un nÃºmero (solo pruebas) â"€â"€
   app.post('/admin/reset-context', async (req, res) => {
     const { phone } = req.body;
