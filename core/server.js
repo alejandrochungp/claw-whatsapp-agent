@@ -634,6 +634,47 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     res.json({ ok: true, phone });
   });
 
+
+  // POST /admin/test-pack-inicia - enviar mensaje Pack Inicia de prueba
+  app.post('/admin/test-pack-inicia', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone requerido' });
+
+    const path = require('path');
+    const fs = require('fs');
+    const imgPath = path.join(__dirname, '..', 'media', 'pack_inicia.jpg');
+
+    try {
+      if (fs.existsSync(imgPath)) {
+        await meta.sendImage(phone, { filePath: imgPath, caption: 'Pack Inicia TupiBox Fresh' }, config);
+        logger.log('[test-pack] Imagen enviada a ' + phone);
+      }
+
+      const text = [
+        'hola! me quede pensando en tu perrito',
+        '',
+        'mira, si quieres probar la comida fresca sin compromiso, tenemos un Pack Inicia que armamos justo para eso:',
+        '',
+        '- 4 envases de 500g (proteina a tu eleccion)',
+        '- 1 caldo de huesos con colageno natural',
+        '- envio gratis en RM',
+        '- $29.990 (normal $34.990)',
+        '',
+        'asi pruebas y ves la diferencia en energia, pelaje y digestion en 1 semana',
+        '',
+        'escribeme que proteina prefieres: vacuno, pollo, cerdo o salmon'
+      ].join('\n');
+
+      await meta.sendMessage(phone, text, config);
+      logger.log('[test-pack] Texto enviado a ' + phone);
+
+      res.json({ ok: true, phone, imageSent: true });
+    } catch (e) {
+      logger.log('[test-pack] Error: ' + e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // â"€â"€ POST /admin/seed-thread â€" inyectar threadâ†'phone en Redis (one-time migration) â"€â"€
   app.post('/admin/seed-thread', async (req, res) => {
     const { phone, thread_ts, channel } = req.body;
