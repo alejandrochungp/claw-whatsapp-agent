@@ -286,6 +286,28 @@ async function afterReply(phone, userText, botReply, history, context) {
 
   logger.log(`[afterReply] START phone=${phone} ctxKeys=${Object.keys(context||{}).length} histLen=${history.length} mpLinkSent=${context?.mpLinkSent}`);
 
+  // 0. Detectar marcador de imagen Pack Inicia
+  const PACK_INICIA_MARKER = '[[PACK_INICIA_IMAGE]]';
+  const packIniciaPath = path.join(__dirname, '..', '..', '..', 'media', 'pack_inicia.jpg');
+  
+  if (botReply && botReply.includes(PACK_INICIA_MARKER)) {
+    try {
+      const meta = require('../../core/meta');
+      if (fs.existsSync(packIniciaPath)) {
+        await meta.sendImage(phone, {
+          filePath: packIniciaPath
+        }, require('./config'));
+        logger.log(`[afterReply] Pack Inicia image sent to ${phone}`);
+      } else {
+        logger.log(`[afterReply] Pack Inicia image not found at ${packIniciaPath}`);
+      }
+    } catch (e) {
+      logger.log(`[afterReply] Pack Inicia image error: ${e.message}`);
+    }
+    // Strip marker from botReply for tracking
+    botReply = botReply.replace(PACK_INICIA_MARKER, '').trim();
+  }
+
   try {
     // 1. Capturar lead si es nuevo
     const isNew = await sheets.isNewLead(phone);
