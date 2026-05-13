@@ -664,7 +664,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
       ].join('\n');
 
       // 1. Store in conversation history (Redis)
-      await memory.addMessage(phone, { role: 'assistant', text: text, ts: Date.now() });
+      await memory.addMessage(phone, text, 'assistant');
       await memory.updateContext(phone, {
         packIniciaSent: true,
         packIniciaSentAt: Date.now(),
@@ -683,12 +683,12 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
 
       // 4. Forward to Slack thread
       try {
-        const threadData = await memory.getThread(phone);
         const slackChannel = config?.slackChannel || process.env.SLACK_CHANNEL_ID || 'C05FES87S9J';
-        await slack.sendMessage(slackChannel, 'Pack Inicia enviado a +' + phone + ' (' + dogName + ')', {
-          thread_ts: threadData?.thread_ts,
-          username: 'TupiBox Bot'
-        });
+        if (slackChannel) {
+          await slack.sendMessage(slackChannel, 'Pack Inicia enviado a +' + phone + ' (' + dogName + ')', {
+            username: 'TupiBox Bot'
+          });
+        }
         logger.log('[pack-inicia] Slack notificado para ' + phone);
       } catch (se) {
         logger.log('[pack-inicia] Slack error: ' + se.message);

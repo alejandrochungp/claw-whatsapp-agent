@@ -356,7 +356,8 @@ async function afterReply(phone, userText, botReply, history, context) {
       await memory.updateContext(phone, { mpLinkSent: false });
     }
     logger.log(`[afterReply] merged keys=${Object.keys(merged).length} hasReq=${hasRequiredFields(merged)} dogName=${merged.dogName} weight=${merged.weight} actLevel=${merged.activityLevel} birthDate=${merged.birthDate}`);
-        // 3b. Pack Inicia: si el cliente confirma proteina/dale, mandar link de $29.990
+    
+    // Pack Inicia: si el cliente confirma, mandar link de $29.990
     if (context.packIniciaSent && !context.mpLinkSent) {
       const packConfirm = /(pollo|vacuno|cerdo|salm[oó]n|dale|tinca|quiero|bueno|ok|si)/i.test(userText);
       const botOfferingLink = /link.*pago|mando.*link|env[ií]o.*link|pago.*ahora/i.test(botReply);
@@ -366,7 +367,6 @@ async function afterReply(phone, userText, botReply, history, context) {
       }
     }
 
-    // 3c. Enviar link MP si datos completos (plan regular)
 if (!context.mpLinkSent && hasRequiredFields(merged)) {
       logger.log(`[afterReply] ✅ Disparando sendMercadoPagoLinks para ${phone}`);
       await sendMercadoPagoLinks(phone, merged, memory, logger);
@@ -477,6 +477,7 @@ function buildPrefillUrl(ctx) {
   }
 
   return `${FORM_URL}?${params.toString()}&product_type=fresh`;
+}
 
 /**
  * Enviar link de MercadoPago para el Pack Inicia ($29.990).
@@ -536,15 +537,12 @@ async function sendPackIniciaLink(phone, ctx, memory, logger) {
     logger.log(`[mp-pack] Link enviado a ${phone} para ${dogName}`);
   } catch (e) {
     logger.log(`[mp-pack] Error: ${e.message}`);
-    // Fallback: mensaje manual
     const meta = require("../../core/meta");
     await meta.sendMessage(phone,
-      `dale! te mando el link para el Pack Inicia de ${dogName} 🎁\n\nson $29.990 — 4 envases + caldo de huesos + envio gratis\n\npor mientras te confirmo el link, cualquier duda me avisas!`,
+      `dale! te mando el link para el Pack Inicia de ${dogName}\n\nson $29.990 - 4 envases + caldo de huesos + envio gratis\n\npor mientras te confirmo el link, cualquier duda me avisas!`,
       config
     );
   }
-}
-
 }
 
 /**
