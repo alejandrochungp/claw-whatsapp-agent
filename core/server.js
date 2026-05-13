@@ -635,8 +635,8 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
   });
 
 
-  // POST /admin/test-pack-inicia - enviar mensaje Pack Inicia de prueba
-  app.post('/admin/test-pack-inicia', async (req, res) => {
+  // POST /admin/pack-inicia - enviar mensaje Pack Inicia con contexto
+  app.post('/admin/pack-inicia', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone requerido' });
 
@@ -645,13 +645,11 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     const imgPath = path.join(__dirname, '..', 'media', 'pack_inicia.jpg');
 
     try {
-      if (fs.existsSync(imgPath)) {
-        await meta.sendImage(phone, { filePath: imgPath, caption: 'Pack Inicia TupiBox Fresh' }, config);
-        logger.log('[test-pack] Imagen enviada a ' + phone);
-      }
+      const ctx = await memory.getContext(phone) || {};
+      const dogName = ctx.dogName || 'tu perrito';
 
       const text = [
-        'hola! me quede pensando en tu perrito',
+        'hola! me quede pensando en ' + dogName,
         '',
         'mira, si quieres probar la comida fresca sin compromiso, tenemos un Pack Inicia que armamos justo para eso:',
         '',
@@ -665,12 +663,40 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
         'escribeme que proteina prefieres: vacuno, pollo, cerdo o salmon'
       ].join('\n');
 
-      await meta.sendMessage(phone, text, config);
-      logger.log('[test-pack] Texto enviado a ' + phone);
+      // 1. Store in conversation history (Redis)
+      await memory.addMessage(phone, { role: 'assistant', text: text, ts: Date.now() });
+      await memory.updateContext(phone, {
+        packIniciaSent: true,
+        packIniciaSentAt: Date.now(),
+        lastBotIntent: { stage: 'pack_inicia_sent', ts: Date.now() }
+      });
 
-      res.json({ ok: true, phone, imageSent: true });
+      // 2. Send image
+      if (fs.existsSync(imgPath)) {
+        await meta.sendImage(phone, { filePath: imgPath }, config);
+        logger.log('[pack-inicia] Imagen enviada a ' + phone);
+      }
+
+      // 3. Send text
+      await meta.sendMessage(phone, text, config);
+      logger.log('[pack-inicia] Texto enviado a ' + phone);
+
+      // 4. Forward to Slack thread
+      try {
+        const threadData = await memory.getThread(phone);
+        const slackChannel = config?.slackChannel || process.env.SLACK_CHANNEL_ID || 'C05FES87S9J';
+        await slack.sendMessage(slackChannel, 'Pack Inicia enviado a +' + phone + ' (' + dogName + ')', {
+          thread_ts: threadData?.thread_ts,
+          username: 'TupiBox Bot'
+        });
+        logger.log('[pack-inicia] Slack notificado para ' + phone);
+      } catch (se) {
+        logger.log('[pack-inicia] Slack error: ' + se.message);
+      }
+
+      res.json({ ok: true, phone, dogName, imageSent: true });
     } catch (e) {
-      logger.log('[test-pack] Error: ' + e.message);
+      logger.log('[pack-inicia] Error: ' + e.message);
       res.status(500).json({ error: e.message });
     }
   });
