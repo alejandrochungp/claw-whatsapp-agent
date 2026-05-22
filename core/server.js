@@ -1832,10 +1832,17 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
     const campaignCtx = await memory.getCampaignContext(from);
     if (campaignCtx) {
       const sentDate = campaignCtx.sentAt ? new Date(campaignCtx.sentAt).toLocaleDateString('es-CL') : 'recientemente';
-      systemPrompt = `${systemPrompt}\n\n---\n## Contexto de campaÃ±a\nEste cliente recibiÃ³ un mensaje de campaÃ±a el ${sentDate}.\nCampaÃ±a: "${campaignCtx.name}"\nDescripciÃ³n: ${campaignCtx.description || 'sin descripciÃ³n'}\n${campaignCtx.extra ? `Detalle extra: ${campaignCtx.extra}` : ''}\nTen esto en cuenta al responder: el cliente probablemente escribe en respuesta a esa campaÃ±a. Responde de forma coherente con la oferta o mensaje que recibiÃ³.`;
-      logger.log(`ðŸŽ¯ Contexto de campaÃ±a inyectado: "${campaignCtx.name}"`);
+      if (campaignCtx.productos && campaignCtx.productos.length > 0) {
+        // Formato carrito abandonado
+        const lista = campaignCtx.productos.map(p => `- ${p.titulo}${p.variante ? ' (' + p.variante + ')' : ''} x${p.cantidad} — $${parseInt(p.precio).toLocaleString('es-CL')}`).join('\n');
+        systemPrompt = `${systemPrompt}\n\n---\n## Contexto: Recuperación de carrito abandonado\nEl cliente recibió un mensaje de WhatsApp hace menos de 48h para recuperar su carrito abandonado.\nProductos en su carrito:\n${lista}\nTotal: $${parseInt(campaignCtx.total || 0).toLocaleString('es-CL')}\n\nEsto es lo más probable que esté preguntando. Ayúdalo con dudas sobre estos productos específicos. Si pregunta por "el carrito" o "la compra", ya sabes a qué se refiere.`;
+      } else if (campaignCtx.name) {
+        // Formato campaña genérica
+        systemPrompt = `${systemPrompt}\n\n---\n## Contexto de campaña\nEste cliente recibió un mensaje de campaña el ${sentDate}.\nCampaña: "${campaignCtx.name}"\nDescripción: ${campaignCtx.description || 'sin descripción'}\n${campaignCtx.extra ? `Detalle extra: ${campaignCtx.extra}` : ''}\nTen esto en cuenta al responder: el cliente probablemente escribe en respuesta a esa campaña. Responde de forma coherente con la oferta o mensaje que recibió.`;
+      }
+      logger.log(`🎯 Contexto de campaña inyectado: "${campaignCtx.name || campaignCtx.template || 'carrito'}"`);
     }
-    const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
+const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
 
     if (aiResult.response) {
       replyText = aiResult.response;

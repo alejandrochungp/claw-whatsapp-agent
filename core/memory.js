@@ -303,7 +303,7 @@ async function setSentTemplate(phone, templateName) {
   } catch (e) {
     console.error('[memory] Error setSentTemplate:', e.message);
   }
-}
+},
 
 // Obtener todas las conversaciones activas (para escaneo de seguimiento)
 async function getActiveConversations(maxAgeMs) {

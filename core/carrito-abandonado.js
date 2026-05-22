@@ -21,6 +21,7 @@
 const https   = require('https');
 const klaviyo = require('./klaviyo');
 const logger  = require('./logger');
+const memory  = require('./memory');
 
 // ─── Configuración ────────────────────────────────────────────────────────────
 
@@ -224,8 +225,15 @@ async function run() {
       if (!existing || total > existing.total) {
         const nombre = c.billing_address?.first_name ||
                        c.shipping_address?.first_name || 'ahí';
+        // Extraer productos del carrito para contexto
+        const productos = (c.line_items || []).map(li => ({
+          titulo: li.title || '',
+          variante: li.variant_title || '',
+          cantidad: li.quantity || 0,
+          precio: li.price || '0'
+        }));
         porTelefono.set(phone, {
-          phone, nombre, total,
+          phone, nombre, total, productos,
           checkoutUrl: c.abandoned_checkout_url,
           email: c.email
         });
@@ -241,13 +249,24 @@ async function run() {
   // Enviar
   let ok = 0, fail = 0;
 
-  for (const { phone, nombre, total, checkoutUrl, email } of candidatos) {
+  for (const { phone, nombre, total, productos, checkoutUrl, email } of candidatos) {
     const result = await sendTemplate(phone, nombre, checkoutUrl);
 
     if (result?.messages?.[0]?.id) {
       logger.log(`[carrito] ✅ ${phone} (${nombre}) $${total}`);
       await marcarEnviado(phone);
       ok++;
+
+      // Guardar contexto de campaña para que el bot sepa por qué responde el cliente
+      const campaignData = {
+        template: CONFIG.templateName,
+        sent_at: Date.now(),
+        productos,
+        total,
+        checkoutUrl
+      };
+      memory.setSentTemplate(phone, CONFIG.templateName).catch(() => {});
+      memory.setCampaignContext(phone, campaignData).catch(() => {});
 
       // Notificar a Klaviyo que este cliente ya fue contactado por WA
       // → Klaviyo usa wa_carrito_enviado_at para suprimir el email redundante
