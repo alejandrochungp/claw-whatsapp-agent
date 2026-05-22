@@ -28,7 +28,7 @@ const CONFIG = {
   enabled: process.env.CARRITO_ENABLED === 'true',
   shopifyToken: process.env.SHOPIFY_TOKEN,
   shopifyStore: process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com',
-  waToken: process.env.WA_TOKEN,
+  waToken: process.env.WHATSAPP_ACCESS_TOKEN || process.env.WA_TOKEN,
   phoneId: process.env.PHONE_NUMBER_ID || '217563878110256',
   templateName: 'recuperar_carrito_yeppo',  // template evergreen UTF-8 correcto (ID: 4367182693500526)
   templateLang: 'es_CL',
