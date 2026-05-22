@@ -20,6 +20,7 @@
 
 const https   = require('https');
 const klaviyo = require('./klaviyo');
+const logger  = require('./logger');
 
 // ─── Configuración ────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ async function initRedis() {
       const { createClient } = require('redis');
       redisClient = createClient({ url: process.env.REDIS_URL });
       await redisClient.connect();
-      console.log('[carrito] Redis conectado');
+      logger.log('[carrito] Redis conectado');
     }
   } catch (e) {
     console.warn('[carrito] Redis no disponible, usando RAM:', e.message);
@@ -172,7 +173,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function run() {
   if (!CONFIG.enabled) {
-    console.log('[carrito] Desactivado (CARRITO_ENABLED != true)');
+    logger.log('[carrito] Desactivado (CARRITO_ENABLED != true)');
     return;
   }
 
@@ -182,7 +183,7 @@ async function run() {
   const hora = horaChile.getHours();
 
   if (hora < CONFIG.horaInicio || hora >= CONFIG.horaFin) {
-    console.log(`[carrito] Fuera de horario (${hora}:xx) — esperando`);
+    logger.log(`[carrito] Fuera de horario (${hora}:xx) — esperando`);
     return;
   }
 
@@ -192,7 +193,7 @@ async function run() {
   const checkouts = r?.checkouts || [];
 
   if (checkouts.length === 0) {
-    console.log('[carrito] Sin carritos abiertos');
+    logger.log('[carrito] Sin carritos abiertos');
     return;
   }
 
@@ -233,7 +234,7 @@ async function run() {
   }
 
   const candidatos = [...porTelefono.values()];
-  console.log(`[carrito] ${candidatos.length} candidatos nuevos de ${checkouts.length} checkouts`);
+  logger.log(`[carrito] ${candidatos.length} candidatos nuevos de ${checkouts.length} checkouts`);
 
   if (candidatos.length === 0) return;
 
@@ -244,25 +245,25 @@ async function run() {
     const result = await sendTemplate(phone, nombre, checkoutUrl);
 
     if (result?.messages?.[0]?.id) {
-      console.log(`[carrito] ✅ ${phone} (${nombre}) $${total}`);
+      logger.log(`[carrito] ✅ ${phone} (${nombre}) $${total}`);
       await marcarEnviado(phone);
       ok++;
 
       // Notificar a Klaviyo que este cliente ya fue contactado por WA
       // → Klaviyo usa wa_carrito_enviado_at para suprimir el email redundante
       klaviyo.markCartContactedByWA(phone, email).catch(e =>
-        console.error('[carrito] Klaviyo mark error:', e.message)
+        logger.log('[carrito] Klaviyo mark error:', e.message)
       );
     } else {
       const errMsg = result?.error?.message || JSON.stringify(result);
-      console.log(`[carrito] ❌ ${phone} (${nombre}) — ${errMsg}`);
+      logger.log(`[carrito] ❌ ${phone} (${nombre}) — ${errMsg}`);
       fail++;
     }
 
     await sleep(CONFIG.delayEntreEnviosMs);
   }
 
-  console.log(`[carrito] Ciclo completo: ${ok} enviados, ${fail} fallidos`);
+  logger.log(`[carrito] Ciclo completo: ${ok} enviados, ${fail} fallidos`);
 }
 
 // ─── Inicialización ───────────────────────────────────────────────────────────
@@ -273,20 +274,20 @@ async function start() {
   await initRedis();
 
   if (!CONFIG.enabled) {
-    console.log('[carrito] Módulo inactivo. Activar con CARRITO_ENABLED=true en Railway.');
+    logger.log('[carrito] Módulo inactivo. Activar con CARRITO_ENABLED=true en Railway.');
     return;
   }
 
-  console.log(`[carrito] Iniciando — revisión cada ${CONFIG.intervaloMs / 60000} min`);
-  console.log(`[carrito] Horario: ${CONFIG.horaInicio}:00 - ${CONFIG.horaFin}:00 (Santiago)`);
-  console.log(`[carrito] Mínimo abandono: ${CONFIG.minMinutos} min`);
+  logger.log(`[carrito] Iniciando — revisión cada ${CONFIG.intervaloMs / 60000} min`);
+  logger.log(`[carrito] Horario: ${CONFIG.horaInicio}:00 - ${CONFIG.horaFin}:00 (Santiago)`);
+  logger.log(`[carrito] Mínimo abandono: ${CONFIG.minMinutos} min`);
 
   // Ejecutar inmediatamente al iniciar
-  await run().catch(e => console.error('[carrito] Error en run():', e.message));
+  await run().catch(e => logger.log('[carrito] Error en run():', e.message));
 
   // Luego cada hora
   _interval = setInterval(() => {
-    run().catch(e => console.error('[carrito] Error en run():', e.message));
+    run().catch(e => logger.log('[carrito] Error en run():', e.message));
   }, CONFIG.intervaloMs);
 }
 
@@ -294,7 +295,7 @@ function stop() {
   if (_interval) {
     clearInterval(_interval);
     _interval = null;
-    console.log('[carrito] Detenido');
+    logger.log('[carrito] Detenido');
   }
 }
 
