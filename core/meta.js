@@ -194,4 +194,184 @@ async function sendImage(to, options = {}, config = {}) {
   }
 }
 
-module.exports = { sendMessage, sendTemplate, sendImage, getMediaUrl, downloadMedia };
+// ═══════════════════════════════════════════════════════════════
+// Instagram Messaging
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Envía mensaje de texto a Instagram.
+ * @param {string} igSenderId - Instagram Scoped ID (IGSID) del destinatario
+ * @param {string} text - texto a enviar
+ */
+async function sendInstagramMessage(igSenderId, text) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const igPageId = process.env.INSTAGRAM_PAGE_ID;
+  if (!token || !igPageId) {
+    console.error('[meta] sendInstagramMessage: INSTAGRAM_PAGE_ID o WHATSAPP_ACCESS_TOKEN no configurados');
+    return null;
+  }
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/v18.0/${igPageId}/messages`,
+      {
+        recipient: { id: igSenderId },
+        message: { text }
+      },
+      {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 15000
+      }
+    );
+    console.log(`[meta] Instagram message sent to ${igSenderId}`);
+    return response.data;
+  } catch (err) {
+    console.error(`[meta] sendInstagramMessage error (${igSenderId}):`, err.response?.data || err.message);
+    return null;
+  }
+}
+
+/**
+ * Envía imagen a Instagram.
+ * @param {string} igSenderId - IGSID del destinatario
+ * @param {string} imageUrl - URL pública de la imagen
+ */
+async function sendInstagramImage(igSenderId, imageUrl) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const igPageId = process.env.INSTAGRAM_PAGE_ID;
+  if (!token || !igPageId) return null;
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/v18.0/${igPageId}/messages`,
+      {
+        recipient: { id: igSenderId },
+        message: {
+          attachment: {
+            type: 'image',
+            payload: { url: imageUrl }
+          }
+        }
+      },
+      {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 15000
+      }
+    );
+    console.log(`[meta] Instagram image sent to ${igSenderId}`);
+    return response.data;
+  } catch (err) {
+    console.error(`[meta] sendInstagramImage error:`, err.response?.data || err.message);
+    return null;
+  }
+}
+
+/**
+ * Obtiene URL de media de Instagram.
+ */
+async function getInstagramMediaUrl(mediaId) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token || !mediaId) return null;
+  try {
+    const r = await axios.get(
+      `https://graph.facebook.com/v18.0/${mediaId}`,
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+    );
+    return { url: r.data.url, mimeType: r.data.mime_type };
+  } catch (e) {
+    console.error('[meta] getInstagramMediaUrl error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Facebook Messenger
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Envía mensaje de texto a Facebook Messenger.
+ * @param {string} psid - Page Scoped ID del destinatario
+ * @param {string} text - texto a enviar
+ */
+async function sendMessengerMessage(psid, text) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const pageId = process.env.FACEBOOK_PAGE_ID;
+  if (!token || !pageId) {
+    console.error('[meta] sendMessengerMessage: FACEBOOK_PAGE_ID o WHATSAPP_ACCESS_TOKEN no configurados');
+    return null;
+  }
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/v18.0/${pageId}/messages`,
+      {
+        messaging_type: 'RESPONSE',
+        recipient: { id: psid },
+        message: { text }
+      },
+      {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 15000
+      }
+    );
+    console.log(`[meta] Messenger message sent to ${psid}`);
+    return response.data;
+  } catch (err) {
+    console.error(`[meta] sendMessengerMessage error (${psid}):`, err.response?.data || err.message);
+    return null;
+  }
+}
+
+/**
+ * Envía imagen a Facebook Messenger.
+ */
+async function sendMessengerImage(psid, imageUrl) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const pageId = process.env.FACEBOOK_PAGE_ID;
+  if (!token || !pageId) return null;
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/v18.0/${pageId}/messages`,
+      {
+        messaging_type: 'RESPONSE',
+        recipient: { id: psid },
+        message: {
+          attachment: {
+            type: 'image',
+            payload: { url: imageUrl }
+          }
+        }
+      },
+      {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 15000
+      }
+    );
+    console.log(`[meta] Messenger image sent to ${psid}`);
+    return response.data;
+  } catch (err) {
+    console.error(`[meta] sendMessengerImage error:`, err.response?.data || err.message);
+    return null;
+  }
+}
+
+/**
+ * Obtiene URL de media de Messenger.
+ */
+async function getMessengerMediaUrl(mediaId) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token || !mediaId) return null;
+  try {
+    const r = await axios.get(
+      `https://graph.facebook.com/v18.0/${mediaId}`,
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+    );
+    return { url: r.data.url, mimeType: r.data.mime_type };
+  } catch (e) {
+    console.error('[meta] getMessengerMediaUrl error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+module.exports = {
+  sendMessage, sendTemplate, sendImage, getMediaUrl, downloadMedia,
+  sendInstagramMessage, sendInstagramImage, getInstagramMediaUrl,
+  sendMessengerMessage, sendMessengerImage, getMessengerMediaUrl
+};

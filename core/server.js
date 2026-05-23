@@ -73,23 +73,42 @@ function start(config, business) {
   }
   app.post('/webhook', async (req, res) => {
     try {
-      res.sendStatus(200); // Responder rÃ¡pido a Meta
+      res.sendStatus(200); // Responder r\u00e1pido a Meta
 
-      const value = req.body?.entry?.[0]?.changes?.[0]?.value;
-      if (!value) return;
+      const entry = req.body?.entry?.[0];
+      if (!entry) return;
 
-      // Status updates (sent / delivered / read)
-      if (value.statuses?.length) {
-        for (const s of value.statuses) await handleStatus(s, config);
+      // WhatsApp: entry.changes[0].value
+      const value = entry.changes?.[0]?.value;
+      if (value?.messaging_product === 'whatsapp') {
+        if (value.statuses?.length) {
+          for (const s of value.statuses) await handleStatus(s, config);
+          return;
+        }
+        if (value.messages?.length) {
+          for (const msg of value.messages) await handleMessage(msg, value, config, business);
+          return;
+        }
         return;
       }
 
-      // Mensajes entrantes
-      if (value.messages?.length) {
-        for (const msg of value.messages) await handleMessage(msg, value, config, business);
+      // Instagram / Messenger: entry.messaging[]
+      const messagingEvents = entry.messaging;
+      if (messagingEvents?.length) {
+        for (const evt of messagingEvents) {
+          const platform = detectPlatform(evt, entry.id);
+          await handleSocialMessage(evt, platform, config, business);
+        }
+        return;
+      }
+
+      // Fallback: WhatsApp legacy (sin messaging_product en el payload)
+      const legacyValue = entry.changes?.[0]?.value;
+      if (legacyValue?.messages?.length) {
+        for (const msg of legacyValue.messages) await handleMessage(msg, legacyValue, config, business);
       }
     } catch (err) {
-      logger.log(`âŒ Error en webhook: ${err.message}`);
+      logger.log('Error en webhook: ' + err.message);
     }
   });
 
@@ -770,7 +789,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
           // El primer mensaje de replies ES el padre (el header con el teléfono)
           const parentMsg = repliesRes.data?.messages?.[0];
           logger.log(`[tomar] Mensaje padre: ${parentMsg?.text?.substring(0, 100)}`);
-          const match = parentMsg?.text?.match(/\+?(569\d{8})/);
+          const match = parentMsg?.text?.match(/(\+?569\d{8}|ig:\d+|fb:\d+)/);
           if (match) {
             phone = match[1];
             // Reconstruir entrada en phoneToThread para que el resto del sistema funcione
@@ -847,7 +866,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
             { headers: { Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}` } }
           );
           const parentMsg = repliesRes.data?.messages?.[0];
-          const match = parentMsg?.text?.match(/\+?(569\d{8})/);
+          const match = parentMsg?.text?.match(/(\+?569\d{8}|ig:\d+|fb:\d+)/);
           if (match) {
             phone = match[1];
             slack.activeConversations.delete(phone);
@@ -908,7 +927,13 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
             // Ventana abierta — enviar normalmente
             const operatorName = await slack.sendOperatorReply(phone, event.text, userId, config);
             const msgToClient  = `${event.text}\n\n— ${operatorName}`;
+            if (phone.startsWith('ig:')) {
+            await meta.sendInstagramMessage(phone.slice(3), msgToClient);
+          } else if (phone.startsWith('fb:')) {
+            await meta.sendMessengerMessage(phone.slice(3), msgToClient);
+          } else {
             await meta.sendMessage(phone, msgToClient, config);
+          }
             logger.log(`📤 ${operatorName} respondió a ${phone}: ${event.text}`);
           }
         }
@@ -2036,5 +2061,108 @@ async function postSlackMessage(channel, thread_ts, text) {
     { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
   ).catch(e => logger.log(`âš ï¸ Slack post error: ${e.message}`));
 }
+
+// ================================================================
+// Deteccion de plataforma social (Instagram / Messenger)
+// ================================================================
+
+const INSTAGRAM_PAGE_ID = process.env.INSTAGRAM_PAGE_ID;
+const FACEBOOK_PAGE_ID  = process.env.FACEBOOK_PAGE_ID;
+
+function detectPlatform(event, entryPageId) {
+  if (INSTAGRAM_PAGE_ID && event.recipient?.id === INSTAGRAM_PAGE_ID) return 'instagram';
+  if (FACEBOOK_PAGE_ID && event.recipient?.id === FACEBOOK_PAGE_ID) return 'messenger';
+  if (INSTAGRAM_PAGE_ID && entryPageId === INSTAGRAM_PAGE_ID) return 'instagram';
+  if (FACEBOOK_PAGE_ID && entryPageId === FACEBOOK_PAGE_ID) return 'messenger';
+  logger.log('[webhook] Plataforma no identificada (entryPageId: ' + entryPageId + ', recipient: ' + (event.recipient?.id || '?') + ')');
+  return 'unknown';
+}
+
+async function handleSocialMessage(event, platform, config, business) {
+  const senderId = event.sender?.id;
+  const message  = event.message;
+  if (!senderId || !message) return;
+
+  const channelKey = platform === 'instagram' ? 'ig:' + senderId : 'fb:' + senderId;
+
+  const msgId = message.mid;
+  if (msgId && isDuplicate(msgId)) {
+    logger.log('[' + platform + '] Duplicado ignorado: ' + msgId);
+    return;
+  }
+
+  const pEmoji = platform === 'instagram' ? 'IG' : 'FB';
+  let userText = '';
+
+  if (message.text) {
+    userText = message.text;
+  } else if (message.attachments?.length) {
+    const att = message.attachments[0];
+    if (att.type === 'image' || att.type === 'video' || att.type === 'audio') {
+      logger.log('[' + pEmoji + '] ' + att.type + ' de ' + senderId);
+      const activeThread = slack.getActiveConversation(channelKey);
+      if (activeThread) {
+        await slack.logConversation(channelKey, '[' + platform + '] ' + att.type + ': ' + (att.payload?.url || '(sin url)'), null, config);
+        return;
+      }
+      userText = '[' + att.type + ' recibido]';
+    } else if (att.type === 'fallback') {
+      userText = att.payload?.text || att.title || att.payload?.url || '[' + att.type + ']';
+    }
+  }
+
+  if (!userText) {
+    logger.log('[' + platform + '] Sin texto procesable de ' + senderId);
+    return;
+  }
+
+  logger.log('[' + pEmoji + '] ' + platform + ' ' + senderId + ': "' + userText.slice(0, 80) + '"');
+
+  await memory.addMessage(channelKey, userText, 'user');
+  await slack.logConversation(channelKey, '[' + pEmoji + ' ' + platform + '] ' + userText, null, config);
+
+  if (slack.getActiveConversation(channelKey)) {
+    logger.log('[' + platform + '] Operador activo para ' + channelKey);
+    return;
+  }
+
+  if (business.checkBusinessHours && !business.checkBusinessHours()) {
+    const offMsg = config.offHoursMessage || 'Gracias por escribir. Te respondemos en horario de atencion.';
+    await sendSocialReply(senderId, platform, offMsg);
+    return;
+  }
+
+  try {
+    const history = await memory.getHistory(channelKey, 20);
+    let campaignCtx = null;
+    try { campaignCtx = await memory.getCampaignContext(senderId); } catch (_) {}
+
+    const aiResponse = await ai.generateReply(
+      userText, history, business, config,
+      campaignCtx, catalog, channelKey
+    );
+
+    if (aiResponse) {
+      await memory.addMessage(channelKey, aiResponse, 'bot');
+      await slack.logConversation(channelKey, aiResponse, '[' + pEmoji + ' Bot] ' + aiResponse.slice(0, 100), config);
+      await sendSocialReply(senderId, platform, aiResponse);
+    }
+  } catch (err) {
+    logger.log('[' + platform + '] Error IA: ' + err.message);
+    await sendSocialReply(senderId, platform, config.fallbackMessage || 'Disculpa, tuve un problema tecnico.');
+  }
+}
+
+async function sendSocialReply(senderId, platform, text) {
+  if (platform === 'instagram') {
+    return await meta.sendInstagramMessage(senderId, text);
+  } else if (platform === 'messenger') {
+    return await meta.sendMessengerMessage(senderId, text);
+  } else {
+    logger.log('[social] Plataforma desconocida: ' + platform);
+    return null;
+  }
+}
+
 
 module.exports = { start };
