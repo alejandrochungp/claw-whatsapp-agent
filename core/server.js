@@ -2066,13 +2066,14 @@ async function postSlackMessage(channel, thread_ts, text) {
 // Deteccion de plataforma social (Instagram / Messenger)
 // ================================================================
 
+const INSTAGRAM_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID || "17841410830948390";
 const INSTAGRAM_PAGE_ID = process.env.INSTAGRAM_PAGE_ID;
 const FACEBOOK_PAGE_ID  = process.env.FACEBOOK_PAGE_ID;
 
 function detectPlatform(event, entryPageId) {
-  if (INSTAGRAM_PAGE_ID && event.recipient?.id === INSTAGRAM_PAGE_ID) return 'instagram';
+  if ((INSTAGRAM_ACCOUNT_ID && event.recipient?.id === INSTAGRAM_ACCOUNT_ID) || (INSTAGRAM_PAGE_ID && event.recipient?.id === INSTAGRAM_PAGE_ID)) return 'instagram';
   if (FACEBOOK_PAGE_ID && event.recipient?.id === FACEBOOK_PAGE_ID) return 'messenger';
-  if (INSTAGRAM_PAGE_ID && entryPageId === INSTAGRAM_PAGE_ID) return 'instagram';
+  if ((INSTAGRAM_ACCOUNT_ID && entryPageId === INSTAGRAM_ACCOUNT_ID) || (INSTAGRAM_PAGE_ID && entryPageId === INSTAGRAM_PAGE_ID)) return 'instagram';
   if (FACEBOOK_PAGE_ID && entryPageId === FACEBOOK_PAGE_ID) return 'messenger';
   logger.log('[webhook] Plataforma no identificada (entryPageId: ' + entryPageId + ', recipient: ' + (event.recipient?.id || '?') + ')');
   return 'unknown';
@@ -2137,10 +2138,27 @@ async function handleSocialMessage(event, platform, config, business) {
     let campaignCtx = null;
     try { campaignCtx = await memory.getCampaignContext(senderId); } catch (_) {}
 
-    const aiResponse = await ai.generateReply(
-      userText, history, business, config,
-      campaignCtx, catalog, channelKey
-    );
+    // Construir system prompt con contexto de campa\u00f1a
+    let systemPrompt = config.systemPrompt || 'Eres un asistente virtual de Yeppo.';
+    if (campaignCtx) {
+      if (campaignCtx.productos && campaignCtx.productos.length > 0) {
+        const lista = campaignCtx.productos.map(p => '- ' + p.titulo + (p.variante ? ' (' + p.variante + ')' : '') + ' x' + p.cantidad + ' - $' + parseInt(p.precio).toLocaleString('es-CL')).join('\n');
+        systemPrompt += '\n\n## Contexto: Recuperacion de carrito abandonado\nEl cliente recibio un mensaje para recuperar su carrito.\nProductos:\n' + lista + '\nTotal: $' + parseInt(campaignCtx.total || 0).toLocaleString('es-CL');
+      } else if (campaignCtx.name) {
+        systemPrompt += '\n\n## Contexto de campana: ' + campaignCtx.name;
+      }
+    }
+
+    const context = await memory.getContext(channelKey);
+    const aiResult = await ai.ask(userText, history, context, systemPrompt, config);
+
+    let aiResponse = null;
+    if (aiResult.response) {
+      aiResponse = aiResult.response;
+      logger.log('[AI] ' + (aiResult.model === 'deepseek-chat' ? 'DeepSeek' : 'Claude') + ' respondio (costo: $' + (aiResult.cost?.toFixed(4) || '?') + ')');
+    } else {
+      aiResponse = aiResult.fallback || config.fallbackMessage;
+    }
 
     if (aiResponse) {
       await memory.addMessage(channelKey, aiResponse, 'bot');
