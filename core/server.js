@@ -2139,7 +2139,8 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
     try { campaignCtx = await memory.getCampaignContext(senderId); } catch (_) {}
 
     // Construir system prompt con contexto de campa\u00f1a
-    let systemPrompt = config.systemPrompt || 'Eres un asistente virtual de Yeppo.';
+    const context = await memory.getContext(channelKey);
+    let systemPrompt = await business.buildSystemPrompt(context);
     if (campaignCtx) {
       if (campaignCtx.productos && campaignCtx.productos.length > 0) {
         const lista = campaignCtx.productos.map(p => '- ' + p.titulo + (p.variante ? ' (' + p.variante + ')' : '') + ' x' + p.cantidad + ' - $' + parseInt(p.precio).toLocaleString('es-CL')).join('\n');
@@ -2166,7 +2167,6 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
       logger.log('[social-catalog] Error: ' + e.message);
     }
 
-    const context = await memory.getContext(channelKey);
     const aiResult = await ai.ask(userText, history, context, systemPrompt, config);
 
     let aiResponse = null;
