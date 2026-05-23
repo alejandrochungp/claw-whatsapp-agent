@@ -25,6 +25,9 @@ module.exports = {
     endHour:   18
   },
 
+  // IA — ventana de historial
+  aiHistoryWindow: 100,
+
   // Mensaje de fallback cuando IA falla o presupuesto agotado
   fallbackMessage: 'Disculpa, tuve un problema técnico. Escribe "humano" para hablar con el equipo.',
 

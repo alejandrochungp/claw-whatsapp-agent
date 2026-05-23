@@ -19,6 +19,8 @@ module.exports = {
     endHour:   18
   },
 
+  aiHistoryWindow: 100,
+
   fallbackMessage:  'disculpa, tuve un problema técnico. escribe "humano" para hablar con el equipo.',
   offHoursMessage:  'ahora estamos fuera de horario (lun-vie 10:00-18:00).\n\nte anotamos y apenas abramos te respondemos. si es urgente igual escríbenos.',
 

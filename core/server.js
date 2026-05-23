@@ -2099,7 +2099,38 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
     userText = message.text;
   } else if (message.attachments?.length) {
     const att = message.attachments[0];
-    if (att.type === 'image' || att.type === 'video' || att.type === 'audio') {
+    if (att.type === 'audio' && att.payload?.url) {
+      logger.log('[' + pEmoji + '] audio de ' + senderId + ' — transcribiendo...');
+      const activeThread = slack.getActiveConversation(channelKey);
+      if (activeThread) {
+        await slack.logConversation(channelKey, '[' + platform + '] audio: ' + (att.payload?.url || '(sin url)'), null, config);
+        return;
+      }
+      try {
+        const audioBuf = await axios.get(att.payload.url, { responseType: 'arraybuffer', timeout: 30000 });
+        const FormData = require('form-data');
+        const fs = require('fs');
+        const path2 = require('path');
+        const os = require('os');
+        const tmpPath = path2.join(os.tmpdir(), 'social_audio_' + Date.now() + '.ogg');
+        fs.writeFileSync(tmpPath, Buffer.from(audioBuf.data));
+        const form = new FormData();
+        form.append('file', fs.createReadStream(tmpPath), { filename: 'audio.ogg', contentType: audioBuf.headers['content-type'] || 'audio/ogg' });
+        form.append('model', 'whisper-1');
+        form.append('language', 'es');
+        const whisperResp = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
+          headers: { Authorization: 'Bearer ' + (process.env.OPENAI_API_KEY || ''), ...form.getHeaders() },
+          timeout: 30000
+        });
+        fs.unlinkSync(tmpPath);
+        userText = whisperResp.data.text?.trim() || '';
+        logger.log('[' + pEmoji + '] Transcripcion: "' + (userText || '(vacio)').slice(0, 80) + '"');
+        if (!userText) userText = '[audio sin texto]';
+      } catch (e) {
+        logger.log('[' + pEmoji + '] Error transcripcion audio: ' + e.message);
+        userText = '[audio recibido]';
+      }
+    } else if (att.type === 'image' || att.type === 'video') {
       logger.log('[' + pEmoji + '] ' + att.type + ' de ' + senderId);
       const activeThread = slack.getActiveConversation(channelKey);
       if (activeThread) {

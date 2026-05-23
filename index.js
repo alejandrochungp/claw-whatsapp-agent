@@ -43,10 +43,16 @@ console.log(`💬 Slack: ${tenantConfig.slackChannel}`);
 const memory = require('./core/memory');
 const server = require('./core/server');
 const carrito = require('./core/carrito-abandonado');
+const nightlySummary = require('./core/nightly-summary');
 
 memory.waitForRedis(5000).then(() => {
   server.start(tenantConfig, tenantBusiness);
   
   // Iniciar módulo de carritos abandonados (solo si CARRITO_ENABLED=true)
   carrito.start().catch(e => console.error('[carrito] Error al iniciar:', e.message));
+
+  // Programar resumen nocturno de conversaciones (tenant-configurable)
+  if (tenantConfig.nightlySummaryEnabled !== false) {
+    nightlySummary.schedule(tenantConfig);
+  }
 });

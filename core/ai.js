@@ -46,9 +46,9 @@ function calcCost(model, inputTok, outputTok) {
 }
 
 // ── Construir array de mensajes (compartido por ambos proveedores) ────────────
-function buildMessages(userMessage, history) {
+function buildMessages(userMessage, history, windowSize = 16) {
   const messages = [];
-  for (const h of history.slice(-16)) {
+  for (const h of history.slice(-Math.max(1, windowSize))) {
     const role = h.role === 'bot' ? 'assistant' : 'user';
     messages.push({ role, content: h.text });
   }
@@ -133,7 +133,8 @@ async function ask(userMessage, history, context, systemPrompt, config) {
     return { response: null, fallback: config?.fallbackMessage || 'Escribe "humano" para hablar con el equipo.' };
   }
 
-  const messages = buildMessages(userMessage, history);
+  const windowSize = config?.aiHistoryWindow || 16;
+  const messages = buildMessages(userMessage, history, windowSize);
   let result = null;
 
   // 1. Intentar DeepSeek
