@@ -2248,6 +2248,28 @@ async function sendSocialReply(senderId, platform, text, config) {
 
 // ── Product Card Post-Processor ─────────────────────────────────────────
 
+/**
+ * Busca el variantId (retailer_id de Meta) desde la API pública de Shopify.
+ * Fallback para productos que no están en el catálogo del bot.
+ */
+async function getVariantIdFromShopify(handle) {
+  try {
+    const url = `https://yeppo.cl/products/${encodeURIComponent(handle)}.json`;
+    const axios = require('axios');
+    const resp = await axios.get(url, { timeout: 8000 });
+    const variants = resp.data?.product?.variants || [];
+    // Tomar la variante de menor precio con stock o policy=continue
+    const active = variants.filter(v =>
+      (v.inventory_quantity || 0) > 0 || v.inventory_policy === 'continue'
+    );
+    const best = active.sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0))[0] || variants[0];
+    return best ? String(best.id) : null;
+  } catch (e) {
+    logger.log('[product-cards] Error Shopify fallback para ' + handle + ': ' + e.message);
+    return null;
+  }
+}
+
 /** mapa handle → variantId (retailer_id de Meta) construido del catálogo Shopify */
 let productCardsCatalog = null;
 
@@ -2287,10 +2309,23 @@ async function detectAndSendProductCards(to, text, config, isSocial = false) {
   if (!handles.length) return;
 
   // Mapear handle → retailer_id (variantId) desde catálogo Shopify
-  const retailerIds = handles.map(h => productCardsCatalog[h]).filter(Boolean);
+  const retailerIds = [];
+  for (const h of handles) {
+    if (productCardsCatalog[h]) {
+      retailerIds.push(productCardsCatalog[h]);
+    } else {
+      // Fallback: buscar variantId directo desde la API de Shopify
+      const vid = await getVariantIdFromShopify(h);
+      if (vid) {
+        retailerIds.push(vid);
+        productCardsCatalog[h] = vid; // cachear para futuros usos
+        logger.log('[product-cards] Fallback Shopify: ' + h + ' → ' + vid);
+      }
+    }
+  }
 
   if (!retailerIds.length) {
-    logger.log('[product-cards] No se encontraron en catálogo: ' + handles.join(', '));
+    logger.log('[product-cards] No se encontraron: ' + handles.join(', '));
     return;
   }
 
