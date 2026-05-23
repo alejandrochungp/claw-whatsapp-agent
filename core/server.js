@@ -1898,6 +1898,11 @@ const aiResult     = await ai.ask(userText, history, context, systemPrompt, conf
   // 5. Enviar WhatsApp
   await meta.sendMessage(from, replyText, config);
 
+  // 5b. Post-procesar: enviar tarjetas de producto si hay links
+  detectAndSendProductCards(from, replyText, config).catch(e =>
+    logger.log('[product-cards] Error: ' + e.message)
+  );
+
   // 6. Log en Slack (supervisiÃ³n) â€" incluir info Shopify en primer mensaje
   const shopifySlackInfo = context?.shopifySlackInfo || null;
 
@@ -2221,14 +2226,83 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
 
 async function sendSocialReply(senderId, platform, text) {
   if (platform === 'instagram') {
-    return await meta.sendInstagramMessage(senderId, text);
+    const sent = await meta.sendInstagramMessage(senderId, text);
+    detectAndSendProductCards(senderId, text, config, true).catch(e =>
+      logger.log('[product-cards-ig] Error: ' + e.message)
+    );
+    return sent;
   } else if (platform === 'messenger') {
-    return await meta.sendMessengerMessage(senderId, text);
+    const sent = await meta.sendMessengerMessage(senderId, text);
+    detectAndSendProductCards(senderId, text, config, true).catch(e =>
+      logger.log('[product-cards-fb] Error: ' + e.message)
+    );
+    return sent;
   } else {
     logger.log('[social] Plataforma desconocida: ' + platform);
     return null;
   }
 }
 
+
+// ── Product Card Post-Processor ─────────────────────────────────────────
+
+/**
+ * Detecta links de producto en la respuesta del bot y envía tarjetas.
+ * @param {string} to - phone o senderId
+ * @param {string} text - respuesta del bot
+ * @param {object} config - tenant config
+ * @param {boolean} isSocial - true si es IG/Messenger (usa endpoints distintos)
+ */
+async function detectAndSendProductCards(to, text, config, isSocial = false) {
+  if (!text) return;
+
+  // Detectar handles de producto: yeppo.cl/products/{handle}
+  const productMatches = text.match(/yeppo\.cl\/products\/([a-z0-9]+(?:-[a-z0-9]+)*)/gi);
+  if (!productMatches || !productMatches.length) return;
+
+  // Extraer handles únicos (máx 5)
+  const handles = [...new Set(productMatches.map(m => {
+    const match = m.match(/products\/([a-z0-9]+(?:-[a-z0-9]+)*)/i);
+    return match ? match[1] : null;
+  }))].filter(Boolean).slice(0, 5);
+
+  if (!handles.length) return;
+
+  logger.log('[product-cards] Detectados handles: ' + handles.join(', '));
+
+  // Buscar retailer_ids en catálogo Meta
+  const retailerIds = [];
+  for (const handle of handles) {
+    const rid = await meta.getRetailerIdByHandle(handle);
+    if (rid) {
+      retailerIds.push(rid);
+      logger.log('[product-cards] Mapeado: ' + handle + ' → ' + rid);
+    }
+  }
+
+  if (!retailerIds.length) {
+    logger.log('[product-cards] No se encontraron retailer_ids');
+    return;
+  }
+
+  // Enviar según plataforma
+  if (isSocial && retailerIds.length === 1) {
+    // IG: product attachment, Messenger: generic template
+    // La función detectPlatform ya no aplica aquí, probamos ambas
+    // Intentar IG primero (si falla es porque es Messenger o no configurado)
+    await meta.sendInstagramProduct(to, retailerIds[0], handles[0].replace(/-/g, ' ')).catch(() => {});
+  } else if (retailerIds.length === 1) {
+    // WhatsApp: tarjeta individual
+    await meta.sendWhatsAppProduct(to, retailerIds[0], 'Producto recomendado');
+    logger.log('[product-cards] Tarjeta individual enviada: ' + retailerIds[0]);
+  } else {
+    // WhatsApp: lista de productos (carrusel)
+    await meta.sendWhatsAppProductList(to, retailerIds,
+      'Te recomiendo estos ' + retailerIds.length,
+      'Elige el que más te guste:'
+    );
+    logger.log('[product-cards] Carrusel enviado: ' + retailerIds.length + ' productos');
+  }
+}
 
 module.exports = { start };

@@ -370,8 +370,226 @@ async function getMessengerMediaUrl(mediaId) {
   }
 }
 
+// ── Product Messages (WhatsApp) ──────────────────────────────────────────
+
+const META_CATALOG_ID = process.env.META_CATALOG_ID || '759929732681784';
+
+/** Envía tarjeta de producto individual (WhatsApp) */
+async function sendWhatsAppProduct(to, retailerId, bodyText, footerText) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId || !retailerId) return null;
+
+  try {
+    const resp = await axios.post(
+      `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'product',
+          body: { text: (bodyText || '').slice(0, 1024) },
+          footer: { text: (footerText || 'Yeppo').slice(0, 60) },
+          action: {
+            catalog_id: META_CATALOG_ID,
+            product_retailer_id: retailerId
+          }
+        }
+      },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 10000 }
+    );
+    return resp.data?.messages?.[0]?.id || null;
+  } catch (e) {
+    console.error('[meta] Product message error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+/** Envía lista de productos (WhatsApp) — hasta 30 productos */
+async function sendWhatsAppProductList(to, productItems, headerText, bodyText, footerText) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId || !productItems?.length) return null;
+
+  try {
+    const resp = await axios.post(
+      `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'product_list',
+          header: { type: 'text', text: (headerText || 'Recomendados').slice(0, 60) },
+          body: { text: (bodyText || '').slice(0, 1024) },
+          footer: { text: (footerText || 'Yeppo').slice(0, 60) },
+          action: {
+            catalog_id: META_CATALOG_ID,
+            sections: [{
+              title: 'Productos',
+              product_items: productItems.slice(0, 30).map(rid => ({
+                product_retailer_id: String(rid)
+              }))
+            }]
+          }
+        }
+      },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 10000 }
+    );
+    return resp.data?.messages?.[0]?.id || null;
+  } catch (e) {
+    console.error('[meta] Product list error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+/** Busca productos en el catálogo de Meta */
+async function searchMetaCatalog(query, limit = 5) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token || !query) return [];
+
+  try {
+    const q = encodeURIComponent(query.slice(0, 100));
+    const resp = await axios.get(
+      `https://graph.facebook.com/v22.0/${META_CATALOG_ID}/products?limit=${limit}&search=${q}&fields=id,name,retailer_id,price,sale_price,image_url,url&access_token=${token}`,
+      { timeout: 10000 }
+    );
+    return resp.data?.data || [];
+  } catch (e) {
+    console.error('[meta] Catalog search error:', e.response?.data || e.message);
+    return [];
+  }
+}
+
+/** Busca un retailer_id por handle de Shopify (ej: "cica-regen-vegan-sun") */
+async function getRetailerIdByHandle(handle, allProductsCache = null) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token || !handle) return null;
+
+  // Buscar en cache primero
+  if (allProductsCache && allProductsCache[handle]) {
+    return allProductsCache[handle];
+  }
+
+  try {
+    const q = encodeURIComponent(handle.split('-').slice(0, 3).join(' '));
+    const resp = await axios.get(
+      `https://graph.facebook.com/v22.0/${META_CATALOG_ID}/products?limit=10&search=${q}&fields=name,retailer_id,url&access_token=${token}`,
+      { timeout: 10000 }
+    );
+    // Buscar el que mejor matchee el handle en la URL
+    const products = resp.data?.data || [];
+    for (const p of products) {
+      if (p.url && p.url.includes(`/products/${handle}`)) {
+        return String(p.retailer_id);
+      }
+    }
+    // Fallback: primer resultado si hay alguno
+    return products.length > 0 ? String(products[0].retailer_id) : null;
+  } catch (e) {
+    console.error('[meta] getRetailerId error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+// ── Product Messages (Instagram) ────────────────────────────────────────
+
+async function sendInstagramProduct(igUserId, retailerId, bodyText) {
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
+  const igPageId = process.env.INSTAGRAM_PAGE_ID || '408038929930148';
+  if (!token || !igUserId || !retailerId) return null;
+
+  try {
+    const resp = await axios.post(
+      `https://graph.facebook.com/v22.0/${igPageId}/messages`,
+      {
+        messaging_product: 'instagram',
+        recipient: { id: igUserId },
+        message: {
+          attachment: {
+            type: 'product',
+            payload: {
+              catalog_id: META_CATALOG_ID,
+              product_retailer_id: String(retailerId)
+            }
+          }
+        }
+      },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 10000 }
+    );
+    return resp.data?.message_id || null;
+  } catch (e) {
+    console.error('[meta] IG product error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+// ── Product Messages (Messenger) ────────────────────────────────────────
+
+async function sendMessengerProduct(fbUserId, retailerId, title, subtitle) {
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
+  const fbPageId = process.env.FACEBOOK_PAGE_ID || '408038929930148';
+  if (!token || !fbUserId || !retailerId) return null;
+
+  try {
+    // Messenger usa Generic Template para mostrar productos
+    const productInfo = await getProductInfo(retailerId, token);
+    const resp = await axios.post(
+      `https://graph.facebook.com/v22.0/${fbPageId}/messages`,
+      {
+        messaging_product: 'messenger',
+        recipient: { id: fbUserId },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'generic',
+              elements: [{
+                title: (title || productInfo?.name || 'Producto Yeppo').slice(0, 80),
+                subtitle: (subtitle || productInfo?.price || '').slice(0, 80),
+                image_url: productInfo?.image_url || '',
+                buttons: [{
+                  type: 'web_url',
+                  url: productInfo?.url || `https://yeppo.cl/products/${title?.toLowerCase().replace(/\s+/g, '-') || 'producto'}`,
+                  title: 'Ver producto'
+                }]
+              }]
+            }
+          }
+        }
+      },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        timeout: 10000 }
+    );
+    return resp.data?.message_id || null;
+  } catch (e) {
+    console.error('[meta] Messenger product error:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+async function getProductInfo(retailerId, token) {
+  try {
+    const resp = await axios.get(
+      `https://graph.facebook.com/v22.0/${retailerId}?fields=name,price,sale_price,image_url,url&access_token=${token}`,
+      { timeout: 5000 }
+    );
+    return resp.data || null;
+  } catch { return null; }
+}
+
 module.exports = {
   sendMessage, sendTemplate, sendImage, getMediaUrl, downloadMedia,
   sendInstagramMessage, sendInstagramImage, getInstagramMediaUrl,
-  sendMessengerMessage, sendMessengerImage, getMessengerMediaUrl
+  sendMessengerMessage, sendMessengerImage, getMessengerMediaUrl,
+  sendWhatsAppProduct, sendWhatsAppProductList, searchMetaCatalog,
+  getRetailerIdByHandle,
+  sendInstagramProduct, sendMessengerProduct,
+  META_CATALOG_ID
 };
