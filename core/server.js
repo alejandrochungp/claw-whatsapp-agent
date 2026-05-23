@@ -2167,7 +2167,7 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
 
   if (business.checkBusinessHours && !business.checkBusinessHours()) {
     const offMsg = config.offHoursMessage || 'Gracias por escribir. Te respondemos en horario de atencion.';
-    await sendSocialReply(senderId, platform, offMsg);
+    await sendSocialReply(senderId, platform, offMsg, config);
     return;
   }
 
@@ -2218,15 +2218,15 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
     if (aiResponse) {
       await memory.addMessage(channelKey, aiResponse, 'bot');
       await slack.logConversation(channelKey, aiResponse, '[' + pEmoji + ' Bot] ' + aiResponse.slice(0, 100), config);
-      await sendSocialReply(senderId, platform, aiResponse);
+      await sendSocialReply(senderId, platform, aiResponse, config);
     }
   } catch (err) {
     logger.log('[' + platform + '] Error IA: ' + err.message);
-    await sendSocialReply(senderId, platform, config.fallbackMessage || 'Disculpa, tuve un problema tecnico.');
+    await sendSocialReply(senderId, platform, config.fallbackMessage || 'Disculpa, tuve un problema tecnico.', config);
   }
 }
 
-async function sendSocialReply(senderId, platform, text) {
+async function sendSocialReply(senderId, platform, text, config) {
   if (platform === 'instagram') {
     const sent = await meta.sendInstagramMessage(senderId, text);
     detectAndSendProductCards(senderId, text, config, true).catch(e =>
