@@ -264,7 +264,8 @@ async function fetchCatalogFromShopify() {
         tags:  p.tags || '',
         price: parseFloat(bestVariant.price || 0),
         stock: activeVariants.length > 0,
-        variantTitle: bestVariant.title !== 'Default Title' ? bestVariant.title : null
+        variantTitle: bestVariant.title !== 'Default Title' ? bestVariant.title : null,
+        variantId: bestVariant.id || null
       });
     }
 

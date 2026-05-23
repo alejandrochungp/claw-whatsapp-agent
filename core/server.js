@@ -637,6 +637,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     try {
       await shopify.invalidateCatalog();
       catalog = await shopify.getProductCatalog();
+      buildProductCardsMap(catalog);
       logger.log('[admin] Catalogo recargado: ' + catalog.length + ' productos');
       res.json({ ok: true, products: catalog.length });
     } catch (e) {
@@ -1066,6 +1067,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     // Pre-calentar catÃ¡logo en background al arrancar y guardar en módulo
     shopify.getProductCatalog().then(c => {
       catalog = c || [];
+      buildProductCardsMap(catalog);
       logger.log(`[catalog] Precalentado: ${catalog.length} productos`);
     }).catch(e => logger.log(`[catalog] Error precalentando: ${e.message}`));
     // ── GET /admin/amac-status — diagnóstico AMAC
@@ -2246,6 +2248,19 @@ async function sendSocialReply(senderId, platform, text) {
 
 // ── Product Card Post-Processor ─────────────────────────────────────────
 
+/** mapa handle → variantId (retailer_id de Meta) construido del catálogo Shopify */
+let productCardsCatalog = null;
+
+function buildProductCardsMap(shopifyCatalog) {
+  const map = {};
+  if (!shopifyCatalog?.length) return map;
+  for (const p of shopifyCatalog) {
+    if (p.handle && p.variantId) map[p.handle] = String(p.variantId);
+  }
+  productCardsCatalog = map;
+  return map;
+}
+
 /**
  * Detecta links de producto en la respuesta del bot y envía tarjetas.
  * @param {string} to - phone o senderId
@@ -2254,7 +2269,7 @@ async function sendSocialReply(senderId, platform, text) {
  * @param {boolean} isSocial - true si es IG/Messenger (usa endpoints distintos)
  */
 async function detectAndSendProductCards(to, text, config, isSocial = false) {
-  if (!text) return;
+  if (!text || !productCardsCatalog) return;
 
   // Detectar handles de producto: yeppo.cl/products/{handle}
   const productMatches = text.match(/yeppo\.cl\/products\/([a-z0-9]+(?:-[a-z0-9]+)*)/gi);
@@ -2268,40 +2283,38 @@ async function detectAndSendProductCards(to, text, config, isSocial = false) {
 
   if (!handles.length) return;
 
-  logger.log('[product-cards] Detectados handles: ' + handles.join(', '));
-
-  // Buscar retailer_ids en catálogo Meta
-  const retailerIds = [];
-  for (const handle of handles) {
-    const rid = await meta.getRetailerIdByHandle(handle);
-    if (rid) {
-      retailerIds.push(rid);
-      logger.log('[product-cards] Mapeado: ' + handle + ' → ' + rid);
-    }
-  }
+  // Mapear handle → retailer_id (variantId) desde catálogo Shopify
+  const retailerIds = handles.map(h => productCardsCatalog[h]).filter(Boolean);
 
   if (!retailerIds.length) {
-    logger.log('[product-cards] No se encontraron retailer_ids');
+    logger.log('[product-cards] No se encontraron en catálogo: ' + handles.join(', '));
     return;
   }
 
-  // Enviar según plataforma
+  logger.log('[product-cards] Enviando: ' + handles.slice(0, retailerIds.length).join(', '));
+
+  // Nombre del primer producto para el body
+  const firstHandle = handles[0];
+  const firstTitle = firstHandle ? firstHandle.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).slice(0, 60) : 'Recomendado';
+
+  // Enviar según plataforma y cantidad
   if (isSocial && retailerIds.length === 1) {
-    // IG: product attachment, Messenger: generic template
-    // La función detectPlatform ya no aplica aquí, probamos ambas
-    // Intentar IG primero (si falla es porque es Messenger o no configurado)
-    await meta.sendInstagramProduct(to, retailerIds[0], handles[0].replace(/-/g, ' ')).catch(() => {});
+    // IG: simple text + link (no soporta product attachment nativo)
+    // Messenger: generic template
+    const url = 'https://yeppo.cl/products/' + firstHandle;
+    await meta.sendInstagramMessage(to, firstTitle + '\n' + url).catch(() => {});
+    logger.log('[product-cards-ig] Enlace enviado: ' + firstHandle);
   } else if (retailerIds.length === 1) {
     // WhatsApp: tarjeta individual
-    await meta.sendWhatsAppProduct(to, retailerIds[0], 'Producto recomendado');
-    logger.log('[product-cards] Tarjeta individual enviada: ' + retailerIds[0]);
+    await meta.sendWhatsAppProduct(to, retailerIds[0], firstTitle);
+    logger.log('[product-cards] Tarjeta individual: ' + retailerIds[0]);
   } else {
-    // WhatsApp: lista de productos (carrusel)
+    // WhatsApp: carrusel (product_list)
     await meta.sendWhatsAppProductList(to, retailerIds,
       'Te recomiendo estos ' + retailerIds.length,
-      'Elige el que más te guste:'
+      'Elige el que más te acomode:'
     );
-    logger.log('[product-cards] Carrusel enviado: ' + retailerIds.length + ' productos');
+    logger.log('[product-cards] Carrusel: ' + retailerIds.length + ' productos');
   }
 }
 
