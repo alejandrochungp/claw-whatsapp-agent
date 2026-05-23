@@ -204,7 +204,7 @@ async function sendImage(to, options = {}, config = {}) {
  * @param {string} text - texto a enviar
  */
 async function sendInstagramMessage(igSenderId, text) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const igPageId = process.env.INSTAGRAM_PAGE_ID;
   if (!token || !igPageId) {
     console.error('[meta] sendInstagramMessage: INSTAGRAM_PAGE_ID o WHATSAPP_ACCESS_TOKEN no configurados');
@@ -236,7 +236,7 @@ async function sendInstagramMessage(igSenderId, text) {
  * @param {string} imageUrl - URL pública de la imagen
  */
 async function sendInstagramImage(igSenderId, imageUrl) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const igPageId = process.env.INSTAGRAM_PAGE_ID;
   if (!token || !igPageId) return null;
   try {
@@ -268,7 +268,7 @@ async function sendInstagramImage(igSenderId, imageUrl) {
  * Obtiene URL de media de Instagram.
  */
 async function getInstagramMediaUrl(mediaId) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token || !mediaId) return null;
   try {
     const r = await axios.get(
@@ -292,7 +292,7 @@ async function getInstagramMediaUrl(mediaId) {
  * @param {string} text - texto a enviar
  */
 async function sendMessengerMessage(psid, text) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const pageId = process.env.FACEBOOK_PAGE_ID;
   if (!token || !pageId) {
     console.error('[meta] sendMessengerMessage: FACEBOOK_PAGE_ID o WHATSAPP_ACCESS_TOKEN no configurados');
@@ -323,7 +323,7 @@ async function sendMessengerMessage(psid, text) {
  * Envía imagen a Facebook Messenger.
  */
 async function sendMessengerImage(psid, imageUrl) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const pageId = process.env.FACEBOOK_PAGE_ID;
   if (!token || !pageId) return null;
   try {
@@ -356,7 +356,7 @@ async function sendMessengerImage(psid, imageUrl) {
  * Obtiene URL de media de Messenger.
  */
 async function getMessengerMediaUrl(mediaId) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token || !mediaId) return null;
   try {
     const r = await axios.get(
