@@ -97,7 +97,7 @@ function start(config, business) {
       if (messagingEvents?.length) {
         for (const evt of messagingEvents) {
           const platform = detectPlatform(evt, entry.id);
-          await handleSocialMessage(evt, platform, config, business);
+          await handleSocialMessage(evt, platform, config, business, catalog);
         }
         return;
       }
@@ -2079,7 +2079,7 @@ function detectPlatform(event, entryPageId) {
   return 'unknown';
 }
 
-async function handleSocialMessage(event, platform, config, business) {
+async function handleSocialMessage(event, platform, config, business, catalog) {
   const senderId = event.sender?.id;
   const message  = event.message;
   if (!senderId || !message) return;
@@ -2147,6 +2147,23 @@ async function handleSocialMessage(event, platform, config, business) {
       } else if (campaignCtx.name) {
         systemPrompt += '\n\n## Contexto de campana: ' + campaignCtx.name;
       }
+    }
+
+    // Inyectar catalogo relevante (misma logica que WhatsApp)
+    try {
+      let matches = shopify.searchCatalog(catalog, userText);
+      if (!matches.length) {
+        const recentHist = await memory.getHistory(channelKey, 3);
+        const recentText = recentHist.map(m => m.content || '').join(' ');
+        if (recentText) matches = shopify.searchCatalog(catalog, recentText, 3);
+      }
+      if (matches.length) {
+        const catalogText = shopify.formatCatalogForPrompt(matches);
+        systemPrompt += '\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n' + catalogText + '\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.';
+        logger.log('[social-catalog] ' + matches.length + ' productos inyectados para: "' + userText.slice(0, 50) + '"');
+      }
+    } catch (e) {
+      logger.log('[social-catalog] Error: ' + e.message);
     }
 
     const context = await memory.getContext(channelKey);
