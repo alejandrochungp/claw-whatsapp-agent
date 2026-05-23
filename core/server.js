@@ -2269,7 +2269,10 @@ function buildProductCardsMap(shopifyCatalog) {
  * @param {boolean} isSocial - true si es IG/Messenger (usa endpoints distintos)
  */
 async function detectAndSendProductCards(to, text, config, isSocial = false) {
-  if (!text || !productCardsCatalog) return;
+  if (!text) return;
+  // Construir mapa lazy si no está listo aún (race condition con precalentado)
+  if (!productCardsCatalog) buildProductCardsMap(catalog);
+  if (!productCardsCatalog) return;
 
   // Detectar handles de producto: yeppo.cl/products/{handle}
   const productMatches = text.match(/yeppo\.cl\/products\/([a-z0-9]+(?:-[a-z0-9]+)*)/gi);
