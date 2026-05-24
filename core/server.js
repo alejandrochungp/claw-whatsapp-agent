@@ -1834,7 +1834,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
         // (sin fallback - solo inyectar si hay match relevante)
         if (matches.length) {
           const catalogText = shopify.formatCatalogForPrompt(matches);
-          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aquÃ­, di que no lo tienes disponible actualmente.`;
+          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE LINKS**: cuando recomiendes un producto, copia el link EXACTAMENTE como aparece entre corchetes arriba. NO inventes handles. NO los modifiques. Si el link dice [https://yeppo.cl/products/centella-cleansing-foam], pon EXACTAMENTE ese.`;
           logger.log(`[catalog] ${matches.length} productos inyectados para: "${userText.slice(0, 50)}"`);
         }
       } catch (e) {
@@ -2200,7 +2200,7 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
       }
       if (matches.length) {
         const catalogText = shopify.formatCatalogForPrompt(matches);
-        systemPrompt += '\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n' + catalogText + '\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.';
+        systemPrompt += '\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n' + catalogText + '\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE LINKS**: cuando recomiendes un producto, copia el link EXACTAMENTE como aparece entre corchetes arriba. NO inventes handles. NO los modifiques. Si el link dice [https://yeppo.cl/products/centella-cleansing-foam], pon EXACTAMENTE ese.';
         logger.log('[social-catalog] ' + matches.length + ' productos inyectados para: "' + userText.slice(0, 50) + '"');
       }
     } catch (e) {

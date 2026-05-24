@@ -340,16 +340,14 @@ function formatCatalogForPrompt(products) {
   if (!products?.length) return '';
   const lines = products.map(p => {
     const precio = `$${Math.round(p.price).toLocaleString('es-CL')}`;
-    const stock  = p.stock ? 'Ô£à' : 'ÔØî sin stock';
+    const stock  = p.stock ? 'OK' : 'sin stock';
     const variant = p.variantTitle ? ` (${p.variantTitle})` : '';
     const link    = p.handle ? `https://yeppo.cl/products/${p.handle}` : '';
     const desc    = p.description ? `\n  ${p.description}` : '';
-    return `ÔÇó ${p.title}${variant} ÔÇö ${precio} ÔÇö ${stock}${link ? ` ÔÇö ${link}` : ''}${desc}`;
+    return `${p.title}${variant} [${link}] - ${precio} - ${stock}${desc}`;
   });
   return lines.join('\n');
 }
-
-// ÔöÇÔöÇ Detectar si el mensaje pregunta por productos/stock/precios ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function isProductQuery(text) {
   const t = (text || '').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quitar tildes para comparar
