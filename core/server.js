@@ -2090,7 +2090,7 @@ async function postSlackMessage(channel, thread_ts, text) {
 
 const INSTAGRAM_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID || "17841410830948390";
 const INSTAGRAM_PAGE_ID = process.env.INSTAGRAM_PAGE_ID;
-const FACEBOOK_PAGE_ID  = process.env.FACEBOOK_PAGE_ID;
+const FACEBOOK_PAGE_ID  = process.env.FACEBOOK_PAGE_ID  || "408038929930148";
 
 function detectPlatform(event, entryPageId) {
   if ((INSTAGRAM_ACCOUNT_ID && event.recipient?.id === INSTAGRAM_ACCOUNT_ID) || (INSTAGRAM_PAGE_ID && event.recipient?.id === INSTAGRAM_PAGE_ID)) return 'instagram';
@@ -2102,6 +2102,9 @@ function detectPlatform(event, entryPageId) {
 }
 
 async function handleSocialMessage(event, platform, config, business, catalog) {
+  // Ignorar eco (respuesta del bot reflejada por Meta)
+  if (event.message?.is_echo) return;
+
   const senderId = event.sender?.id;
   const message  = event.message;
   if (!senderId || !message) return;
