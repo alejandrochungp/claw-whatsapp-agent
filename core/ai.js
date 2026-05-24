@@ -1,9 +1,12 @@
 /**
- * core/ai.js — IA con DeepSeek primario + fallback Claude
+ * core/ai.js — IA con Claude primario + DeepSeek fallback
  *
  * Orden de prioridad:
- *   1. DeepSeek V4 Pro  (DEEPSEEK_API_KEY)  — ~10x más barato
- *   2. Claude Sonnet    (CLAUDE_API_KEY)     — fallback si DeepSeek falla/timeout
+ *   1. Claude Sonnet   (CLAUDE_API_KEY)     — primario: sigue instrucciones, no alucina
+ *   2. DeepSeek V4 Pro (DEEPSEEK_API_KEY)   — fallback si Claude falla/timeout
+ *
+ * Claude usa prompt caching (cache_control ephemeral) en el system prompt.
+ * Cache hit = ~90% descuento en input tokens del system prompt.
  *
  * Imágenes: siempre Claude Vision (DeepSeek no soporta visión).
  */
@@ -14,38 +17,43 @@ const axios = require('axios');
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const CLAUDE_API_KEY   = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL     = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
-const DEEPSEEK_MODEL   = 'deepseek-chat'; // deepseek-v4-pro en la API
+const DEEPSEEK_MODEL   = 'deepseek-chat';
 const MONTHLY_BUDGET   = parseFloat(process.env.AI_MONTHLY_BUDGET || '100.0');
 
 // ── Pricing por 1M tokens (USD) ──────────────────────────────────────────────
+// Claude cache: escritura 125% input, lectura 10% input
 const PRICING = {
   'deepseek-chat':              { input: 0.27, output: 1.10 },
-  'claude-sonnet-4-6':          { input: 3.00, output: 15.00 },
-  'claude-3-5-sonnet-20241022': { input: 3.00, output: 15.00 },
-  'claude-3-5-haiku-20241022':  { input: 0.80, output:  4.00 },
-  'claude-3-haiku-20240307':    { input: 0.25, output:  1.25 },
+  'claude-sonnet-4-6':          { input: 3.00, output: 15.00, cacheWrite: 3.75, cacheRead: 0.30 },
+  'claude-3-5-sonnet-20241022': { input: 3.00, output: 15.00, cacheWrite: 3.75, cacheRead: 0.30 },
+  'claude-3-5-haiku-20241022':  { input: 0.80, output:  4.00, cacheWrite: 1.00, cacheRead: 0.08 },
+  'claude-3-haiku-20240307':    { input: 0.25, output:  1.25, cacheWrite: 0.31, cacheRead: 0.03 },
 };
 
 // ── Contadores de uso ────────────────────────────────────────────────────────
 let usage = {
   month: new Date().getMonth(),
   inputTokens: 0, outputTokens: 0, totalUSD: 0, requests: 0,
-  deepseekRequests: 0, claudeRequests: 0, fallbackCount: 0
+  claudeRequests: 0, deepseekRequests: 0, fallbackCount: 0,
+  cacheHits: 0, cacheMisses: 0
 };
 
 function checkReset() {
   const m = new Date().getMonth();
   if (m !== usage.month) {
-    usage = { month: m, inputTokens: 0, outputTokens: 0, totalUSD: 0, requests: 0, deepseekRequests: 0, claudeRequests: 0, fallbackCount: 0 };
+    usage = { month: m, inputTokens: 0, outputTokens: 0, totalUSD: 0, requests: 0,
+      claudeRequests: 0, deepseekRequests: 0, fallbackCount: 0, cacheHits: 0, cacheMisses: 0 };
   }
 }
 
-function calcCost(model, inputTok, outputTok) {
+function calcCost(model, inputTok, outputTok, cacheHit) {
   const p = PRICING[model] || PRICING['claude-sonnet-4-6'];
+  // Con cache hit, el system prompt se cobra al 10%. Sin cache, al 100%.
+  // Simplificamos: inputTok ya viene corregido por askClaude
   return (inputTok / 1e6) * p.input + (outputTok / 1e6) * p.output;
 }
 
-// ── Construir array de mensajes (compartido por ambos proveedores) ────────────
+// ── Construir array de mensajes ──────────────────────────────────────────────
 function buildMessages(userMessage, history, windowSize = 16) {
   const messages = [];
   for (const h of history.slice(-Math.max(1, windowSize))) {
@@ -59,7 +67,7 @@ function buildMessages(userMessage, history, windowSize = 16) {
   return messages;
 }
 
-// ── DeepSeek ─────────────────────────────────────────────────────────────────
+// ── DeepSeek (fallback) ─────────────────────────────────────────────────────
 async function askDeepSeek(messages, systemPrompt) {
   if (!DEEPSEEK_API_KEY) return null;
 
@@ -90,16 +98,22 @@ async function askDeepSeek(messages, systemPrompt) {
   return { text, inputTok, outputTok, cost, model: DEEPSEEK_MODEL };
 }
 
-// ── Claude ───────────────────────────────────────────────────────────────────
+// ── Claude (primario, con prompt caching) ────────────────────────────────────
 async function askClaude(messages, systemPrompt) {
   if (!CLAUDE_API_KEY) return null;
+
+  // Prompt caching: marcar el system prompt completo como cacheable
+  // TTL 5 min. Cache hit = ~90% descuento en tokens del system prompt.
+  const system = typeof systemPrompt === 'string'
+    ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
+    : systemPrompt; // array con bloques {text, cache?}
 
   const response = await axios.post(
     'https://api.anthropic.com/v1/messages',
     {
       model: CLAUDE_MODEL,
       max_tokens: 1024,
-      system: systemPrompt,
+      system,
       messages
     },
     {
@@ -113,11 +127,25 @@ async function askClaude(messages, systemPrompt) {
   );
 
   const text      = response.data.content[0]?.text || '';
-  const inputTok  = response.data.usage?.input_tokens  || 0;
-  const outputTok = response.data.usage?.output_tokens || 0;
-  const cost      = calcCost(CLAUDE_MODEL, inputTok, outputTok);
+  const usageData = response.data.usage || {};
+  const inputTok  = usageData.input_tokens  || 0;
+  const outputTok = usageData.output_tokens || 0;
+  // Anthropic reporta cache_read_input_tokens y cache_creation_input_tokens
+  const cacheRead  = usageData.cache_read_input_tokens  || 0;
+  const cacheWrite = usageData.cache_creation_input_tokens || 0;
 
-  return { text, inputTok, outputTok, cost, model: CLAUDE_MODEL };
+  // Calcular costo con caché
+  const p = PRICING[CLAUDE_MODEL] || PRICING['claude-sonnet-4-6'];
+  const regularInput = inputTok - cacheRead - cacheWrite;
+  const cost =
+    (regularInput / 1e6) * p.input +
+    (cacheRead  / 1e6) * (p.cacheRead  || p.input * 0.10) +
+    (cacheWrite / 1e6) * (p.cacheWrite || p.input * 1.25) +
+    (outputTok  / 1e6) * p.output;
+
+  const cacheHit = cacheRead > 0;
+
+  return { text, inputTok, outputTok, cost, model: CLAUDE_MODEL, cacheHit, cacheRead, cacheWrite, regularInput };
 }
 
 // ── ask() principal ──────────────────────────────────────────────────────────
@@ -137,8 +165,27 @@ async function ask(userMessage, history, context, systemPrompt, config) {
   const messages = buildMessages(userMessage, history, windowSize);
   let result = null;
 
-  // 1. Intentar DeepSeek
-  if (DEEPSEEK_API_KEY) {
+  // 1. Primario: Claude con prompt caching
+  if (CLAUDE_API_KEY) {
+    try {
+      result = await askClaude(messages, systemPrompt);
+      if (result && result.text) {
+        usage.claudeRequests++;
+        if (result.cacheHit) usage.cacheHits++;
+        else usage.cacheMisses++;
+      } else {
+        result = null;
+      }
+    } catch (err) {
+      const errMsg = (err.response && err.response.data) ? JSON.stringify(err.response.data) : err.message;
+      console.log('[ai] Claude fallo, usando DeepSeek fallback. Error: ' + errMsg.slice(0, 100));
+      usage.fallbackCount++;
+      result = null;
+    }
+  }
+
+  // 2. Fallback a DeepSeek
+  if (!result && DEEPSEEK_API_KEY) {
     try {
       result = await askDeepSeek(messages, systemPrompt);
       if (result && result.text) {
@@ -148,24 +195,7 @@ async function ask(userMessage, history, context, systemPrompt, config) {
       }
     } catch (err) {
       const errMsg = (err.response && err.response.data) ? JSON.stringify(err.response.data) : err.message;
-      console.log('[ai] DeepSeek fallo, usando Claude fallback. Error: ' + errMsg.slice(0, 100));
-      usage.fallbackCount++;
-      result = null;
-    }
-  }
-
-  // 2. Fallback a Claude si DeepSeek falló
-  if (!result && CLAUDE_API_KEY) {
-    try {
-      result = await askClaude(messages, systemPrompt);
-      if (result && result.text) {
-        usage.claudeRequests++;
-      } else {
-        result = null;
-      }
-    } catch (err) {
-      const errMsg = (err.response && err.response.data) ? JSON.stringify(err.response.data) : err.message;
-      console.error('[ai] Claude error: ' + errMsg.slice(0, 150));
+      console.error('[ai] DeepSeek fallback error: ' + errMsg.slice(0, 150));
       result = null;
     }
   }
@@ -184,9 +214,18 @@ async function ask(userMessage, history, context, systemPrompt, config) {
   usage.totalUSD     += result.cost;
   usage.requests++;
 
-  console.log('[ai] ' + result.model + ' respondio (costo: $' + result.cost.toFixed(4) + ')');
+  const cacheInfo = result.cacheHit
+    ? ` [cache ✓ ${result.cacheRead} tok]`
+    : (result.model === CLAUDE_MODEL ? ' [cache miss]' : '');
+  console.log('[ai] ' + result.model + ' respondio (costo: $' + result.cost.toFixed(4) + ')' + cacheInfo);
 
-  return { response: result.text, cost: result.cost, inputTok: result.inputTok, outputTok: result.outputTok, model: result.model };
+  return {
+    response: result.text,
+    cost: result.cost,
+    inputTok: result.inputTok,
+    outputTok: result.outputTok,
+    model: result.model
+  };
 }
 
 function getStats() {
