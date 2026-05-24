@@ -499,10 +499,68 @@ async function getRetailerIdByHandle(handle, allProductsCache = null) {
 
 // ── Product Messages (Instagram) ────────────────────────────────────────
 
-async function sendInstagramProduct(igUserId, retailerId, bodyText) {
+// ── Meta Catalog Product ID Map ───────────────────────────────────────
+let metaCatalogIdMap = null; // { retailer_id: catalog_product_id }
+
+async function buildMetaCatalogIdMap() {
+  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) { console.log('[meta] buildMetaCatalogIdMap: sin token'); return {}; }
+
+  const map = {};
+  let url = `https://graph.facebook.com/v22.0/${META_CATALOG_ID}/products?limit=200&fields=id,retailer_id`;
+  let count = 0;
+
+  while (url) {
+    try {
+      const resp = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 });
+      const products = resp.data?.data || [];
+      for (const p of products) {
+        if (p.retailer_id && p.id) map[String(p.retailer_id)] = p.id;
+      }
+      count += products.length;
+      url = resp.data?.paging?.next || null;
+    } catch (e) {
+      console.error('[meta] buildMetaCatalogIdMap error:', e.message);
+      break;
+    }
+  }
+  metaCatalogIdMap = map;
+  console.log(`[meta] Meta catalog map built: ${count} products, ${Object.keys(map).length} mapped`);
+  return map;
+}
+
+function getMetaCatalogId(retailerId) {
+  if (!metaCatalogIdMap) return null;
+  return metaCatalogIdMap[String(retailerId)] || null;
+}
+
+// ── Product Messages (Instagram) ───────────────────────────────────────
+
+/**
+ * Envía product template en Instagram (formato oficial Meta).
+ * Soporta uno o varios productos (hasta 10).
+ * @param {string} igUserId - IGSID del usuario
+ * @param {string[]} retailerIds - IDs de variante Shopify (retailer_id de Meta)
+ */
+async function sendInstagramProduct(igUserId, retailerIds) {
   const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const igPageId = process.env.INSTAGRAM_PAGE_ID || '408038929930148';
-  if (!token || !igUserId || !retailerId) return null;
+  if (!token || !igUserId || !retailerIds?.length) return null;
+
+  // Mapear retailer_id → catalog product id
+  if (!metaCatalogIdMap) await buildMetaCatalogIdMap();
+  const elements = [];
+  for (const rid of retailerIds) {
+    const catalogId = getMetaCatalogId(String(rid));
+    if (catalogId) {
+      elements.push({ id: catalogId });
+    }
+  }
+
+  if (!elements.length) {
+    console.error('[meta] IG product: no catalog ids found for', retailerIds);
+    return null;
+  }
 
   try {
     const resp = await axios.post(
@@ -512,10 +570,10 @@ async function sendInstagramProduct(igUserId, retailerId, bodyText) {
         recipient: { id: igUserId },
         message: {
           attachment: {
-            type: 'product',
+            type: 'template',
             payload: {
-              catalog_id: META_CATALOG_ID,
-              product_retailer_id: String(retailerId)
+              template_type: 'product',
+              elements: elements.slice(0, 10)
             }
           }
         }
@@ -591,5 +649,5 @@ module.exports = {
   sendWhatsAppProduct, sendWhatsAppProductList, searchMetaCatalog,
   getRetailerIdByHandle,
   sendInstagramProduct, sendMessengerProduct,
-  META_CATALOG_ID
+  META_CATALOG_ID, buildMetaCatalogIdMap
 };
