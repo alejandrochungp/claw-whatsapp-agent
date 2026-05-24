@@ -205,9 +205,9 @@ async function sendImage(to, options = {}, config = {}) {
  */
 async function sendInstagramMessage(igSenderId, text) {
   const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
-  const igPageId = process.env.INSTAGRAM_PAGE_ID;
+  const igPageId = process.env.INSTAGRAM_PAGE_ID || process.env.INSTAGRAM_ACCOUNT_ID;
   if (!token || !igPageId) {
-    console.error('[meta] sendInstagramMessage: INSTAGRAM_PAGE_ID o WHATSAPP_ACCESS_TOKEN no configurados');
+    console.error('[meta] sendInstagramMessage: INSTAGRAM_PAGE_ID/INSTAGRAM_ACCOUNT_ID o WHATSAPP_ACCESS_TOKEN no configurados');
     return null;
   }
   try {
@@ -237,7 +237,7 @@ async function sendInstagramMessage(igSenderId, text) {
  */
 async function sendInstagramImage(igSenderId, imageUrl) {
   const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
-  const igPageId = process.env.INSTAGRAM_PAGE_ID;
+  const igPageId = process.env.INSTAGRAM_PAGE_ID || process.env.INSTAGRAM_ACCOUNT_ID;
   if (!token || !igPageId) return null;
   try {
     const response = await axios.post(
