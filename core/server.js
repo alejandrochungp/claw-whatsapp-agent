@@ -2711,7 +2711,6 @@ async function pollInstagramConversations(config, business, catalog) {
   try {
     // Paginación: hasta 5 páginas (250 conversaciones máximo)
     let url = 'https://graph.instagram.com/me/conversations?fields=id,updated_time,messages.limit(3){id,message,from,created_time}&limit=50&access_token=' + token;
-    let pages = 0;
     const maxPages = 5;
     const sentMessageIds = new Set(); // evita duplicados dentro del mismo ciclo
 
