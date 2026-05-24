@@ -2705,61 +2705,75 @@ async function pollInstagramConversations(config, business, catalog) {
   const axios = require('axios');
   const startTime = Date.now();
   let processed = 0;
+  let totalConvs = 0;
+  let pages = 0;
 
   try {
-    const convsResp = await axios.get(
-      'https://graph.instagram.com/me/conversations',
-      {
-        params: {
-          fields: 'id,updated_time,messages.limit(3){id,message,from,created_time}',
-          limit: 50,
-          access_token: token
-        },
-        timeout: 20000
+    // Paginación: hasta 5 páginas (250 conversaciones máximo)
+    let url = 'https://graph.instagram.com/me/conversations?fields=id,updated_time,messages.limit(3){id,message,from,created_time}&limit=50&access_token=' + token;
+    let pages = 0;
+    const maxPages = 5;
+    const sentMessageIds = new Set(); // evita duplicados dentro del mismo ciclo
+
+    while (url && pages < maxPages) {
+      pages++;
+      const convsResp = await axios.get(url, { timeout: 20000 });
+
+      const conversations = convsResp.data?.data || [];
+      totalConvs += conversations.length;
+
+      for (const conv of conversations) {
+        const msgs = conv.messages?.data || [];
+        if (msgs.length === 0) continue;
+
+        const lastMsg = msgs[0];
+        // Saltar si último mensaje es del bot
+        if (lastMsg.from?.id === ourIgId) continue;
+
+        // Verificar si ya procesamos este mensaje (por message ID)
+        const msgId = lastMsg.id;
+        if (!msgId || sentMessageIds.has(msgId)) continue;
+        const pollKey = 'ig_poll:' + msgId;
+        const alreadyProcessed = await memory.redis.get(pollKey);
+        if (alreadyProcessed) continue;
+
+        // Solo procesar mensajes de los últimos 7 días para evitar inundar con viejos
+        const msgDate = new Date(lastMsg.created_time || conv.updated_time);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+        if (msgDate < sevenDaysAgo) continue;
+
+        sentMessageIds.add(msgId);
+
+        // Construir evento simulado como webhook de Instagram
+        const event = {
+          sender: { id: lastMsg.from.id },
+          recipient: { id: ourIgId },
+          message: {
+            mid: msgId,
+            text: lastMsg.message,
+            is_echo: false
+          }
+        };
+
+        logger.log('[ig-poll] Procesando mensaje de ' + (lastMsg.from?.username || lastMsg.from?.id) + ' en ' + conv.id.slice(0, 20));
+        await handleSocialMessage(event, 'instagram', config, business, catalog);
+        await memory.redis.set(pollKey, '1', 'EX', 86400); // TTL 24h
+        processed++;
       }
-    );
 
-    const conversations = convsResp.data?.data || [];
-    logger.log('[ig-poll] ' + conversations.length + ' conversaciones encontradas');
-
-    for (const conv of conversations) {
-      const msgs = conv.messages?.data || [];
-      if (msgs.length === 0) continue;
-
-      const lastMsg = msgs[0];
-      // Saltar si último mensaje es del bot
-      if (lastMsg.from?.id === ourIgId) continue;
-
-      // Verificar si ya procesamos este mensaje (por message ID)
-      const msgId = lastMsg.id;
-      if (!msgId) continue;
-      const pollKey = 'ig_poll:' + msgId;
-      const alreadyProcessed = await memory.redis.get(pollKey);
-      if (alreadyProcessed) continue;
-
-      // Construir evento simulado como webhook de Instagram
-      const event = {
-        sender: { id: lastMsg.from.id },
-        recipient: { id: ourIgId },
-        message: {
-          mid: msgId,
-          text: lastMsg.message,
-          is_echo: false
-        }
-      };
-
-      logger.log('[ig-poll] Procesando mensaje de ' + (lastMsg.from?.username || lastMsg.from?.id) + ' en ' + conv.id.slice(0, 20));
-      await handleSocialMessage(event, 'instagram', config, business, catalog);
-      await memory.redis.set(pollKey, '1', 'EX', 86400); // TTL 24h
-      processed++;
+      // Siguiente página
+      url = convsResp.data?.paging?.next || null;
     }
   } catch (e) {
     logger.log('[ig-poll] Error: ' + (e.response?.data?.error?.message || e.message));
   }
 
   const elapsed = Date.now() - startTime;
-  if (processed > 0) {
-    logger.log('[ig-poll] ' + processed + ' mensajes procesados en ' + elapsed + 'ms');
+  if (processed > 0 || totalConvs > 0) {
+    logger.log('[ig-poll] ' + processed + ' mensajes procesados en ' + elapsed + 'ms (' + totalConvs + ' convs, ' + pages + ' paginas)');
+  }
+  if (processed === 0 && totalConvs > 0) {
+    logger.log('[ig-poll] Sin mensajes pendientes en ' + totalConvs + ' conversaciones revisadas');
   }
 }
 
