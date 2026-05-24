@@ -2334,27 +2334,11 @@ function fixProductLinks(text) {
   while ((match = pattern.exec(text)) !== null) {
     const handle = match[1];
     if (!productCardsCatalog[handle]) {
-      // Handle inventado - buscar match mas cercano en el catalogo
-      const catalogHandles = Object.keys(productCardsCatalog);
-      const lower = handle.toLowerCase();
-      // Buscar handles que contengan palabras clave del handle inventado
-      const words = lower.split('-').filter(w => w.length > 2);
-      let best = null, bestScore = 0;
-      for (const ch of catalogHandles) {
-        let score = 0;
-        for (const w of words) {
-          if (ch.includes(w)) score++;
-        }
-        if (score > bestScore) { bestScore = score; best = ch; }
-      }
-      if (best && bestScore >= 2) {
-        logger.log('[product-fix] Handle inventado: ' + handle + ' → corregido: ' + best);
-        fixed = fixed.replace('yeppo.cl/products/' + handle, 'yeppo.cl/products/' + best);
-      } else {
-        logger.log('[product-fix] Handle inventado SIN match: ' + handle + ' → eliminado');
-        // Quitar el link pero mantener el texto
-        fixed = fixed.replace(new RegExp('https?://yeppo\\.cl/products/' + handle, 'g'), '#');
-      }
+      // Handle inventado por la IA → eliminar el link completo (no fuzzy, riesgo de match incorrecto)
+      logger.log('[product-fix] Handle inventado: ' + handle + ' → ELIMINADO (sin fuzzy)');
+      // Quitar markdown link [texto](url) o URL suelta
+      fixed = fixed.replace(new RegExp('\\[([^\\]]*)\\]\\(https?://yeppo\\.cl/products/' + handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\?[^)]*)?\\)', 'g'), '$1');
+      fixed = fixed.replace(new RegExp('https?://yeppo\\.cl/products/' + handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\?[^\\s]*)?', 'g'), '');
     }
   }
   return fixed;
