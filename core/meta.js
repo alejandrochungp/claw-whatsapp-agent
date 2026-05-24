@@ -544,7 +544,8 @@ function getMetaCatalogId(retailerId) {
  */
 async function sendInstagramProduct(igUserId, retailerIds) {
   const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
-  const igPageId = process.env.INSTAGRAM_PAGE_ID || '408038929930148';
+  // Probar con IG Business Account ID (docs dicen PAGE-ID pero la app no renderiza con FB Page ID)
+  const endpointId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
   if (!token || !igUserId || !retailerIds?.length) return null;
 
   // Mapear retailer_id → catalog product id
@@ -564,7 +565,7 @@ async function sendInstagramProduct(igUserId, retailerIds) {
 
   try {
     const resp = await axios.post(
-      `https://graph.facebook.com/v22.0/${igPageId}/messages`,
+      `https://graph.facebook.com/v22.0/${endpointId}/messages`,
       {
         messaging_product: 'instagram',
         recipient: { id: igUserId },
