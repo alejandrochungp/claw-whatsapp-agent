@@ -1836,6 +1836,10 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
           const catalogText = shopify.formatCatalogForPrompt(matches);
           systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE PRODUCTOS**: cuando recomiendes un producto de esta lista, cita el codigo EXACTO entre corchetes que aparece al inicio de cada linea. Ejemplo: si ves \`[centella-cleansing-foam] SKIN1004 Centella Cleansing Foam - $12.990\`, en tu respuesta escribe \`[centella-cleansing-foam]\`. NO inventes codigos. NO escribas URLs. Solo copia el codigo entre corchetes. El sistema lo convierte automaticamente en link.`;
           logger.log(`[catalog] ${matches.length} productos inyectados para: "${userText.slice(0, 50)}"`);
+        } else {
+          // Sin catalogo → no inventar
+          systemPrompt += '\n\n## AVISO: No encontre productos en el catalogo para esta consulta. NO recomiendes productos especificos ni inventes marcas. Se honesto: si es una categoria que no manejamos (ej: pelo, maquillaje), dilo directo y sugiere visitar yeppo.cl. Si es skincare y simplemente no encontraste, pide mas detalles (tipo de piel, preocupacion).';
+          logger.log('[catalog] Sin productos para: "' + userText.slice(0, 50) + '"');
         }
       } catch (e) {
         logger.log(`[catalog] Error: ${e.message}`);
@@ -1873,7 +1877,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
     }
 
     // ── RECORDATORIO OBLIGATORIO (siempre al final del prompt) ──
-    systemPrompt += '\n\n**RECUERDA**: cuando menciones un producto, escribe el codigo [handle] tal cual aparece en el catalogo (entre corchetes). NO escribas URLs a mano (ej: yeppo.cl/products/algo). Solo [handle]. El sistema lo convierte en link automaticamente.';
+    systemPrompt += '\n\n**RECUERDA**: cuando menciones un producto del catalogo en tu respuesta, escribe SOLO su codigo [handle] entre corchetes. NUNCA escribas URLs a mano ni inventes handles. Si no hay productos en el catalogo para lo que pide el cliente, se honesta y dile que no tienes ese tipo de productos (sin inventar). El sistema convierte [handle] en link automaticamente.';
 
     const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
 
@@ -2248,7 +2252,7 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
     }
 
     // ── RECORDATORIO OBLIGATORIO (siempre al final del prompt) ──
-    systemPrompt += '\n\n**RECUERDA**: cuando menciones un producto, escribe el codigo [handle] tal cual aparece en el catalogo (entre corchetes). NO escribas URLs a mano (ej: yeppo.cl/products/algo). Solo [handle]. El sistema lo convierte en link automaticamente.';
+    systemPrompt += '\n\n**RECUERDA**: cuando menciones un producto del catalogo en tu respuesta, escribe SOLO su codigo [handle] entre corchetes. NUNCA escribas URLs a mano ni inventes handles. Si no hay productos en el catalogo para lo que pide el cliente, se honesta y dile que no tienes ese tipo de productos (sin inventar). El sistema convierte [handle] en link automaticamente.';
 
     const aiResult = await ai.ask(userText, history, context, systemPrompt, config);
 
