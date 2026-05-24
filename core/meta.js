@@ -204,21 +204,22 @@ async function sendImage(to, options = {}, config = {}) {
  * @param {string} text - texto a enviar
  */
 async function sendInstagramMessage(igSenderId, text) {
-  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
-  const igPageId = process.env.INSTAGRAM_PAGE_ID || process.env.INSTAGRAM_ACCOUNT_ID;
-  if (!token || !igPageId) {
-    console.error('[meta] sendInstagramMessage: token=' + (token?'OK':'MISSING') + ' igPageId=' + (igPageId||'MISSING'));
+  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  const igUserId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
+  if (!token || !igUserId) {
+    console.error('[meta] sendInstagramMessage: INSTAGRAM_GRAPH_TOKEN=' + (token?'OK':'MISSING') + ' INSTAGRAM_ACCOUNT_ID=' + (igUserId||'MISSING'));
     return null;
   }
   try {
     const response = await axios.post(
-      `https://graph.facebook.com/v18.0/${igPageId}/messages`,
+      `https://graph.instagram.com/${igUserId}/messages`,
       {
         recipient: { id: igSenderId },
         message: { text }
       },
       {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        params: { access_token: token },
+        headers: { 'Content-Type': 'application/json' },
         timeout: 15000
       }
     );
@@ -236,12 +237,12 @@ async function sendInstagramMessage(igSenderId, text) {
  * @param {string} imageUrl - URL pública de la imagen
  */
 async function sendInstagramImage(igSenderId, imageUrl) {
-  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
-  const igPageId = process.env.INSTAGRAM_PAGE_ID || process.env.INSTAGRAM_ACCOUNT_ID;
-  if (!token || !igPageId) return null;
+  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  const igUserId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
+  if (!token || !igUserId) return null;
   try {
     const response = await axios.post(
-      `https://graph.facebook.com/v18.0/${igPageId}/messages`,
+      `https://graph.instagram.com/${igUserId}/messages`,
       {
         recipient: { id: igSenderId },
         message: {
@@ -252,7 +253,8 @@ async function sendInstagramImage(igSenderId, imageUrl) {
         }
       },
       {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        params: { access_token: token },
+        headers: { 'Content-Type': 'application/json' },
         timeout: 15000
       }
     );
@@ -543,8 +545,8 @@ function getMetaCatalogId(retailerId) {
  * @param {string[]} retailerIds - IDs de variante Shopify (retailer_id de Meta)
  */
 async function sendInstagramProduct(igUserId, retailerIds) {
-  const token = process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
-  // Probar con IG Business Account ID (docs dicen PAGE-ID pero la app no renderiza con FB Page ID)
+  // Los product templates solo funcionan via Facebook Graph API (no graph.instagram.com)
+  const token = process.env.FACEBOOK_PAGE_TOKEN || process.env.PAGE_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const endpointId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
   if (!token || !igUserId || !retailerIds?.length) return null;
 
