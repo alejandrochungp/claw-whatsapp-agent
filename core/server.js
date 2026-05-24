@@ -1871,7 +1871,11 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
       }
       logger.log(`🎯 Contexto de campaña inyectado: "${campaignCtx.name || campaignCtx.template || 'carrito'}"`);
     }
-const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
+
+    // ── RECORDATORIO OBLIGATORIO (siempre al final del prompt) ──
+    systemPrompt += '\n\n**RECUERDA**: cuando menciones un producto, escribe el codigo [handle] tal cual aparece en el catalogo (entre corchetes). NO escribas URLs a mano (ej: yeppo.cl/products/algo). Solo [handle]. El sistema lo convierte en link automaticamente.';
+
+    const aiResult     = await ai.ask(userText, history, context, systemPrompt, config);
 
     if (aiResult.response) {
       replyText = aiResult.response;
@@ -2242,6 +2246,9 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
     } catch (e) {
       logger.log('[social-catalog] Error: ' + e.message);
     }
+
+    // ── RECORDATORIO OBLIGATORIO (siempre al final del prompt) ──
+    systemPrompt += '\n\n**RECUERDA**: cuando menciones un producto, escribe el codigo [handle] tal cual aparece en el catalogo (entre corchetes). NO escribas URLs a mano (ej: yeppo.cl/products/algo). Solo [handle]. El sistema lo convierte en link automaticamente.';
 
     const aiResult = await ai.ask(userText, history, context, systemPrompt, config);
 
