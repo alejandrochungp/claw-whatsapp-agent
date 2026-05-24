@@ -567,6 +567,23 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     }
   });
 
+  // POST /admin/clear-ig-poll — limpiar keys de polling IG para re-procesar mensajes
+  app.post('/admin/clear-ig-poll', async (req, res) => {
+    try {
+      const rClient = memory.redis;
+      if (!rClient) return res.json({ ok: false, error: 'Redis no disponible' });
+      let cursor = '0', deleted = 0;
+      do {
+        const result = await rClient.scan(Number(cursor), { MATCH: 'ig_poll:*', COUNT: 100 });
+        cursor = result.cursor;
+        if (result.keys.length > 0) deleted += await rClient.del(result.keys);
+      } while (cursor !== '0' && cursor !== 0);
+      res.json({ ok: true, deleted });
+    } catch (e) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /admin/conversations — listar todas las conversaciones activas (debug)
   app.get('/admin/conversations', async (req, res) => {
     try {
