@@ -1159,6 +1159,8 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
 
     // Facebook Messenger Polling (cada 15 min) — captura mensajes de buzón General
     startFbPolling(config, business, catalog);
+    // Instagram Polling (cada 15 min) — captura mensajes de buzón General/Requests
+    startIgPolling(config, business, catalog);
   });
 }
 
@@ -2666,6 +2668,88 @@ function startFbPolling(config, business, catalog) {
   // Primera ejecución a los 30s
   setTimeout(() => pollFacebookConversations(config, business, catalog), 30000);
   fbPollInterval = setInterval(() => pollFacebookConversations(config, business, catalog), FB_POLL_MS);
+}
+
+// ── Instagram Polling (cada 15 min) ────────────────────────────────────
+// Captura mensajes que caen en buzón General/Requests y no disparan webhook
+
+let igPollInterval = null;
+
+async function pollInstagramConversations(config, business, catalog) {
+  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  const ourIgId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
+  if (!token) return;
+
+  const axios = require('axios');
+  const startTime = Date.now();
+  let processed = 0;
+
+  try {
+    const convsResp = await axios.get(
+      'https://graph.instagram.com/me/conversations',
+      {
+        params: {
+          fields: 'id,updated_time,messages.limit(3){id,message,from,created_time}',
+          limit: 50,
+          access_token: token
+        },
+        timeout: 20000
+      }
+    );
+
+    const conversations = convsResp.data?.data || [];
+    logger.log('[ig-poll] ' + conversations.length + ' conversaciones encontradas');
+
+    for (const conv of conversations) {
+      const msgs = conv.messages?.data || [];
+      if (msgs.length === 0) continue;
+
+      const lastMsg = msgs[0];
+      // Saltar si último mensaje es del bot
+      if (lastMsg.from?.id === ourIgId) continue;
+
+      // Verificar si ya procesamos este mensaje (por message ID)
+      const msgId = lastMsg.id;
+      if (!msgId) continue;
+      const pollKey = 'ig_poll:' + msgId;
+      const alreadyProcessed = await memory.get(pollKey);
+      if (alreadyProcessed) continue;
+
+      // Construir evento simulado como webhook de Instagram
+      const event = {
+        sender: { id: lastMsg.from.id },
+        recipient: { id: ourIgId },
+        message: {
+          mid: msgId,
+          text: lastMsg.message,
+          is_echo: false
+        }
+      };
+
+      logger.log('[ig-poll] Procesando mensaje de ' + (lastMsg.from?.username || lastMsg.from?.id) + ' en ' + conv.id.slice(0, 20));
+      await handleSocialMessage(event, 'instagram', config, business, catalog);
+      await memory.set(pollKey, '1', 86400); // TTL 24h
+      processed++;
+    }
+  } catch (e) {
+    logger.log('[ig-poll] Error: ' + (e.response?.data?.error?.message || e.message));
+  }
+
+  const elapsed = Date.now() - startTime;
+  if (processed > 0) {
+    logger.log('[ig-poll] ' + processed + ' mensajes procesados en ' + elapsed + 'ms');
+  }
+}
+
+function startIgPolling(config, business, catalog) {
+  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  if (!token) {
+    logger.log('[ig-poll] INSTAGRAM_GRAPH_TOKEN no configurado. Polling deshabilitado.');
+    return;
+  }
+  logger.log('[ig-poll] Iniciando polling cada ' + (FB_POLL_MS / 60000) + ' min');
+  setTimeout(() => pollInstagramConversations(config, business, catalog), 30000);
+  igPollInterval = setInterval(() => pollInstagramConversations(config, business, catalog), FB_POLL_MS);
 }
 
 module.exports = { start };
