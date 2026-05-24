@@ -2265,12 +2265,14 @@ async function getProductInfoFromShopify(handle) {
     const p = resp.data?.product;
     if (!p) return null;
     const img = p.images?.[0]?.src || p.featured_image || null;
+    const img2 = p.images?.[1]?.src || null;  // segunda imagen (textura/detalle)
     const variants = p.variants || [];
     const best = variants.sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0))[0];
     return {
       title: p.title,
       handle: p.handle,
       imageUrl: img,
+      imageUrl2: img2,
       price: best ? `$${parseInt(best.price).toLocaleString('es-CL')}` : '',
       url: `https://yeppo.cl/products/${handle}`
     };
@@ -2283,14 +2285,17 @@ async function getProductInfoFromShopify(handle) {
 async function sendInstagramProductCards(to, handles, retailerIds) {
   for (let i = 0; i < handles.length; i++) {
     const info = await getProductInfoFromShopify(handles[i]);
-    if (info?.imageUrl) {
-      await meta.sendInstagramImage(to, info.imageUrl).catch(() => {});
+    // Segunda imagen (textura/detalle), fallback a primera
+    const img = info?.imageUrl2 || info?.imageUrl;
+    if (img) {
+      await meta.sendInstagramImage(to, img).catch(() => {});
     }
+    // Sin link para no duplicar preview (el link ya va en el texto de la IA)
     const caption = info
-      ? info.title + (info.price ? ' - ' + info.price : '') + '\n' + info.url
-      : handles[i].replace(/-/g, ' ') + '\nhttps://yeppo.cl/products/' + handles[i];
+      ? '🛍️ ' + info.title + (info.price ? ' - ' + info.price : '')
+      : handles[i].replace(/-/g, ' ');
     await meta.sendInstagramMessage(to, caption).catch(() => {});
-    logger.log('[product-cards-ig] Enviado: ' + handles[i]);
+    logger.log('[product-cards-ig] Enviado: ' + handles[i] + (info?.imageUrl2 ? ' (img2)' : ' (img1)'));
   }
 }
 
