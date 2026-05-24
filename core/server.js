@@ -2270,10 +2270,9 @@ async function getProductInfoFromShopify(handle) {
     const img = p.images?.[0]?.src || p.featured_image || null;
     const img2 = p.images?.[1]?.src || null;  // segunda imagen (textura/detalle)
     const variants = (p.variants || []).filter(v => {
-      const qty = v.inventory_quantity;
-      const policy = v.inventory_policy;
-      // Solo variantes con stock real o que permiten venta sin stock
-      return qty > 0 || policy === 'continue';
+      // API publica (storefront) no devuelve inventory_quantity.
+      // Usar v.available que es el flag canonico de storefront.
+      return v.available !== false; // true o undefined = disponible
     });
     if (!variants.length) return null;  // sin stock en ninguna variante
     const best = variants.sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0))[0];
