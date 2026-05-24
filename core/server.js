@@ -2743,13 +2743,32 @@ async function pollInstagramConversations(config, business, catalog) {
 
         sentMessageIds.add(msgId);
 
+        // Detectar interacciones con historias (story replies/mentions)
+        // El mensaje viene vacío pero son oportunidades de engagement dentro de 24h
+        let msgText = lastMsg.message || '';
+        if (!msgText && lastMsg.story) {
+          const storyAge = Date.now() - new Date(lastMsg.created_time).getTime();
+          if (storyAge < 24 * 3600 * 1000) {
+            if (lastMsg.story.reply_to) {
+              msgText = '[Respondió a tu historia]';
+            } else if (lastMsg.story.mention) {
+              msgText = '[Te mencionó en su historia]';
+            }
+          } else {
+            // Historia expirada, no responder
+            logger.log('[ig-poll] Story expirada (>24h) de ' + (lastMsg.from?.username || lastMsg.from?.id));
+            await memory.redis.set(pollKey, '1', 'EX', 86400);
+            continue;
+          }
+        }
+
         // Construir evento simulado como webhook de Instagram
         const event = {
           sender: { id: lastMsg.from.id },
           recipient: { id: ourIgId },
           message: {
             mid: msgId,
-            text: lastMsg.message,
+            text: msgText,
             is_echo: false
           }
         };
