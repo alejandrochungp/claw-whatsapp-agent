@@ -1099,6 +1099,35 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
       }, 100);
     });
 
+    // ── GET /admin/check-social-conversations ── Test polling de conversaciones IG/FB no-Primary
+    app.get('/admin/check-social-conversations', async (req, res) => {
+      const axios = require('axios');
+      const token = process.env.WHATSAPP_ACCESS_TOKEN;
+      const fbPageId = process.env.FACEBOOK_PAGE_ID || '408038929930148';
+      const igAcctId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
+      const results = { fb: null, ig: null, errors: [] };
+
+      // Test FB Page conversations
+      try {
+        const fbResp = await axios.get(
+          `https://graph.facebook.com/v22.0/${fbPageId}/conversations`,
+          { params: { fields: 'id,updated_time,senders,messages{message,from,created_time},unread_count', access_token: token, limit: 5 }, timeout: 15000 }
+        );
+        results.fb = { status: fbResp.status, count: fbResp.data?.data?.length || 0, conversations: fbResp.data?.data || [] };
+      } catch (e) { results.errors.push('FB: ' + (e.response?.data?.error?.message || e.message)); }
+
+      // Test IG conversations
+      try {
+        const igResp = await axios.get(
+          `https://graph.facebook.com/v22.0/${igAcctId}/conversations`,
+          { params: { fields: 'id,updated_time,messages{message,from,created_time},unread_count', access_token: token, limit: 5 }, timeout: 15000 }
+        );
+        results.ig = { status: igResp.status, count: igResp.data?.data?.length || 0, conversations: igResp.data?.data || [] };
+      } catch (e) { results.errors.push('IG: ' + (e.response?.data?.error?.message || e.message)); }
+
+      res.json(results);
+    });
+
     // Iniciar cron de aprendizaje diario (20:00 Santiago) — solo para Yeppo
     if (process.env.TENANT === 'yeppo') {
       learning.startDailyCron();
