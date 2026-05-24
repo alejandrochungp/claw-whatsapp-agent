@@ -2234,6 +2234,10 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
         const catalogText = shopify.formatCatalogForPrompt(matches);
         systemPrompt += '\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n' + catalogText + '\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE PRODUCTOS**: cuando recomiendes un producto de esta lista, cita el codigo EXACTO entre corchetes que aparece al inicio de cada linea. Ejemplo: si ves `[centella-cleansing-foam] SKIN1004 Centella Cleansing Foam - $12.990`, en tu respuesta escribe `[centella-cleansing-foam]`. NO inventes codigos. NO escribas URLs. Solo copia el codigo entre corchetes. El sistema lo convierte automaticamente en link.';
         logger.log('[social-catalog] ' + matches.length + ' productos inyectados para: "' + userText.slice(0, 50) + '"');
+      } else {
+        // Sin catalogo → advertir que no invente productos
+        systemPrompt += '\n\n## AVISO: No hay productos en el catalogo para esta consulta. NO recomiendes productos especificos. NO inventes marcas ni nombres. Si el cliente pide una recomendacion, preguntale mas detalles sobre lo que busca (tipo de producto, tipo de piel, preocupacion) para buscar mejor en el catalogo.';
+        logger.log('[social-catalog] Sin productos para: "' + userText.slice(0, 50) + '"');
       }
     } catch (e) {
       logger.log('[social-catalog] Error: ' + e.message);

@@ -135,8 +135,10 @@ async function askClaude(messages, systemPrompt) {
   const cacheWrite = usageData.cache_creation_input_tokens || 0;
 
   // Calcular costo con caché
+  // cache_read y cache_creation son subconjuntos de input_tokens.
+  // Anthropic puede reportarlos en campos que antes no existían → guard contra negativos.
   const p = PRICING[CLAUDE_MODEL] || PRICING['claude-sonnet-4-6'];
-  const regularInput = inputTok - cacheRead - cacheWrite;
+  const regularInput = Math.max(0, inputTok - cacheRead - cacheWrite);
   const cost =
     (regularInput / 1e6) * p.input +
     (cacheRead  / 1e6) * (p.cacheRead  || p.input * 0.10) +
