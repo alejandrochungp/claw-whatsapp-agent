@@ -2229,13 +2229,13 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
 async function sendSocialReply(senderId, platform, text, config) {
   if (platform === 'instagram') {
     const sent = await meta.sendInstagramMessage(senderId, text);
-    detectAndSendProductCards(senderId, text, config, true).catch(e =>
+    detectAndSendProductCards(senderId, text, config, 'instagram').catch(e =>
       logger.log('[product-cards-ig] Error: ' + e.message)
     );
     return sent;
   } else if (platform === 'messenger') {
     const sent = await meta.sendMessengerMessage(senderId, text);
-    detectAndSendProductCards(senderId, text, config, true).catch(e =>
+    detectAndSendProductCards(senderId, text, config, 'messenger').catch(e =>
       logger.log('[product-cards-fb] Error: ' + e.message)
     );
     return sent;
@@ -2247,6 +2247,59 @@ async function sendSocialReply(senderId, platform, text, config) {
 
 
 // ── Product Card Post-Processor ─────────────────────────────────────────
+
+/**
+ * Obtiene info de producto (imagen, precio, título) desde la API de Shopify
+ */
+async function getProductInfoFromShopify(handle) {
+  try {
+    const axios = require('axios');
+    const url = `https://yeppo.cl/products/${encodeURIComponent(handle)}.json`;
+    const resp = await axios.get(url, { timeout: 8000 });
+    const p = resp.data?.product;
+    if (!p) return null;
+    const img = p.images?.[0]?.src || p.featured_image || null;
+    const variants = p.variants || [];
+    const best = variants.sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0))[0];
+    return {
+      title: p.title,
+      handle: p.handle,
+      imageUrl: img,
+      price: best ? `$${parseInt(best.price).toLocaleString('es-CL')}` : '',
+      url: `https://yeppo.cl/products/${handle}`
+    };
+  } catch { return null; }
+}
+
+/**
+ * Envía product cards en Instagram (imagen + caption con precio y link)
+ */
+async function sendInstagramProductCards(to, handles, retailerIds) {
+  for (let i = 0; i < handles.length; i++) {
+    const info = await getProductInfoFromShopify(handles[i]);
+    if (info?.imageUrl) {
+      await meta.sendInstagramImage(to, info.imageUrl).catch(() => {});
+    }
+    const caption = info
+      ? `${info.title}${info.price ? ' — ' + info.price : ''}\n${info.url}`
+      : handles[i].replace(/-/g, ' ') + '\nhttps://yeppo.cl/products/' + handles[i];
+    await meta.sendInstagramMessage(to, caption).catch(() => {});
+    logger.log('[product-cards-ig] Enviado: ' + handles[i]);
+  }
+}
+
+/**
+ * Envía product cards en Messenger (Generic Template con imagen)
+ */
+async function sendMessengerProductCards(to, handles, retailerIds) {
+  for (let i = 0; i < retailerIds.length; i++) {
+    await meta.sendMessengerProduct(to, retailerIds[i],
+      handles[i].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      null
+    ).catch(e => logger.log('[product-cards-fb] Error: ' + e.message));
+    logger.log('[product-cards-fb] Enviado: ' + handles[i]);
+  }
+}
 
 /**
  * Busca el variantId (retailer_id de Meta) desde la API pública de Shopify.
@@ -2288,9 +2341,9 @@ function buildProductCardsMap(shopifyCatalog) {
  * @param {string} to - phone o senderId
  * @param {string} text - respuesta del bot
  * @param {object} config - tenant config
- * @param {boolean} isSocial - true si es IG/Messenger (usa endpoints distintos)
+ * @param {string} platform - 'whatsapp', 'instagram', o 'messenger' (default 'whatsapp')
  */
-async function detectAndSendProductCards(to, text, config, isSocial = false) {
+async function detectAndSendProductCards(to, text, config, platform = 'whatsapp') {
   if (!text) return;
   // Construir mapa lazy si no está listo aún (race condition con precalentado)
   if (!productCardsCatalog) buildProductCardsMap(catalog);
@@ -2336,18 +2389,18 @@ async function detectAndSendProductCards(to, text, config, isSocial = false) {
   const firstTitle = firstHandle ? firstHandle.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).slice(0, 60) : 'Recomendado';
 
   // Enviar según plataforma y cantidad
-  if (isSocial && retailerIds.length === 1) {
-    // IG: simple text + link (no soporta product attachment nativo)
-    // Messenger: generic template
-    const url = 'https://yeppo.cl/products/' + firstHandle;
-    await meta.sendInstagramMessage(to, firstTitle + '\n' + url).catch(() => {});
-    logger.log('[product-cards-ig] Enlace enviado: ' + firstHandle);
+  if (platform === 'instagram') {
+    // IG no soporta product attachment nativo → imagen + texto con precio y link
+    await sendInstagramProductCards(to, handles, retailerIds);
+  } else if (platform === 'messenger') {
+    // Messenger: Generic Template con imagen y botón "Ver producto"
+    await sendMessengerProductCards(to, handles, retailerIds);
   } else if (retailerIds.length === 1) {
-    // WhatsApp: tarjeta individual
+    // WhatsApp: tarjeta individual (interactive.product)
     await meta.sendWhatsAppProduct(to, retailerIds[0], firstTitle);
     logger.log('[product-cards] Tarjeta individual: ' + retailerIds[0]);
   } else {
-    // WhatsApp: carrusel (product_list)
+    // WhatsApp: carrusel (interactive.product_list)
     await meta.sendWhatsAppProductList(to, retailerIds,
       'Te recomiendo estos ' + retailerIds.length,
       'Elige el que más te acomode:'
