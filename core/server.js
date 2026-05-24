@@ -1156,6 +1156,9 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
       }, null, true, 'America/Santiago');
       logger.log('[upsell-stats] Cron diario configurado (09:00 Lun-Vie)');
     } catch(e) { logger.log('[upsell-stats] Cron no disponible: ' + e.message); }
+
+    // Facebook Messenger Polling (cada 15 min) — captura mensajes de buzón General
+    startFbPolling(config, business, catalog);
   });
 }
 
@@ -2570,6 +2573,99 @@ async function detectAndSendProductCards(to, text, config, platform = 'whatsapp'
     );
     logger.log('[product-cards] Carrusel: ' + retailerIds.length + ' productos');
   }
+}
+
+// ── Facebook Messenger Polling (cada 15 min) ───────────────────────────
+// Captura mensajes que caen en buzón General y no disparan webhook
+
+let fbPollInterval = null;
+const FB_POLL_MS = 15 * 60 * 1000; // 15 minutos
+
+async function pollFacebookConversations(config, business, catalog) {
+  const token = process.env.FACEBOOK_PAGE_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
+  const pageId = process.env.FACEBOOK_PAGE_ID || '408038929930148';
+  if (!token) {
+    logger.log('[fb-poll] Sin FACEBOOK_PAGE_TOKEN — no se hará polling');
+    return;
+  }
+
+  const axios = require('axios');
+  const startTime = Date.now();
+  let processed = 0;
+
+  try {
+    // 1. Obtener conversaciones recientes
+    const convsResp = await axios.get(
+      `https://graph.facebook.com/v22.0/${pageId}/conversations`,
+      {
+        params: {
+          fields: 'id,updated_time,messages.limit(2){message,from,created_time,to}',
+          unread_count: true,
+          limit: 25
+        },
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 20000
+      }
+    );
+
+    const conversations = convsResp.data?.data || [];
+    logger.log('[fb-poll] ' + conversations.length + ' conversaciones encontradas');
+
+    // 2. Filtrar: unread > 0 y último mensaje del usuario
+    for (const conv of conversations) {
+      const msgs = conv.messages?.data || [];
+      if (msgs.length === 0 || !conv.unread_count) continue;
+
+      const lastMsg = msgs[0];
+      if (lastMsg.from?.id === pageId) continue; // último mensaje es del bot → ya respondido
+
+      // 3. Verificar si ya procesamos este mensaje
+      const msgId = lastMsg.id || lastMsg.created_time;
+      const pollKey = 'fb_poll:' + conv.id + ':' + msgId;
+      const alreadyProcessed = await memory.get(pollKey);
+      if (alreadyProcessed) continue;
+
+      // 4. Construir evento simulado como webhook de Messenger
+      const event = {
+        sender: { id: lastMsg.from.id },
+        recipient: { id: pageId },
+        message: {
+          mid: lastMsg.id || 'fb_poll_' + Date.now(),
+          text: lastMsg.message,
+          is_echo: false
+        }
+      };
+
+      // Si es attachment, construir estructura básica
+      if (!lastMsg.message && lastMsg.attachments?.data) {
+        event.message.attachments = lastMsg.attachments.data;
+      }
+
+      logger.log('[fb-poll] Procesando mensaje de ' + (lastMsg.from?.name || lastMsg.from?.id) + ' en ' + conv.id);
+      await handleSocialMessage(event, 'messenger', config, business, catalog);
+      await memory.set(pollKey, '1', 86400); // TTL 24h para evitar re-procesamiento
+      processed++;
+    }
+  } catch (e) {
+    logger.log('[fb-poll] Error: ' + (e.response?.data?.error?.message || e.message));
+  }
+
+  const elapsed = Date.now() - startTime;
+  if (processed > 0) {
+    logger.log('[fb-poll] ' + processed + ' mensajes procesados en ' + elapsed + 'ms');
+  }
+}
+
+function startFbPolling(config, business, catalog) {
+  const token = process.env.FACEBOOK_PAGE_TOKEN;
+  if (!token) {
+    logger.log('[fb-poll] FACEBOOK_PAGE_TOKEN no configurado. Polling deshabilitado.');
+    return;
+  }
+  logger.log('[fb-poll] Iniciando polling cada ' + (FB_POLL_MS / 60000) + ' min');
+  // Primera ejecución a los 30s
+  setTimeout(() => pollFacebookConversations(config, business, catalog), 30000);
+  fbPollInterval = setInterval(() => pollFacebookConversations(config, business, catalog), FB_POLL_MS);
 }
 
 module.exports = { start };
