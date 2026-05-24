@@ -2624,7 +2624,7 @@ async function pollFacebookConversations(config, business, catalog) {
       // 3. Verificar si ya procesamos este mensaje
       const msgId = lastMsg.id || lastMsg.created_time;
       const pollKey = 'fb_poll:' + conv.id + ':' + msgId;
-      const alreadyProcessed = await memory.get(pollKey);
+      const alreadyProcessed = await memory.redis.get(pollKey);
       if (alreadyProcessed) continue;
 
       // 4. Construir evento simulado como webhook de Messenger
@@ -2645,7 +2645,7 @@ async function pollFacebookConversations(config, business, catalog) {
 
       logger.log('[fb-poll] Procesando mensaje de ' + (lastMsg.from?.name || lastMsg.from?.id) + ' en ' + conv.id);
       await handleSocialMessage(event, 'messenger', config, business, catalog);
-      await memory.set(pollKey, '1', 86400); // TTL 24h para evitar re-procesamiento
+      await memory.redis.set(pollKey, '1', 'EX', 86400); // TTL 24h
       processed++;
     }
   } catch (e) {
@@ -2712,7 +2712,7 @@ async function pollInstagramConversations(config, business, catalog) {
       const msgId = lastMsg.id;
       if (!msgId) continue;
       const pollKey = 'ig_poll:' + msgId;
-      const alreadyProcessed = await memory.get(pollKey);
+      const alreadyProcessed = await memory.redis.get(pollKey);
       if (alreadyProcessed) continue;
 
       // Construir evento simulado como webhook de Instagram
@@ -2728,7 +2728,7 @@ async function pollInstagramConversations(config, business, catalog) {
 
       logger.log('[ig-poll] Procesando mensaje de ' + (lastMsg.from?.username || lastMsg.from?.id) + ' en ' + conv.id.slice(0, 20));
       await handleSocialMessage(event, 'instagram', config, business, catalog);
-      await memory.set(pollKey, '1', 86400); // TTL 24h
+      await memory.redis.set(pollKey, '1', 'EX', 86400); // TTL 24h
       processed++;
     }
   } catch (e) {
