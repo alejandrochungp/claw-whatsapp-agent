@@ -2277,10 +2277,17 @@ async function getProductInfoFromShopify(handle) {
  * Envía product cards en Instagram (imagen + caption con precio y link)
  */
 async function sendInstagramProductCards(to, handles, retailerIds) {
-  await meta.sendInstagramProduct(to, retailerIds).catch(e =>
-    logger.log('[product-cards-ig] Error: ' + (e.response?.data ? JSON.stringify(e.response.data) : e.message))
-  );
-  logger.log('[product-cards-ig] Product template: ' + retailerIds.length + ' productos');
+  for (let i = 0; i < handles.length; i++) {
+    const info = await getProductInfoFromShopify(handles[i]);
+    if (info?.imageUrl) {
+      await meta.sendInstagramImage(to, info.imageUrl).catch(() => {});
+    }
+    const caption = info
+      ? info.title + (info.price ? ' - ' + info.price : '') + '\n' + info.url
+      : handles[i].replace(/-/g, ' ') + '\nhttps://yeppo.cl/products/' + handles[i];
+    await meta.sendInstagramMessage(to, caption).catch(() => {});
+    logger.log('[product-cards-ig] Enviado: ' + handles[i]);
+  }
 }
 
 /**
