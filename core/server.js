@@ -2334,6 +2334,11 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
 async function sendSocialReply(senderId, platform, text, config) {
   if (platform === 'instagram') {
     const sent = await meta.sendInstagramMessage(senderId, text);
+    if (sent) {
+      logger.log('[social] Instagram reply sent to ' + senderId);
+    } else {
+      logger.log('[social] ERROR: Instagram reply FAILED for ' + senderId);
+    }
     detectAndSendProductCards(senderId, text, config, 'instagram').catch(e =>
       logger.log('[product-cards-ig] Error: ' + e.message)
     );
