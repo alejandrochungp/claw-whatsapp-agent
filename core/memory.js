@@ -351,9 +351,13 @@ async function getSentTemplate(phone) {
     return null;
   }
 }
-
+async function setSenderEmail(channelKey, email) {
+  const ctx = await getContext(channelKey);
+  ctx.socialEmail = email;
+  await updateContext(channelKey, ctx);
+}
 module.exports = {
-  addMessage, getHistory, getContext, updateContext, isReturning,
+  addMessage, getHistory, getContext, updateContext, isReturning, setSenderEmail, getSenderEmail,
   setCampaignContext, getCampaignContext,
   setUpsellPending, getUpsellPending, clearUpsellPending, updateUpsellStatus,
   waitForRedis,

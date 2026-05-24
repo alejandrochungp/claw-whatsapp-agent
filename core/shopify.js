@@ -132,6 +132,37 @@ async function getRecentOrders(customerId, limit = 3) {
   return result?.orders || [];
 }
 
+// ── Buscar cliente por email ───────────────────────────────────────────────
+async function findCustomerByEmail(email) {
+  if (!TOKEN || !email) return null;
+  try {
+    const encoded = encodeURIComponent(email.trim().toLowerCase());
+    const result = await shopifyGet(`/customers/search.json?query=email:${encoded}&limit=1&fields=id,first_name,last_name,email,phone,orders_count,total_spent,tags,note`);
+    return result?.customers?.[0] || null;
+  } catch (err) {
+    console.error('[shopify] Error findCustomerByEmail ' + email + ':', err.message);
+    return null;
+  }
+}
+
+// ── Enriquecer por email (igual que enrichContact pero con email) ─────────────
+async function enrichByEmail(email) {
+  try {
+    const customer = await findCustomerByEmail(email);
+    if (!customer) return null;
+    const orders = await getRecentOrders(customer.id);
+    return {
+      customer,
+      orders,
+      claudeContext: buildCustomerContext(customer, orders),
+      slackInfo:     buildSlackCustomerInfo(customer, orders)
+    };
+  } catch (err) {
+    console.error('[shopify] Error enrichByEmail ' + email + ':', err.message);
+    return null;
+  }
+}
+
 // ÔöÇÔöÇ Formatear contexto para Claude ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function buildCustomerContext(customer, orders) {
   if (!customer) return null;
@@ -460,4 +491,4 @@ async function getOrderByNumber(rawInput) {
 
 
 module.exports = {
-  getOrderByNumber, enrichContact, getProductCatalog, searchCatalog, formatCatalogForPrompt, isProductQuery, invalidateCatalog };
+  getOrderByNumber, enrichContact, findCustomerByEmail, enrichByEmail, getProductCatalog, searchCatalog, formatCatalogForPrompt, isProductQuery, invalidateCatalog };

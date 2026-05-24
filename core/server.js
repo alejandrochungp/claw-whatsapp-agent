@@ -2195,6 +2195,33 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
       }
     }
 
+    // ── Enriquecer con historial de compras si tenemos email (social) ──────
+    const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const emailMatch = userText.match(EMAIL_RE);
+    if (emailMatch) {
+      const email = emailMatch[0].toLowerCase();
+      logger.log('[social-email] Detectado email: ' + email + ' para ' + channelKey);
+      await memory.setSenderEmail(channelKey, email);
+      const enriched = await shopify.enrichByEmail(email);
+      if (enriched?.claudeContext) {
+        systemPrompt += '\n\n## Cliente identificado (compras anteriores)\n' + enriched.claudeContext +
+          '\n\nUsa esta informacion para personalizar tus recomendaciones. Menciona productos que ya compro si es relevante. Si le gusto algo similar antes, sugierelo. Se natural, no digas "veo que compraste X" como un robot.';
+        logger.log('[social-email] Cliente Shopify encontrado: ' + enriched.customer?.first_name + ' ' + enriched.customer?.last_name);
+      } else {
+        logger.log('[social-email] Email no encontrado en Shopify: ' + email);
+      }
+    } else {
+      // Verificar si ya tenemos email guardado de antes
+      const storedEmail = await memory.getSenderEmail(channelKey);
+      if (storedEmail) {
+        const enriched = await shopify.enrichByEmail(storedEmail);
+        if (enriched?.claudeContext) {
+          systemPrompt += '\n\n## Cliente recurrente (datos de Shopify)\n' + enriched.claudeContext +
+            '\n\nPersonaliza tus respuestas usando estos datos. No digas "según nuestros registros" ni frases de robot. Solo usa la info para recomendar mejor.';
+        }
+      }
+    }
+
     // Inyectar catalogo relevante (misma logica que WhatsApp)
     try {
       let matches = shopify.searchCatalog(catalog, userText);
