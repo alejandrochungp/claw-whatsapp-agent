@@ -255,6 +255,11 @@ async function fetchCatalogFromShopify() {
       const rawDesc = p.body_html || '';
       const description = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
 
+      // Precio de comparación (tachado) si la variante tiene descuento
+      const compareAt = bestVariant.compare_at_price
+        ? parseFloat(bestVariant.compare_at_price)
+        : null;
+
       products.push({
         id:    p.id,
         title: p.title,
@@ -263,6 +268,7 @@ async function fetchCatalogFromShopify() {
         type:  p.product_type || '',
         tags:  p.tags || '',
         price: parseFloat(bestVariant.price || 0),
+        compareAt,
         stock: activeVariants.length > 0,
         variantTitle: bestVariant.title !== 'Default Title' ? bestVariant.title : null,
         variantId: bestVariant.id || null
