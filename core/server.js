@@ -1834,7 +1834,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
         // (sin fallback - solo inyectar si hay match relevante)
         if (matches.length) {
           const catalogText = shopify.formatCatalogForPrompt(matches);
-          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE LINKS**: cuando recomiendes un producto, copia el link EXACTAMENTE como aparece entre corchetes arriba. NO inventes handles. NO los modifiques. Si el link dice [https://yeppo.cl/products/centella-cleansing-foam], pon EXACTAMENTE ese.`;
+          systemPrompt += `\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n${catalogText}\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE PRODUCTOS**: cuando recomiendes un producto de esta lista, cita el codigo EXACTO entre corchetes que aparece al inicio de cada linea. Ejemplo: si ves \`[centella-cleansing-foam] SKIN1004 Centella Cleansing Foam - $12.990\`, en tu respuesta escribe \`[centella-cleansing-foam]\`. NO inventes codigos. NO escribas URLs. Solo copia el codigo entre corchetes. El sistema lo convierte automaticamente en link.`;
           logger.log(`[catalog] ${matches.length} productos inyectados para: "${userText.slice(0, 50)}"`);
         }
       } catch (e) {
@@ -1881,7 +1881,9 @@ const aiResult     = await ai.ask(userText, history, context, systemPrompt, conf
     }
   }
 
-  // 2b. Corregir handles inventados por la IA contra el catalogo real
+  // 2b. Expandir codigos [handle] → [Titulo](URL) (determinista, sin alucinaciones)
+  replyText = expandProductCodes(replyText);
+  // 2c. Corregir handles inventados por la IA contra el catalogo real (safety net)
   replyText = fixProductLinks(replyText);
 
   // 3. Guardar en memoria
@@ -2203,7 +2205,7 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
       }
       if (matches.length) {
         const catalogText = shopify.formatCatalogForPrompt(matches);
-        systemPrompt += '\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n' + catalogText + '\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE LINKS**: cuando recomiendes un producto, copia el link EXACTAMENTE como aparece entre corchetes arriba. NO inventes handles. NO los modifiques. Si el link dice [https://yeppo.cl/products/centella-cleansing-foam], pon EXACTAMENTE ese.';
+        systemPrompt += '\n\n---\n## Productos relevantes (datos en tiempo real de Shopify)\n' + catalogText + '\n\nUsa estos datos para responder sobre disponibilidad y precios. Si el producto que busca no aparece aqui, di que no lo tienes disponible actualmente.\n\n**REGLA OBLIGATORIA DE PRODUCTOS**: cuando recomiendes un producto de esta lista, cita el codigo EXACTO entre corchetes que aparece al inicio de cada linea. Ejemplo: si ves `[centella-cleansing-foam] SKIN1004 Centella Cleansing Foam - $12.990`, en tu respuesta escribe `[centella-cleansing-foam]`. NO inventes codigos. NO escribas URLs. Solo copia el codigo entre corchetes. El sistema lo convierte automaticamente en link.';
         logger.log('[social-catalog] ' + matches.length + ' productos inyectados para: "' + userText.slice(0, 50) + '"');
       }
     } catch (e) {
@@ -2221,6 +2223,7 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
     }
 
     if (aiResponse) {
+      aiResponse = expandProductCodes(aiResponse);
       aiResponse = fixProductLinks(aiResponse);
       await memory.addMessage(channelKey, aiResponse, 'bot');
       await slack.logConversation(channelKey, aiResponse, '[' + pEmoji + ' Bot] ' + aiResponse.slice(0, 100), config);
@@ -2344,6 +2347,33 @@ function fixProductLinks(text) {
   return fixed;
 }
 
+/**
+ * Expansor determinista de codigos de producto [handle].
+ * La IA cita [handle] en vez de URLs. Este expander busca el handle en el catalogo
+ * real y lo convierte a [Titulo](URL). Si el handle no existe, lo deja como texto.
+ * Elimina el problema de alucinacion de handles 100%.
+ */
+function expandProductCodes(text) {
+  if (!text || !productCardsCatalog || !Object.keys(productCardsCatalog).length) return text;
+  // Buscar [handle] en el texto (handle = letras minusculas, numeros, guiones)
+  const pattern = /\[([a-z][a-z0-9]+(?:-[a-z0-9]+)*)\]/g;
+  let match, expanded = text;
+  while ((match = pattern.exec(text)) !== null) {
+    const handle = match[1];
+    const entry = productCardsCatalog[handle];
+    if (entry && entry.title) {
+      const url = `https://yeppo.cl/products/${handle}`;
+      const replacement = `[${entry.title}](${url})`;
+      expanded = expanded.replace(match[0], replacement);
+      logger.log('[product-expand] ' + handle + ' → ' + entry.title);
+    } else {
+      // Handle inventado por la IA → dejar como texto (sin link)
+      logger.log('[product-expand] Handle invalido: ' + handle + ' → texto plano');
+    }
+  }
+  return expanded;
+}
+
 async function sendMessengerProductCards(to, handles, retailerIds) {
   for (let i = 0; i < retailerIds.length; i++) {
     await meta.sendMessengerProduct(to, retailerIds[i],
@@ -2383,7 +2413,13 @@ function buildProductCardsMap(shopifyCatalog) {
   const map = {};
   if (!shopifyCatalog?.length) return map;
   for (const p of shopifyCatalog) {
-    if (p.handle && p.variantId) map[p.handle] = String(p.variantId);
+    if (p.handle && p.variantId) {
+      map[p.handle] = {
+        variantId: String(p.variantId),
+        title: p.title || '',
+        price: p.price || 0
+      };
+    }
   }
   productCardsCatalog = map;
   return map;
@@ -2417,14 +2453,15 @@ async function detectAndSendProductCards(to, text, config, platform = 'whatsapp'
   // Mapear handle → retailer_id (variantId) desde catálogo Shopify
   const retailerIds = [];
   for (const h of handles) {
-    if (productCardsCatalog[h]) {
-      retailerIds.push(productCardsCatalog[h]);
+    const entry = productCardsCatalog[h];
+    if (entry) {
+      retailerIds.push(typeof entry === 'string' ? entry : entry.variantId);
     } else {
       // Fallback: buscar variantId directo desde la API de Shopify
       const vid = await getVariantIdFromShopify(h);
       if (vid) {
         retailerIds.push(vid);
-        productCardsCatalog[h] = vid; // cachear para futuros usos
+        productCardsCatalog[h] = { variantId: String(vid), title: h, price: 0 };
         logger.log('[product-cards] Fallback Shopify: ' + h + ' → ' + vid);
       }
     }

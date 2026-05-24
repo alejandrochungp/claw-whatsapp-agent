@@ -340,11 +340,11 @@ function formatCatalogForPrompt(products) {
   if (!products?.length) return '';
   const lines = products.map(p => {
     const precio = `$${Math.round(p.price).toLocaleString('es-CL')}`;
-    const stock  = p.stock ? 'OK' : 'sin stock';
+    const stock  = p.stock ? 'OK' : 'AGOTADO';
     const variant = p.variantTitle ? ` (${p.variantTitle})` : '';
-    const link    = p.handle ? `https://yeppo.cl/products/${p.handle}` : '';
     const desc    = p.description ? `\n  ${p.description}` : '';
-    return `${p.title}${variant} [${link}] - ${precio} - ${stock}${desc}`;
+    // Formato CODIGO: la IA debe citar [handle], el sistema lo expande a link real
+    return `[${p.handle}] ${p.title}${variant} - ${precio} - ${stock}${desc}`;
   });
   return lines.join('\n');
 }
