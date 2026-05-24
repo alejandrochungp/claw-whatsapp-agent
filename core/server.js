@@ -2266,14 +2266,23 @@ async function getProductInfoFromShopify(handle) {
     if (!p) return null;
     const img = p.images?.[0]?.src || p.featured_image || null;
     const img2 = p.images?.[1]?.src || null;  // segunda imagen (textura/detalle)
-    const variants = p.variants || [];
+    const variants = (p.variants || []).filter(v => {
+      const qty = v.inventory_quantity;
+      const policy = v.inventory_policy;
+      // Solo variantes con stock real o que permiten venta sin stock
+      return qty > 0 || policy === 'continue';
+    });
+    if (!variants.length) return null;  // sin stock en ninguna variante
     const best = variants.sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0))[0];
+    const price = parseInt(best.price) || 0;
+    const compareAt = parseInt(best.compare_at_price) || 0;
     return {
       title: p.title,
       handle: p.handle,
       imageUrl: img,
       imageUrl2: img2,
-      price: best ? `$${parseInt(best.price).toLocaleString('es-CL')}` : '',
+      price: `$${price.toLocaleString('es-CL')}`,
+      compareAt: compareAt > price ? `$${compareAt.toLocaleString('es-CL')}` : null,
       url: `https://yeppo.cl/products/${handle}`
     };
   } catch { return null; }
@@ -2285,17 +2294,29 @@ async function getProductInfoFromShopify(handle) {
 async function sendInstagramProductCards(to, handles, retailerIds) {
   for (let i = 0; i < handles.length; i++) {
     const info = await getProductInfoFromShopify(handles[i]);
+    if (!info) {
+      logger.log('[product-cards-ig] Sin stock: ' + handles[i] + ' → omitido');
+      continue;
+    }
     // Segunda imagen (textura/detalle), fallback a primera
-    const img = info?.imageUrl2 || info?.imageUrl;
+    const img = info.imageUrl2 || info.imageUrl;
     if (img) {
       await meta.sendInstagramImage(to, img).catch(() => {});
     }
     // Sin link para no duplicar preview (el link ya va en el texto de la IA)
-    const caption = info
-      ? '🛍️ ' + info.title + (info.price ? ' - ' + info.price : '')
-      : handles[i].replace(/-/g, ' ');
+    let caption;
+    if (info) {
+      caption = '🛍️ ' + info.title + '\n';
+      if (info.compareAt) {
+        caption += '~~' + info.compareAt + '~~ → **' + info.price + '** 🔥';
+      } else {
+        caption += info.price;
+      }
+    } else {
+      caption = handles[i].replace(/-/g, ' ');
+    }
     await meta.sendInstagramMessage(to, caption).catch(() => {});
-    logger.log('[product-cards-ig] Enviado: ' + handles[i] + (info?.imageUrl2 ? ' (img2)' : ' (img1)'));
+    logger.log('[product-cards-ig] Enviado: ' + handles[i] + (info?.imageUrl2 ? ' (img2)' : ' (img1)') + (info?.compareAt ? ' (oferta)' : ''));
   }
 }
 
