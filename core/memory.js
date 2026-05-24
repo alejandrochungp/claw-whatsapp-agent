@@ -351,10 +351,16 @@ async function getSentTemplate(phone) {
     return null;
   }
 }
-async function setSenderEmail(channelKey, email) {
+
+async function setSenderEmail(channelKey, email) {
   const ctx = await getContext(channelKey);
   ctx.socialEmail = email;
   await updateContext(channelKey, ctx);
+}
+
+async function getSenderEmail(channelKey) {
+  const ctx = await getContext(channelKey);
+  return ctx.socialEmail || null;
 }
 module.exports = {
   addMessage, getHistory, getContext, updateContext, isReturning, setSenderEmail, getSenderEmail,
