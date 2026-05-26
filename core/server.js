@@ -1380,12 +1380,20 @@ async function handleMessage(message, value, config, business) {
     logger.log(`[CARRITO] ${from} — ${items.length} productos (${orderData.catalog_id})`);
     items.forEach(item => logger.log(`  * ${item.product_retailer_id} x${item.quantity}`));
     await memory.updateContext(from, { lastIntent: 'carrito_enviado', cartItems: items, cartReceivedAt: Date.now() });
-    const itemList = items.map(i => '* ' + i.product_retailer_id.replace(/fresh-(plan|pack|snacks)-/,'').replace(/-v\d+/g,'').replace(/-/g,' ')).join('\n');
-    const ack = 'recibi tu pedido! \n' + itemList + '\n\ndejame tus datos y te armo el link. como se llama tu perro?';
-    await meta.sendMessage(from, ack, config);
-    await memory.addMessage(from, '[carrito de compras]', 'user');
-    await memory.addMessage(from, ack, 'bot');
-    return;
+
+    if (process.env.TENANT === 'tupibox') {
+      // TupiBox: responder con link de pago
+      const itemList = items.map(i => '* ' + i.product_retailer_id.replace(/fresh-(plan|pack|snacks)-/,'').replace(/-v\d+/g,'').replace(/-/g,' ')).join('\n');
+      const ack = 'recibi tu pedido! \n' + itemList + '\n\ndejame tus datos y te armo el link. como se llama tu perro?';
+      await meta.sendMessage(from, ack, config);
+      await memory.addMessage(from, '[carrito de compras]', 'user');
+      await memory.addMessage(from, ack, 'bot');
+      return;
+    }
+
+    // Yeppo / otros tenants: pasar carrito a AI para que lo procese naturalmente
+    const itemList = items.map(i => i.product_retailer_id).join(', ');
+    userText = `[carrito de WhatsApp] El cliente envió estos productos: ${itemList}. Ayúdalo con sus dudas, sin mencionar links de pago externos.`;
   } else if (type === 'button') {
     // Quick-reply button desde template (ej: upsell_bts_sorteo)
     userText = message.button?.text || message.button?.payload || '';
