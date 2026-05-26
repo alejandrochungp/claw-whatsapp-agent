@@ -1374,6 +1374,18 @@ async function handleMessage(message, value, config, business) {
   } else if (type === 'interactive') {
     userText = message.interactive.button_reply?.title ||
                message.interactive.list_reply?.title  || '';
+  } else if (type === 'order') {
+    const orderData = message.order;
+    const items = orderData.product_items || [];
+    logger.log(`[CARRITO] ${from} — ${items.length} productos (${orderData.catalog_id})`);
+    items.forEach(item => logger.log(`  * ${item.product_retailer_id} x${item.quantity}`));
+    await memory.updateContext(from, { lastIntent: 'carrito_enviado', cartItems: items, cartReceivedAt: Date.now() });
+    const itemList = items.map(i => '* ' + i.product_retailer_id.replace(/fresh-(plan|pack|snacks)-/,'').replace(/-v\d+/g,'').replace(/-/g,' ')).join('\n');
+    const ack = 'recibi tu pedido! \n' + itemList + '\n\ndejame tus datos y te armo el link. como se llama tu perro?';
+    await meta.sendMessage(from, ack, config);
+    await memory.addMessage(from, '[carrito de compras]', 'user');
+    await memory.addMessage(from, ack, 'bot');
+    return;
   } else if (type === 'button') {
     // Quick-reply button desde template (ej: upsell_bts_sorteo)
     userText = message.button?.text || message.button?.payload || '';
