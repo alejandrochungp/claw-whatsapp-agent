@@ -1963,10 +1963,35 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
   // 4. Delay humano
   await humanDelay(replyText.length);
 
+  // 4b. Detectar [CATALOGO] para TupiBox y limpiar del texto
+  const hasCatalogo = replyText.includes('[CATALOGO]');
+  if (hasCatalogo) {
+    replyText = replyText.replace(/\[CATALOGO\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   // 5. Enviar WhatsApp
   await meta.sendMessage(from, replyText, config);
 
-  // 5b. Post-procesar: enviar tarjetas de producto si hay links
+  // 5b. Si habia [CATALOGO], enviar product list de TupiBox
+  if (hasCatalogo && process.env.TENANT === 'tupibox') {
+    const TUPIBOX_CATALOG_ID = '2777862092562852';
+    const tupiboxProducts = [
+      'fresh-pack-inicia-v2',
+      'fresh-plan-pequeno-v2',
+      'fresh-plan-mediano-v2',
+      'fresh-plan-grande-v2',
+      'fresh-plan-gigante-v2',
+      'fresh-snacks-extra'
+    ];
+    meta.sendWhatsAppProductList(from, tupiboxProducts,
+      'Planes TupiBox Fresh',
+      'Comida natural para tu perro. 60% proteina real, sin conservantes.',
+      'TupiBox Fresh',
+      TUPIBOX_CATALOG_ID
+    ).catch(e => logger.log('[catalogo-tupibox] Error: ' + e.message));
+  }
+
+  // 5c. Post-procesar: enviar tarjetas de producto si hay links
   detectAndSendProductCards(from, replyText, config).catch(e =>
     logger.log('[product-cards] Error: ' + e.message)
   );

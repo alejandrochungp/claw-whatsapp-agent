@@ -135,7 +135,7 @@ async function isReturning(phone) {
 // ─── Contexto de campaña ─────────────────────────────────────────────────────
 // TTL más largo para campañas (7 días) — el cliente puede responder días después
 const CAMPAIGN_TTL_SECS = 7 * 24 * 60 * 60;
-const campaignKey = (phone) => `campaign:${phone}`;
+const campaignKey = (phone) => `${process.env.TENANT || 'yeppo'}:campaign:${phone}`;
 
 /**
  * Guarda el contexto de campaña para un teléfono.
@@ -289,7 +289,7 @@ async function getConversation(phone) {
 }
 
 async function setSentTemplate(phone, templateName) {
-  const key = `tpl:${phone}`;
+  const key = `${process.env.TENANT || 'yeppo'}:tpl:${phone}`;
   const data = JSON.stringify({ template: templateName, sent_at: Date.now() });
   if (!useRedis) {
     // RAM fallback
@@ -336,7 +336,7 @@ async function getActiveConversations(maxAgeMs) {
 }
 
 async function getSentTemplate(phone) {
-  const key = `tpl:${phone}`;
+  const key = `${process.env.TENANT || 'yeppo'}:tpl:${phone}`;
   if (!useRedis) {
     const raw = global.__tplSent?.[phone];
     if (raw) { delete global.__tplSent[phone]; return raw; }

@@ -411,10 +411,13 @@ async function sendWhatsAppProduct(to, retailerId, bodyText, footerText) {
 }
 
 /** Envía lista de productos (WhatsApp) — hasta 30 productos */
-async function sendWhatsAppProductList(to, productItems, headerText, bodyText, footerText) {
+async function sendWhatsAppProductList(to, productItems, headerText, bodyText, footerText, catalogId) {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.PHONE_NUMBER_ID;
   if (!token || !phoneNumberId || !productItems?.length) return null;
+
+  const effectiveCatalogId = catalogId || META_CATALOG_ID;
+  const effectiveFooter = footerText || (process.env.TENANT === 'tupibox' ? 'TupiBox Fresh' : 'Yeppo');
 
   try {
     const resp = await axios.post(
@@ -428,9 +431,9 @@ async function sendWhatsAppProductList(to, productItems, headerText, bodyText, f
           type: 'product_list',
           header: { type: 'text', text: (headerText || 'Recomendados').slice(0, 60) },
           body: { text: (bodyText || '').slice(0, 1024) },
-          footer: { text: (footerText || 'Yeppo').slice(0, 60) },
+          footer: { text: effectiveFooter.slice(0, 60) },
           action: {
-            catalog_id: META_CATALOG_ID,
+            catalog_id: effectiveCatalogId,
             sections: [{
               title: 'Productos',
               product_items: productItems.slice(0, 30).map(rid => ({
