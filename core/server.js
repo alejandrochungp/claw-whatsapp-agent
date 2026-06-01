@@ -18,6 +18,7 @@ const audio      = require('./audio');
 const upsell     = require('./upsell');
 const learning   = require('./learning');
 const klaviyo    = require('./klaviyo');
+const carrito    = require('./carrito-abandonado');
 
 // Catálogo Shopify en memoria del módulo — se precalienta al arrancar y
 // se actualiza vía /admin/refresh-catalog. Se comparte en todas las llamadas.
@@ -1154,6 +1155,7 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
         const amacConfig = require('../tenants/yeppo/amac.config');
         amacRunner.startCron(amacConfig, 'yeppo');
         logger.log('[amac] Cron semanal programado: viernes 18:00 Santiago');
+        carrito.start().catch(e => logger.log('[carrito] Error start: ' + e.message));
       } catch (e) {
         logger.log('[amac] Error iniciando cron: ' + e.message);
       }
