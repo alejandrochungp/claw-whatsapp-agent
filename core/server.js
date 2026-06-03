@@ -1081,6 +1081,17 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     }
   });
 
+  // ── POST /admin/carrito-run ── forzar ciclo carrito abandonado ──
+  app.post('/admin/carrito-run', async (req, res) => {
+    try {
+      logger.log('[carrito] Ciclo forzado via /admin/carrito-run');
+      carrito.run().catch(e => logger.log('[carrito] Error run forzado:', e.message));
+      res.json({ ok: true, message: 'Ciclo iniciado' });
+    } catch(e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── POST /admin/carrito-test ── test deduplicado carrito abandonado ──
   app.post('/admin/carrito-test', async (req, res) => {
     const { phone, nombre = 'Alejandro', checkoutId = 'TEST_001' } = req.body || {};
