@@ -1081,6 +1081,19 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
     }
   });
 
+  // ── POST /admin/carrito-test ── test deduplicado carrito abandonado ──
+  app.post('/admin/carrito-test', async (req, res) => {
+    const { phone, nombre = 'Alejandro', checkoutId = 'TEST_001' } = req.body || {};
+    if (phone !== '56966283141') return res.status(403).json({ error: 'Solo número autorizado' });
+    try {
+      const carritoMod = require('./carrito-abandonado');
+      const result = await carritoMod.testSend(phone, nombre, checkoutId);
+      res.json(result);
+    } catch(e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(`âœ… Servidor escuchando en 0.0.0.0:${PORT}`);
     // Pre-calentar catÃ¡logo en background al arrancar y guardar en módulo

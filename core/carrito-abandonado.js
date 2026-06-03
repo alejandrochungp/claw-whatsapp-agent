@@ -44,42 +44,62 @@ const CONFIG = {
 
 // ─── Deduplicación ────────────────────────────────────────────────────────────
 
-// Fallback en RAM si no hay Redis
-const sentSetFallback = new Set();
+// Fallback RAM: map phone -> {checkoutId}
+const sentMapFallback = new Map();
 
 // Intentar usar Redis si está disponible (módulo memory.js del bot)
 let redisClient = null;
-const REDIS_KEY = 'carrito:enviados';
 
 async function initRedis() {
   try {
     if (process.env.REDIS_URL) {
+      // Intentar reutilizar cliente de memory.js
+      try {
+        const mem = require('./memory');
+        if (mem.redisClient && mem.redisClient.isOpen) {
+          redisClient = mem.redisClient;
+          logger.log('[carrito] Redis: reutilizando cliente de memory.js');
+          return;
+        }
+      } catch(e) {}
+      // Crear cliente propio
       const { createClient } = require('redis');
       redisClient = createClient({ url: process.env.REDIS_URL });
+      redisClient.on('error', e => logger.log('[carrito] Redis error:', e.message));
       await redisClient.connect();
-      logger.log('[carrito] Redis conectado');
+      logger.log('[carrito] Redis: cliente propio conectado');
     }
   } catch (e) {
-    console.warn('[carrito] Redis no disponible, usando RAM:', e.message);
+    logger.log('[carrito] Redis no disponible, usando RAM:', e.message);
     redisClient = null;
   }
 }
 
-async function yaEnviado(phone) {
-  if (redisClient) {
-    return await redisClient.sIsMember(REDIS_KEY, phone);
-  }
-  return sentSetFallback.has(phone);
+async function yaEnviado(phone, checkoutId) {
+  try {
+    if (redisClient) {
+      const raw = await redisClient.get(`carrito:ab:${phone}`);
+      if (!raw) return { skip: false, razon: 'primera vez' };
+      const data = JSON.parse(raw);
+      if (data.checkoutId === String(checkoutId)) return { skip: true, razon: 'mismo carrito' };
+      return { skip: false, razon: `nuevo carrito (anterior: ${data.checkoutId})` };
+    }
+  } catch(e) { logger.log('[carrito] Redis yaEnviado error:', e.message); }
+  // Fallback RAM
+  const prev = sentMapFallback.get(phone);
+  if (prev && prev.checkoutId === String(checkoutId)) return { skip: true, razon: 'RAM: mismo carrito' };
+  return { skip: false, razon: prev ? 'RAM: nuevo carrito' : 'RAM: primera vez' };
 }
 
-async function marcarEnviado(phone) {
-  if (redisClient) {
-    await redisClient.sAdd(REDIS_KEY, phone);
-    // TTL de 30 días para limpiar automáticamente
-    await redisClient.expire(REDIS_KEY, 30 * 24 * 60 * 60);
-  } else {
-    sentSetFallback.add(phone);
-  }
+async function marcarEnviado(phone, checkoutId, meta) {
+  const value = JSON.stringify({ checkoutId: String(checkoutId), total: meta.total, nombre: meta.nombre, ts: Date.now() });
+  try {
+    if (redisClient) {
+      await redisClient.set(`carrito:ab:${phone}`, value, { EX: 30 * 24 * 60 * 60 });
+      return;
+    }
+  } catch(e) { logger.log('[carrito] Redis marcarEnviado error:', e.message); }
+  sentMapFallback.set(phone, { checkoutId: String(checkoutId) });
 }
 
 // ─── Shopify ──────────────────────────────────────────────────────────────────
@@ -211,12 +231,16 @@ async function run() {
     if (minutosDesde < CONFIG.minMinutos) continue;
 
     // Normalizar teléfonos
-    const phones = [c.phone, c.billing_address?.phone, c.shipping_address?.phone]
+    const phones = [c.phone, c.customer?.phone, c.billing_address?.phone, c.shipping_address?.phone]
       .map(normalizePhone).filter(Boolean);
 
     for (const phone of phones) {
-      // Saltar si ya fue contactado (Redis/RAM)
-      if (await yaEnviado(phone)) continue;
+      // Saltar si ya fue contactado para este checkout (Redis/RAM)
+      const { skip, razon } = await yaEnviado(phone, c.id);
+      if (skip) {
+        logger.log(`[carrito] SKIP ${phone} — ${razon}`);
+        continue;
+      }
 
       const total = parseFloat(c.total_price || 0);
       const existing = porTelefono.get(phone);
@@ -234,6 +258,7 @@ async function run() {
         }));
         porTelefono.set(phone, {
           phone, nombre, total, productos,
+          checkoutId: c.id,
           checkoutUrl: c.abandoned_checkout_url,
           email: c.email
         });
@@ -246,15 +271,30 @@ async function run() {
 
   if (candidatos.length === 0) return;
 
+  // Batch: obtener emails/phones que ya compraron en últimas 24h
+  const desdeIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const ordersHoy = await shopifyRequest(`/orders.json?financial_status=paid&created_at_min=${encodeURIComponent(desdeIso)}&limit=250&fields=email,phone,billing_address`);
+  const emailsCompraron = new Set((ordersHoy?.orders || []).map(o => o.email?.toLowerCase()).filter(Boolean));
+  const phonesCompraron = new Set((ordersHoy?.orders || []).map(o => normalizePhone(o.phone || o.billing_address?.phone)).filter(Boolean));
+  logger.log(`[carrito] ${emailsCompraron.size} emails / ${phonesCompraron.size} phones que ya compraron hoy`);
+
   // Enviar
   let ok = 0, fail = 0;
 
-  for (const { phone, nombre, total, productos, checkoutUrl, email } of candidatos) {
+  for (const { phone, nombre, total, productos, checkoutId, checkoutUrl, email } of candidatos) {
+    // Saltar si ya compró en últimas 24h
+    const emailCompro = email && emailsCompraron.has(email.toLowerCase());
+    const phoneCompro = phonesCompraron.has(phone);
+    if (emailCompro || phoneCompro) {
+      logger.log(`[carrito] SKIP ${nombre} — ya compró (${emailCompro ? 'email' : 'phone'})`);
+      continue;
+    }
+
     const result = await sendTemplate(phone, nombre, checkoutUrl);
 
     if (result?.messages?.[0]?.id) {
       logger.log(`[carrito] ✅ ${phone} (${nombre}) $${total}`);
-      await marcarEnviado(phone);
+      await marcarEnviado(phone, checkoutId, { total, nombre, productos });
       ok++;
 
       // Guardar contexto de campaña para que el bot sepa por qué responde el cliente
@@ -318,4 +358,17 @@ function stop() {
   }
 }
 
-module.exports = { start, stop, run };
+async function testSend(phone, nombre, checkoutId) {
+  const fakeUrl = `https://yeppo.cl/checkouts/test?token=test123`;
+  logger.log(`[carrito-test] Enviando a ${phone} (${nombre}) checkout ${checkoutId}`);
+  const result = await sendTemplate(phone, nombre, fakeUrl);
+  if (result?.messages?.[0]?.id) {
+    await marcarEnviado(phone, checkoutId, { total: 0, nombre });
+    logger.log(`[carrito-test] ✅ Enviado y marcado en Redis`);
+    return { ok: true, messageId: result.messages[0].id };
+  }
+  logger.log(`[carrito-test] ❌ Falló: ${JSON.stringify(result)}`);
+  return { ok: false, error: result };
+}
+
+module.exports = { start, stop, run, testSend };
