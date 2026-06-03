@@ -359,6 +359,13 @@ function stop() {
 }
 
 async function testSend(phone, nombre, checkoutId) {
+  // Verificar si ya fue enviado para este checkout
+  const { skip, razon } = await yaEnviado(phone, checkoutId);
+  if (skip) {
+    logger.log(`[carrito-test] SKIP ${phone} — ${razon}`);
+    return { ok: false, skip: true, razon };
+  }
+
   const fakeUrl = `https://yeppo.cl/checkouts/test?token=test123`;
   logger.log(`[carrito-test] Enviando a ${phone} (${nombre}) checkout ${checkoutId}`);
   const result = await sendTemplate(phone, nombre, fakeUrl);
