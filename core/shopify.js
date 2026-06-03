@@ -261,7 +261,7 @@ async function getRedis() {
 }
 
 async function fetchCatalogFromShopify() {
-  if (!TOKEN) return [];
+  if (!TOKEN) { console.error('[shopify] ERROR: SHOPIFY_TOKEN no configurado'); return []; }
 
   const products = [];
   let page = 1;
@@ -271,6 +271,8 @@ async function fetchCatalogFromShopify() {
   // Paginar hasta traer todos
   while (path) {
     const { body: r, linkHeader } = await shopifyGetWithHeaders(path);
+    // Detectar error de autenticacion
+    if (!r || r.errors) { console.error('[shopify] ERROR catalogo:', JSON.stringify(r?.errors || 'sin respuesta').slice(0, 200)); break; }
     console.log('[shopify] fetch productos - count:', r?.products?.length, 'link:', linkHeader ? 's├¡' : 'no');
     if (!r?.products?.length) break;
 
