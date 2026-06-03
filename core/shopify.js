@@ -271,7 +271,7 @@ async function fetchCatalogFromShopify() {
   // Paginar hasta traer todos
   while (path) {
     const { body: r, linkHeader } = await shopifyGetWithHeaders(path);
-    // Detectar error de autenticacion
+    // Detectar error de autenticación
     if (!r || r.errors) { console.error('[shopify] ERROR catalogo:', JSON.stringify(r?.errors || 'sin respuesta').slice(0, 200)); break; }
     console.log('[shopify] fetch productos - count:', r?.products?.length, 'link:', linkHeader ? 's├¡' : 'no');
     if (!r?.products?.length) break;
