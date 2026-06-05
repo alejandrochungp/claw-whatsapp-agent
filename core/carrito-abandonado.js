@@ -136,8 +136,8 @@ function normalizePhone(raw) {
 
 // ─── WhatsApp ─────────────────────────────────────────────────────────────────
 
-// URL de la imagen del template (scontent — temporal, dura varios días)
-const TEMPLATE_IMAGE_URL = 'https://scontent.whatsapp.net/v/t61.29466-34/714822114_982343737850880_7770084487337664018_n.jpg?ccb=1-7&_nc_sid=8b1bef&_nc_ohc=YC4KnXKOUaUQ7kNvwG2O0OH&_nc_oc=AdroZPjLk3W32oxxeRGw5FLAyMCyrXwO0wX30NB8Sgh-__fAL8jZo0AIqbmBZy0rMAM&_nc_zt=3&_nc_ht=scontent.whatsapp.net&edm=AH51TzQEAAAA&_nc_gid=e_nuz6H34LPMjQ1XrI2qNg&_nc_tpa=Q5bMBQHdzNKz4Nue7axosCiki-R0DgIJGBxCaQFkivvrYMlZJAb2KdwNJZTZwaa7nGk4iCBkKm4yWEbc&oh=01_Q5Aa4wGzHoakrTnH7Fa3AIJ528q36L9vWwduGTo8-WOYViL16w&oe=6A4A7FCA';
+// Media ID permanente de la imagen del template envio30k_carritos_cyberjun26 (subida a Meta 05-jun-2026)
+const TEMPLATE_IMAGE_MEDIA_ID = '36165329243082623';
 
 function sendTemplate(phone, nombre, checkoutUrl) {
   // Extraer path relativo + agregar UTM
@@ -156,7 +156,7 @@ function sendTemplate(phone, nombre, checkoutUrl) {
         {
           type: 'header',
           parameters: [
-            { type: 'image', image: { link: TEMPLATE_IMAGE_URL } }
+            { type: 'image', image: { id: TEMPLATE_IMAGE_MEDIA_ID } }
           ]
         },
         {
