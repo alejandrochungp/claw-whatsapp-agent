@@ -31,8 +31,8 @@ const CONFIG = {
   shopifyStore: process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com',
   waToken: process.env.WHATSAPP_ACCESS_TOKEN || process.env.WA_TOKEN,
   phoneId: process.env.PHONE_NUMBER_ID || '217563878110256',
-  templateName: 'recuperar_carrito_yeppo',  // template evergreen UTF-8 correcto (ID: 4367182693500526)
-  templateLang: 'es_CL',
+  templateName: 'envio30k_carritos_cyberjun26',  // template temporal Cyber Jun26 hasta 06/06 23:59 (ID: 982343734517547)
+  templateLang: 'es',
   utmCampaign: 'carrito_auto',          // ← distinto de campañas manuales
   minMinutos: parseInt(process.env.CARRITO_MIN_MINUTOS || '45'),
   maxDias: parseInt(process.env.CARRITO_MAX_DIAS || '7'),
@@ -136,8 +136,12 @@ function normalizePhone(raw) {
 
 // ─── WhatsApp ─────────────────────────────────────────────────────────────────
 
+// URL de la imagen del template (scontent — temporal, dura varios días)
+const TEMPLATE_IMAGE_URL = 'https://scontent.whatsapp.net/v/t61.29466-34/714822114_982343737850880_7770084487337664018_n.jpg?ccb=1-7&_nc_sid=8b1bef&_nc_ohc=YC4KnXKOUaUQ7kNvwG2O0OH&_nc_oc=AdroZPjLk3W32oxxeRGw5FLAyMCyrXwO0wX30NB8Sgh-__fAL8jZo0AIqbmBZy0rMAM&_nc_zt=3&_nc_ht=scontent.whatsapp.net&edm=AH51TzQEAAAA&_nc_gid=e_nuz6H34LPMjQ1XrI2qNg&_nc_tpa=Q5bMBQHdzNKz4Nue7axosCiki-R0DgIJGBxCaQFkivvrYMlZJAb2KdwNJZTZwaa7nGk4iCBkKm4yWEbc&oh=01_Q5Aa4wGzHoakrTnH7Fa3AIJ528q36L9vWwduGTo8-WOYViL16w&oe=6A4A7FCA';
+
 function sendTemplate(phone, nombre, checkoutUrl) {
   // Extraer path relativo + agregar UTM
+  // El template envio30k_carritos_cyberjun26 ya incluye https://yeppo.cl/ en la URL del botón
   const urlPath = checkoutUrl.replace('https://yeppo.cl/', '') +
     `&utm_source=whatsapp&utm_medium=carrito_abandonado&utm_campaign=${CONFIG.utmCampaign}`;
 
@@ -150,8 +154,10 @@ function sendTemplate(phone, nombre, checkoutUrl) {
       language: { code: CONFIG.templateLang },
       components: [
         {
-          type: 'body',
-          parameters: [{ type: 'text', text: nombre }]
+          type: 'header',
+          parameters: [
+            { type: 'image', image: { link: TEMPLATE_IMAGE_URL } }
+          ]
         },
         {
           type: 'button',
