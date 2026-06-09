@@ -31,8 +31,9 @@ const CONFIG = {
   shopifyStore: process.env.SHOPIFY_STORE || '59c6fd-2.myshopify.com',
   waToken: process.env.WHATSAPP_ACCESS_TOKEN || process.env.WA_TOKEN,
   phoneId: process.env.PHONE_NUMBER_ID || '217563878110256',
-  templateName: 'envio30k_carritos_cyberjun26',  // template temporal Cyber Jun26 hasta 06/06 23:59 (ID: 982343734517547)
-  templateLang: 'es',
+  templateName: 'recuperar_carrito_yeppo',  // template evergreen (ID: 4367182693500526)
+  templateLang: 'es_CL',
+  // TODO: agregar CARRITO_CAMPAIGN_END_DATE para auto-expirar templates temporales
   utmCampaign: 'carrito_auto',          // ← distinto de campañas manuales
   minMinutos: parseInt(process.env.CARRITO_MIN_MINUTOS || '45'),
   maxDias: parseInt(process.env.CARRITO_MAX_DIAS || '7'),
@@ -136,12 +137,8 @@ function normalizePhone(raw) {
 
 // ─── WhatsApp ─────────────────────────────────────────────────────────────────
 
-// Media ID permanente de la imagen del template envio30k_carritos_cyberjun26 (subida a Meta 05-jun-2026)
-const TEMPLATE_IMAGE_MEDIA_ID = '36165329243082623';
-
 function sendTemplate(phone, nombre, checkoutUrl) {
   // Extraer path relativo + agregar UTM
-  // El template envio30k_carritos_cyberjun26 ya incluye https://yeppo.cl/ en la URL del botón
   const urlPath = checkoutUrl.replace('https://yeppo.cl/', '') +
     `&utm_source=whatsapp&utm_medium=carrito_abandonado&utm_campaign=${CONFIG.utmCampaign}`;
 
@@ -154,10 +151,8 @@ function sendTemplate(phone, nombre, checkoutUrl) {
       language: { code: CONFIG.templateLang },
       components: [
         {
-          type: 'header',
-          parameters: [
-            { type: 'image', image: { id: TEMPLATE_IMAGE_MEDIA_ID } }
-          ]
+          type: 'body',
+          parameters: [{ type: 'text', text: nombre }]
         },
         {
           type: 'button',
