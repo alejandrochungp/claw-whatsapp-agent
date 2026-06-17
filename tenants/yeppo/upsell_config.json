@@ -1,7 +1,7 @@
 {
   "_comment": "Configuracion de campanas especiales de upsell para Yeppo",
   "btsCampaign": {
-    "active": true,
+    "active": false,
     "name": "Sorteo BTS ARIRANG World Tour 2026",
     "startDate": "2026-04-30",
     "endDate": "2026-06-15",

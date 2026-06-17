@@ -146,7 +146,7 @@ function sendTemplate(phone, nombre, checkoutUrl) {
   return new Promise((resolve) => {
     const options = {
       hostname: 'graph.facebook.com',
-      path: `/v18.0/${CONFIG.phoneId}/messages`,
+      path: `/v22.0/${CONFIG.phoneId}/messages`,
       method: 'POST',
       headers: {
         Authorization: `Bearer ${CONFIG.waToken}`,
