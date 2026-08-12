@@ -128,15 +128,16 @@ const REDIS_FAQS_KEY = 'learned_faqs';
 
 async function loadLearnedFaqs() {
   try {
+    const redis = await getRedis();
     // Intentar desde Redis primero (persiste entre deploys)
-    const redisVal = await memory.redis?.get(REDIS_FAQS_KEY);
+    const redisVal = await redis?.get(REDIS_FAQS_KEY);
     if (redisVal) return JSON.parse(redisVal);
     // Fallback: leer desde archivo
     if (fs.existsSync(FAQS_PATH)) {
       const faqs = JSON.parse(fs.readFileSync(FAQS_PATH, 'utf8'));
       // Migrar a Redis si hay datos en archivo
-      if (faqs.length > 0 && memory.redis) {
-        await memory.redis.set(REDIS_FAQS_KEY, JSON.stringify(faqs));
+      if (faqs.length > 0 && redis) {
+        await redis.set(REDIS_FAQS_KEY, JSON.stringify(faqs));
       }
       return faqs;
     }
@@ -150,9 +151,14 @@ async function saveLearnedFaq(faq) {
   const exists = faqs.some(f => f.question.toLowerCase() === faq.question.toLowerCase());
   if (!exists) {
     faqs.push({ ...faq, addedAt: new Date().toISOString() });
-    // Guardar en Redis (persistente entre deploys)
-    if (memory.redis) {
-      await memory.redis.set(REDIS_FAQS_KEY, JSON.stringify(faqs));
+    const redis = await getRedis();
+    // Guardar en Redis (persistente entre deploys) — nunca debe tirar abajo el proceso
+    try {
+      if (redis) {
+        await redis.set(REDIS_FAQS_KEY, JSON.stringify(faqs));
+      }
+    } catch (e) {
+      console.error('[learning] Error guardando en Redis:', e.message);
     }
     // Guardar en archivo como backup
     try { fs.writeFileSync(FAQS_PATH, JSON.stringify(faqs, null, 2), 'utf8'); } catch {}
