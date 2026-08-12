@@ -19,6 +19,8 @@ const CLAUDE_API_KEY   = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL     = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 const DEEPSEEK_MODEL   = 'deepseek-chat';
 const MONTHLY_BUDGET   = parseFloat(process.env.AI_MONTHLY_BUDGET || '100.0');
+const BREVO_API_KEY    = process.env.BREVO_API_KEY;
+const ALERT_EMAIL      = process.env.ALERT_EMAIL;
 
 // ── Pricing por 1M tokens (USD) ──────────────────────────────────────────────
 // Claude cache: escritura 125% input, lectura 10% input
@@ -43,6 +45,43 @@ function checkReset() {
   if (m !== usage.month) {
     usage = { month: m, inputTokens: 0, outputTokens: 0, totalUSD: 0, requests: 0,
       claudeRequests: 0, deepseekRequests: 0, fallbackCount: 0, cacheHits: 0, cacheMisses: 0 };
+  }
+}
+
+// ── Alerta de saldo bajo por email (Brevo) ───────────────────────────────────
+// Se dispara una vez por mes cuando el gasto estimado supera el 80% del presupuesto.
+// También avisa si Claude responde "credit balance is too low" (saldo en 0).
+
+async function sendBalanceAlert(subject, bodyHtml) {
+  if (!BREVO_API_KEY || !ALERT_EMAIL) {
+    console.log('[ai] BREVO_API_KEY/ALERT_EMAIL no configurados — alerta omitida');
+    return;
+  }
+  try {
+    await axios.post('https://api.brevo.com/v3/smtp/email', {
+      sender: { name: 'Bot Yeppo IA', email: 'alejandro@estacionseul.cl' },
+      to: [{ email: ALERT_EMAIL }],
+      subject,
+      htmlContent: bodyHtml
+    }, {
+      headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
+      timeout: 10000
+    });
+    console.log('[ai] Alerta saldo enviada a ' + ALERT_EMAIL);
+  } catch (e) {
+    console.error('[ai] Error enviando alerta email:', e.message);
+  }
+}
+
+function checkBalanceAlert() {
+  if (usage.balanceAlertSent || MONTHLY_BUDGET <= 0) return;
+  const pct = (usage.totalUSD / MONTHLY_BUDGET) * 100;
+  if (pct >= 80) {
+    usage.balanceAlertSent = true;
+    sendBalanceAlert(
+      '⚠️ Bot Yeppo: saldo IA al ' + Math.round(pct) + '% del presupuesto',
+      '<p>El bot consumió <b>$' + usage.totalUSD.toFixed(2) + '</b> de <b>$' + MONTHLY_BUDGET + '</b> este mes (' + Math.round(pct) + '%).</p><p>Recarga la API de Anthropic antes de llegar a 0.</p>'
+    );
   }
 }
 
@@ -182,6 +221,14 @@ async function ask(userMessage, history, context, systemPrompt, config) {
       const errMsg = (err.response && err.response.data) ? JSON.stringify(err.response.data) : err.message;
       console.log('[ai] Claude fallo, usando DeepSeek fallback. Error: ' + errMsg.slice(0, 100));
       usage.fallbackCount++;
+      // Si el error es por saldo insuficiente, avisar por email (solo una vez por mes)
+      if (/credit balance is too low/i.test(errMsg) && !usage.balanceAlertSent) {
+        usage.balanceAlertSent = true;
+        sendBalanceAlert(
+          '🔴 Bot Yeppo: saldo de Claude AGOTADO',
+          '<p>Anthropic rechazó requests por saldo insuficiente. El bot está usando DeepSeek como fallback.</p><p>Recarga la API key en console.anthropic.com.</p>'
+        );
+      }
       result = null;
     }
   }
@@ -215,6 +262,9 @@ async function ask(userMessage, history, context, systemPrompt, config) {
   usage.outputTokens += result.outputTok;
   usage.totalUSD     += result.cost;
   usage.requests++;
+
+  // Alerta preventiva al cruzar 80% del presupuesto mensual
+  checkBalanceAlert();
 
   const cacheInfo = result.cacheHit
     ? ` [cache ✓ ${result.cacheRead} tok]`

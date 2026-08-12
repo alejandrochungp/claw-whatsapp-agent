@@ -2769,7 +2769,7 @@ function startFbPolling(config, business, catalog) {
 let igPollInterval = null;
 
 async function pollInstagramConversations(config, business, catalog) {
-  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  const token = await meta.getInstagramToken();
   const ourIgId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
   if (!token) return;
 
@@ -2866,15 +2866,20 @@ async function pollInstagramConversations(config, business, catalog) {
   }
 }
 
-function startIgPolling(config, business, catalog) {
-  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+async function startIgPolling(config, business, catalog) {
+  const token = await meta.getInstagramToken();
   if (!token) {
-    logger.log('[ig-poll] INSTAGRAM_GRAPH_TOKEN no configurado. Polling deshabilitado.');
+    logger.log('[ig-poll] Token de Instagram no configurado. Polling deshabilitado.');
     return;
   }
   logger.log('[ig-poll] Iniciando polling cada ' + (FB_POLL_MS / 60000) + ' min');
   setTimeout(() => pollInstagramConversations(config, business, catalog), 30000);
   igPollInterval = setInterval(() => pollInstagramConversations(config, business, catalog), FB_POLL_MS);
+
+  // Auto-refresh del token: intenta renovar cada 24h (el token dura 60 días)
+  setInterval(() => { meta.refreshInstagramToken().catch(() => {}); }, 24 * 3600 * 1000);
+  // Primer intento de refresh a los 10 min de arrancar (si el token está por expirar)
+  setTimeout(() => { meta.refreshInstagramToken().catch(() => {}); }, 10 * 60 * 1000);
 }
 
 module.exports = { start };

@@ -4,6 +4,59 @@
 
 const axios = require('axios');
 
+// ── Token de Instagram con auto-refresh ──────────────────────────────────────
+// El token de IG dura 60 días. Este módulo lo guarda en Redis y lo renueva
+// automáticamente antes de que expire, para no depender de renovación manual.
+
+let igRedisClient = null;
+
+async function getIgRedis() {
+  if (igRedisClient) return igRedisClient;
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  try {
+    const { createClient } = require('redis');
+    igRedisClient = createClient({ url });
+    igRedisClient.on('error', () => {});
+    await igRedisClient.connect();
+    return igRedisClient;
+  } catch { return null; }
+}
+
+/** Token vigente: Redis primero (renovado), env var como fallback inicial. */
+async function getInstagramToken() {
+  try {
+    const redis = await getIgRedis();
+    if (redis) {
+      const cached = await redis.get('ig:graph_token');
+      if (cached) return cached;
+    }
+  } catch {}
+  return process.env.INSTAGRAM_GRAPH_TOKEN;
+}
+
+/** Renueva el token vía refresh_access_token (extiende 60 días desde hoy). */
+async function refreshInstagramToken() {
+  const current = await getInstagramToken();
+  if (!current) return null;
+  try {
+    const r = await axios.get('https://graph.instagram.com/refresh_access_token', {
+      params: { grant_type: 'ig_refresh_token', access_token: current },
+      timeout: 15000
+    });
+    const newToken = r.data?.access_token;
+    if (newToken) {
+      const redis = await getIgRedis();
+      if (redis) await redis.set('ig:graph_token', newToken);
+      console.log('[meta] Instagram token renovado automáticamente (60 días más)');
+      return newToken;
+    }
+  } catch (e) {
+    console.log('[meta] Refresh token IG falló:', e.response?.data?.error?.message || e.message);
+  }
+  return null;
+}
+
 async function sendMessage(to, text, config) {
   const token         = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.PHONE_NUMBER_ID;
@@ -204,7 +257,7 @@ async function sendImage(to, options = {}, config = {}) {
  * @param {string} text - texto a enviar
  */
 async function sendInstagramMessage(igSenderId, text) {
-  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  const token = await getInstagramToken();
   const igUserId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
   if (!token || !igUserId) {
     console.error('[meta] sendInstagramMessage: INSTAGRAM_GRAPH_TOKEN=' + (token?'OK':'MISSING') + ' INSTAGRAM_ACCOUNT_ID=' + (igUserId||'MISSING'));
@@ -237,7 +290,7 @@ async function sendInstagramMessage(igSenderId, text) {
  * @param {string} imageUrl - URL pública de la imagen
  */
 async function sendInstagramImage(igSenderId, imageUrl) {
-  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  const token = await getInstagramToken();
   const igUserId = process.env.INSTAGRAM_ACCOUNT_ID || '17841410830948390';
   if (!token || !igUserId) return null;
   try {
@@ -655,5 +708,6 @@ module.exports = {
   sendWhatsAppProduct, sendWhatsAppProductList, searchMetaCatalog,
   getRetailerIdByHandle,
   sendInstagramProduct, sendMessengerProduct,
+  getInstagramToken, refreshInstagramToken,
   META_CATALOG_ID, buildMetaCatalogIdMap
 };
