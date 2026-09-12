@@ -15,6 +15,7 @@
 const { CronJob }      = require('cron');
 const amac             = require('./amac');
 const knowledgeUpdater = require('./knowledge-updater');
+const learning         = require('./learning');
 const githubIssues     = require('./github-issues');
 const reporter         = require('./amac-reporter');
 
@@ -89,17 +90,28 @@ async function run(tenant, amacConfig) {
 
   // ── 4. Update knowledge ───────────────────────────────────────────────────
   let knowledgeResult = { updated: false, diff: 'Sin análisis disponible' };
-  if (analysis?.knowledge_gaps?.length > 0 && cfg.autoApproveKnowledge !== false) {
-    console.log('[amac-runner] Actualizando knowledge_doc.md...');
-    try {
-      knowledgeResult = await knowledgeUpdater.updateKnowledge(tenant, analysis.knowledge_gaps);
-      if (knowledgeResult.updated) {
-        console.log('[amac-runner] Knowledge actualizado:', knowledgeResult.diff.slice(0, 100));
-        // Push a GitHub
-        await knowledgeUpdater.pushToGitHub(tenant, knowledgeResult.newDoc, weekLabel);
+  if (analysis?.knowledge_gaps?.length > 0) {
+    if (cfg.autoApproveKnowledge === true) {
+      // Modo legacy: auto-aplicar al archivo (el updater preserva el bloque de Notion)
+      console.log('[amac-runner] Actualizando knowledge_doc.md (auto-approve ON)...');
+      try {
+        knowledgeResult = await knowledgeUpdater.updateKnowledge(tenant, analysis.knowledge_gaps);
+        if (knowledgeResult.updated) {
+          console.log('[amac-runner] Knowledge actualizado:', knowledgeResult.diff.slice(0, 100));
+          await knowledgeUpdater.pushToGitHub(tenant, knowledgeResult.newDoc, weekLabel);
+        }
+      } catch (e) {
+        console.error('[amac-runner] Error update knowledge:', e.message);
       }
-    } catch (e) {
-      console.error('[amac-runner] Error update knowledge:', e.message);
+    } else {
+      // Modo propuesta (default): enviar los gaps al canal para aprobación humana → Notion
+      console.log('[amac-runner] Publicando propuestas de conocimiento en el canal...');
+      try {
+        knowledgeResult = await learning.postKnowledgeGaps(analysis.knowledge_gaps, weekLabel, reportChan, slackToken);
+        console.log('[amac-runner]', knowledgeResult.diff);
+      } catch (e) {
+        console.error('[amac-runner] Error publicando propuestas:', e.message);
+      }
     }
   }
 

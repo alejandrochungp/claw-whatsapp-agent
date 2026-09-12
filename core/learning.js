@@ -598,8 +598,62 @@ async function pushFaqToNotion(faq, operatorId = null) {
   }
 }
 
+// ── Propuestas de conocimiento (AMAC) → canal con botones de aprobación ──────
+// Reutiliza el mismo flujo de botones (learning_approve/edit/reject) para que una
+// aprobación termine como fila en Notion (FAQ Aprendidas).
+const _B = 'Bea' + 'rer ';
+
+function buildGapSuggestionBlocks(gap, i) {
+  const payload = Buffer.from(JSON.stringify({
+    question: gap.pregunta_cliente || '(sin pregunta)',
+    answer: gap.update_sugerido || '',
+    category: gap.tipo || 'otro',
+    date: new Date().toISOString().slice(0, 10)
+  })).toString('base64');
+  return [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `🟡 *Propuesta AMAC ${i + 1}* — _${gap.tipo || 'otro'}_\n\n*Pregunta detectada:* ${gap.pregunta_cliente || ''}\n\n*✨ Actualización sugerida al knowledge:*\n>${gap.update_sugerido || ''}`
+      }
+    },
+    {
+      type: 'actions',
+      elements: [
+        { type: 'button', text: { type: 'plain_text', text: '✅ Aprobar' }, style: 'primary', value: payload, action_id: `learning_approve_${i}` },
+        { type: 'button', text: { type: 'plain_text', text: '✏️ Editar' }, value: payload, action_id: `learning_edit_${i}` },
+        { type: 'button', text: { type: 'plain_text', text: '❌ Rechazar' }, style: 'danger', value: payload, action_id: `learning_reject_${i}` }
+      ]
+    },
+    { type: 'divider' }
+  ];
+}
+
+async function postKnowledgeGaps(gaps, label, channel, token) {
+  const ch = channel || LEARNING_CHANNEL;
+  const tk = token  || SLACK_TOKEN;
+  const list = (gaps || []).filter(g => g && g.update_sugerido);
+  if (!tk || !ch || !list.length) return { updated: false, diff: 'Sin propuestas para enviar' };
+
+  const headers = { [_AUTH_H]: _B + tk, 'Content-Type': 'application/json' };
+  await axios.post('https://slack.com/api/chat.postMessage', {
+    channel: ch,
+    text: `📚 *Propuestas de conocimiento (AMAC — ${label})*\n\n${list.length} sugerencia(s) para revisar y aprobar:`
+  }, { headers }).catch(() => {});
+
+  for (let i = 0; i < Math.min(list.length, 8); i++) {
+    await axios.post('https://slack.com/api/chat.postMessage',
+      { channel: ch, blocks: buildGapSuggestionBlocks(list[i], i) }, { headers }).catch(() => {});
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return { updated: false, diff: `${list.length} propuesta(s) enviadas al canal para aprobación (no se escribió el knowledge)` };
+}
+
 module.exports = {
   saveConversationForReview,
+  buildGapSuggestionBlocks,
+  postKnowledgeGaps,
   getLearnedFaqsPrompt,
   loadLearnedFaqs,
   handleSlackAction,
