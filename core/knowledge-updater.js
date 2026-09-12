@@ -54,6 +54,16 @@ function splitNotionBlock(doc) {
   return { body: (doc.slice(0, i) + doc.slice(end)).trimEnd(), block: doc.slice(i, end) };
 }
 
+/** Elimina TODAS las copias del bloque de Notion (por si el modelo lo emitió más de una vez). */
+function stripNotionBlocks(doc) {
+  let d = doc;
+  let guard = 0;
+  while (d.indexOf(NOTION_START) !== -1 && guard++ < 10) {
+    d = splitNotionBlock(d).body;
+  }
+  return d;
+}
+
 /**
  * Actualiza el knowledge_doc.md incorporando los gaps detectados por AMAC.
  *
@@ -121,7 +131,7 @@ INSTRUCCIONES:
   ], 8192);
 
   // Blindaje: si el modelo reescribió u omitió el bloque de Notion, se restaura el original
-  newDoc = splitNotionBlock(newDoc).body.trimEnd();
+  newDoc = stripNotionBlocks(newDoc).trimEnd();
   if (notionBlock) newDoc = newDoc + '\n\n' + notionBlock;
   newDoc = newDoc.replace(/\r\n/g, '\n').trimEnd() + '\n';
 
@@ -187,4 +197,4 @@ async function pushToGitHub(tenant, newDoc, summary) {
   }
 }
 
-module.exports = { updateKnowledge, pushToGitHub };
+module.exports = { updateKnowledge, pushToGitHub, splitNotionBlock, stripNotionBlocks };
