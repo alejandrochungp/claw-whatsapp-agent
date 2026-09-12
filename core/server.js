@@ -1121,6 +1121,8 @@ Responde SOLO con una palabra: INTERESADO, EVALUANDO o DESCARTAR.`;
         githubToken:     !!process.env.GITHUB_TOKEN,
         slackToken:      !!process.env.SLACK_BOT_TOKEN,
         learningChannel: process.env.SLACK_LEARNING_CHANNEL || 'no configurado',
+        notionToken:     !!process.env.NOTION_TOKEN,
+        notionLearningDb: process.env.NOTION_LEARNING_DB || 'default',
         tenant:          process.env.TENANT
       });
     });
