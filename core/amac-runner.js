@@ -130,7 +130,8 @@ async function run(tenant, amacConfig) {
       kpis,
       analysis,
       knowledgeResult,
-      issuesCreated
+      issuesCreated,
+      thresholds: cfg.thresholds || {}
     });
   } catch (e) {
     console.error('[amac-runner] Error reporte Slack:', e.message);

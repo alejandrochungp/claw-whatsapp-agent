@@ -37,7 +37,7 @@ async function postToSlack(token, channel, payload) {
  */
 async function publishWeeklyReport({
   slackToken, channel, tenant, weekLabel,
-  kpis, analysis, knowledgeResult, issuesCreated
+  kpis, analysis, knowledgeResult, issuesCreated, thresholds = {}
 }) {
   if (!slackToken || !channel) {
     console.log('[amac-reporter] Sin token o canal Slack — skip reporte');
@@ -58,7 +58,17 @@ async function publishWeeklyReport({
       ? `⏱ Tiempo promedio de respuesta humana: *${kpis.avgHumanResponseMin} min*\n`
       : '');
 
-  await postToSlack(slackToken, channel, { text: headerText });
+  // Alertas por umbral (config del tenant)
+  const alerts = [];
+  if (thresholds.maxHumanResponseMin && kpis.avgHumanResponseMin > thresholds.maxHumanResponseMin)
+    alerts.push(`⚠️ *Alerta:* respuesta humana promedio ${kpis.avgHumanResponseMin} min supera el umbral (${thresholds.maxHumanResponseMin} min)`);
+  if (thresholds.minBotResolutionRate && botPct < thresholds.minBotResolutionRate)
+    alerts.push(`⚠️ *Alerta:* resolución del bot ${botPct}% bajo el umbral (${thresholds.minBotResolutionRate}%)`);
+  if (thresholds.maxIgnoredCases != null && kpis.potentiallyIgnored > thresholds.maxIgnoredCases)
+    alerts.push(`⚠️ *Alerta:* ${kpis.potentiallyIgnored} casos ignorados, sobre el umbral (${thresholds.maxIgnoredCases})`);
+  const alertsText = alerts.length ? '\n' + alerts.join('\n') + '\n' : '';
+
+  await postToSlack(slackToken, channel, { text: headerText + alertsText });
   await sleep(600);
 
   // ── 2. Knowledge actualizado ──────────────────────────────────────────────

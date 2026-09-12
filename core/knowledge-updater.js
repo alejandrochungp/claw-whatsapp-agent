@@ -42,6 +42,18 @@ async function callAI(messages, maxTokens = 6000) {
   return res.data.choices[0].message.content;
 }
 
+// ── Bloque gestionado por Notion (AMAC nunca lo toca) ─────────────────────────
+const NOTION_START = '<!-- NOTION_CONTEXT_START -->';
+const NOTION_END   = '<!-- NOTION_CONTEXT_END -->';
+
+function splitNotionBlock(doc) {
+  const i = doc.indexOf(NOTION_START);
+  if (i === -1) return { body: doc, block: '' };
+  const j = doc.indexOf(NOTION_END, i);
+  const end = j === -1 ? doc.length : j + NOTION_END.length;
+  return { body: (doc.slice(0, i) + doc.slice(end)).trimEnd(), block: doc.slice(i, end) };
+}
+
 /**
  * Actualiza el knowledge_doc.md incorporando los gaps detectados por AMAC.
  *
@@ -57,6 +69,9 @@ async function updateKnowledge(tenant, knowledgeGaps) {
   }
 
   const currentDoc = fs.readFileSync(docPath, 'utf8');
+
+  // El bloque de Notion lo administra el sync de Notion: se separa y se restaura intacto.
+  const { body: currentBody, block: notionBlock } = splitNotionBlock(currentDoc);
 
   if (!knowledgeGaps || knowledgeGaps.length === 0) {
     return { updated: false, diff: 'Sin cambios — no se detectaron gaps de conocimiento.', newDoc: currentDoc };
@@ -78,7 +93,7 @@ async function updateKnowledge(tenant, knowledgeGaps) {
     `${i+1}. TIPO: ${kg.tipo}\n   PREGUNTA: ${kg.pregunta_cliente}\n   ACTUALIZACIÓN: ${kg.update_sugerido}`
   ).join('\n\n');
 
-  const newDoc = await callAI([
+  let newDoc = await callAI([
     {
       role: 'system',
       content: 'Eres el mantenedor del documento de conocimiento del bot de WhatsApp de Yeppo. Tu trabajo es actualizar el documento incorporando nueva información detectada en conversaciones reales. Responde SOLO con el documento actualizado completo, sin comentarios adicionales, sin markdown extra, en texto plano.'
@@ -87,8 +102,8 @@ async function updateKnowledge(tenant, knowledgeGaps) {
       role: 'user',
       content: `Tengo el documento de conocimiento actual del bot de Yeppo y una lista de actualizaciones detectadas esta semana en conversaciones reales.
 
-DOCUMENTO ACTUAL:
-${currentDoc}
+DOCUMENTO ACTUAL (sin el bloque gestionado por Notion):
+${currentBody}
 
 ACTUALIZACIONES A INCORPORAR:
 ${gapsText}
@@ -105,8 +120,13 @@ INSTRUCCIONES:
     }
   ], 8192);
 
+  // Blindaje: si el modelo reescribió u omitió el bloque de Notion, se restaura el original
+  newDoc = splitNotionBlock(newDoc).body.trimEnd();
+  if (notionBlock) newDoc = newDoc + '\n\n' + notionBlock;
+  newDoc = newDoc.replace(/\r\n/g, '\n').trimEnd() + '\n';
+
   // Calcular diff simple (líneas nuevas)
-  const oldLines = new Set(currentDoc.split('\n').map(l => l.trim()).filter(Boolean));
+  const oldLines = new Set(currentBody.split('\n').map(l => l.trim()).filter(Boolean));
   const newLines = newDoc.split('\n').map(l => l.trim()).filter(Boolean);
   const addedLines = newLines.filter(l => !oldLines.has(l) && l.length > 10);
 

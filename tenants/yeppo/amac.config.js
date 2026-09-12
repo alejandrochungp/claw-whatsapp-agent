@@ -22,7 +22,7 @@ module.exports = {
   cronTimezone: 'America/Santiago',
 
   // Auto-aprobar cambios al knowledge sin intervención humana
-  autoApproveKnowledge: true,
+  autoApproveKnowledge: false,
 
   // Notificar por WhatsApp al owner tras cada ciclo
   notifyOwnerWhatsapp: process.env.OWNER_PHONE || '+56966283141',
@@ -35,7 +35,7 @@ module.exports = {
     // Si bot resuelve menos del 70%, alertar
     minBotResolutionRate: 70,
     // Tiempo máximo de respuesta humana sin alertar (minutos)
-    maxHumanResponseMin: 60,
+    maxHumanResponseMin: 120,
     // Casos ignorados máximos antes de alertar
     maxIgnoredCases: 2
   }

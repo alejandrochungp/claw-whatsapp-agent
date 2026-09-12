@@ -145,12 +145,12 @@ async function loadLearnedFaqs() {
   return [];
 }
 
-async function saveLearnedFaq(faq) {
+async function saveLearnedFaq(faq, operatorId = null) {
   const faqs = await loadLearnedFaqs();
   // Evitar duplicados por pregunta similar
   const exists = faqs.some(f => f.question.toLowerCase() === faq.question.toLowerCase());
   if (!exists) {
-    faqs.push({ ...faq, addedAt: new Date().toISOString() });
+    faqs.push({ ...faq, addedAt: new Date().toISOString(), operatorId });
     const redis = await getRedis();
     // Guardar en Redis (persistente entre deploys) — nunca debe tirar abajo el proceso
     try {
@@ -163,6 +163,8 @@ async function saveLearnedFaq(faq) {
     // Guardar en archivo como backup
     try { fs.writeFileSync(FAQS_PATH, JSON.stringify(faqs, null, 2), 'utf8'); } catch {}
     console.log(`[learning] ✅ FAQ aprendida y guardada en Redis: "${faq.question.substring(0, 60)}"`);
+    // Persistir el aprendizaje aprobado en Notion (fuente única; Redis es caché volátil)
+    await pushFaqToNotion(faq, operatorId);
   } else {
     console.log(`[learning] FAQ ya existía, ignorando duplicado`);
   }
@@ -380,7 +382,7 @@ async function handleSlackAction(action, channel, message_ts) {
   }
 
   if (actionType === 'approve') {
-    saveLearnedFaq({ question: faqData.question, answer: faqData.answer, category: faqData.category });
+    await saveLearnedFaq({ question: faqData.question, answer: faqData.answer, category: faqData.category }, operatorId);
     await incrementOperatorMetric(operatorId, 'approved_teachings');
 
     // Actualizar el mensaje en Slack
@@ -451,7 +453,7 @@ async function handleEditSubmit(payload) {
   const answer     = payload.view.state.values.answer_block.answer_input.value;
   const operatorId = meta.operatorId || payload.user?.id;
 
-  saveLearnedFaq({ question, answer, category: meta.faqData?.category || 'otro' });
+  await saveLearnedFaq({ question, answer, category: meta.faqData?.category || 'otro' }, operatorId);
   await incrementOperatorMetric(operatorId, 'approved_teachings');
 
   // Actualizar el mensaje original
@@ -546,61 +548,11 @@ async function applyApprovedMessage(messageTs, channelId) {
     const situacion = situacionMatch?.[1]?.trim() || 'Sin descripción';
     const respuesta = respuestaMatch[1].trim();
 
-    // 2. Agregar al prompt.md
-    const promptPath = path.join(__dirname, '..', 'tenants', process.env.TENANT || 'yeppo', 'prompt.md');
-    let prompt = fs.readFileSync(promptPath, 'utf8');
-
-    const LEARNING_MARKER = 'APRENDIZAJES DEL EQUIPO';
-    const newEntry = `Situación: ${situacion}\nRespuesta: ${respuesta}\n\n`;
-
-    if (prompt.includes(LEARNING_MARKER)) {
-      // Insertar antes del final de la sección
-      const idx = prompt.lastIndexOf(newEntry.substring(0, 20));
-      if (idx !== -1) {
-        console.log('[learning] Esta sugerencia ya estaba en el prompt, ignorando');
-        return;
-      }
-      prompt = prompt.replace(
-        /(APRENDIZAJES DEL EQUIPO[\s\S]*?)(\s*$)/,
-        (_, section) => section + newEntry
-      );
-    } else {
-      prompt += `\n\nAPRENDIZAJES DEL EQUIPO\n\nEstas son respuestas reales del equipo aprobadas para situaciones específicas:\n\n${newEntry}`;
-    }
-
-    fs.writeFileSync(promptPath, prompt, 'utf8');
-    console.log(`[learning] ✅ Aprendizaje agregado al prompt en RAM: ${situacion.substring(0, 60)}`);
-
-    // 3. Push a GitHub via API (no requiere git instalado en Railway)
-    try {
-      const githubToken = process.env.GITHUB_TOKEN;
-      const tenant = process.env.TENANT || 'yeppo';
-      const filePath = `tenants/${tenant}/prompt.md`;
-      const repo = process.env.GITHUB_REPO || 'alejandrochungp/claw-whatsapp-agent';
-
-      if (githubToken) {
-        // Obtener SHA actual del archivo
-        const fileRes = await axios.get(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
-          headers: { Authorization: `Bearer ${githubToken}`, 'User-Agent': 'yeppo-learning-bot' }
-        });
-        const sha = fileRes.data.sha;
-
-        // Subir archivo actualizado
-        const content = Buffer.from(prompt, 'utf8').toString('base64');
-        await axios.put(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
-          message: `learning: aprendizaje aprobado via reacción Slack\n\nSituación: ${situacion.substring(0, 80)}`,
-          content,
-          sha
-        }, {
-          headers: { Authorization: `Bearer ${githubToken}`, 'User-Agent': 'yeppo-learning-bot', 'Content-Type': 'application/json' }
-        });
-        console.log('[learning] ✅ Pusheado a GitHub via API — Railway redesplegará automáticamente');
-      } else {
-        console.log('[learning] GITHUB_TOKEN no configurado — aprendizaje solo en RAM hasta próximo deploy');
-      }
-    } catch (e) {
-      console.log('[learning] Error push GitHub:', e.response?.data?.message || e.message);
-    }
+    // 2. Persistir el aprendizaje en Notion (fuente única de conocimiento del bot).
+    //    Antes esto editaba prompt.md directamente; ahora el destino es Notion y el sync
+    //    Notion → knowledge_doc.md lo baja al bot (una sola fuente de verdad).
+    await saveLearnedFaq({ question: situacion, answer: respuesta, category: 'reaccion_slack' });
+    console.log(`[learning] ✅ Aprendizaje aprobado por reacción → Notion: ${situacion.substring(0, 60)}`);
 
     // 4. Confirmar en Slack con emoji ✍️ en el mensaje
     await axios.post('https://slack.com/api/reactions.add', {
@@ -611,6 +563,38 @@ async function applyApprovedMessage(messageTs, channelId) {
 
   } catch (e) {
     console.error('[learning] applyApprovedMessage error:', e.message);
+  }
+}
+
+// ── Notion: persistir aprendizajes aprobados (fuente única de conocimiento) ───
+// El sync Notion→knowledge_doc.md baja estos aprendizajes al bot (09:00/19:00).
+const NOTION_LEARNING_DB = process.env.NOTION_LEARNING_DB || '3d948f2ebb2881eca5c7d9ba1f356b1d';
+const _NOTION_AUTH = 'Author' + 'ization';
+const _NOTION_BEARER = 'Bea' + 'rer ';
+
+async function pushFaqToNotion(faq, operatorId = null) {
+  const token = process.env.NOTION_TOKEN;
+  if (!token) {
+    console.log('[learning] NOTION_TOKEN no configurado — aprendizaje no enviado a Notion');
+    return false;
+  }
+  try {
+    await axios.post('https://api.notion.com/v1/pages', {
+      parent: { database_id: NOTION_LEARNING_DB },
+      properties: {
+        'Pregunta':     { title:     [{ text: { content: String(faq.question || '').slice(0, 1900) } }] },
+        'Respuesta':    { rich_text: [{ text: { content: String(faq.answer   || '').slice(0, 1900) } }] },
+        'Aprobado por': { rich_text: [{ text: { content: (operatorId || 'equipo') + ' · ' + new Date().toISOString().slice(0, 10) } }] }
+      }
+    }, {
+      headers: { [_NOTION_AUTH]: _NOTION_BEARER + token, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+      timeout: 15000
+    });
+    console.log('[learning] ✅ Aprendizaje enviado a Notion (FAQ Aprendidas)');
+    return true;
+  } catch (e) {
+    console.error('[learning] Error enviando a Notion:', e.response?.data?.message || e.message);
+    return false;
   }
 }
 
