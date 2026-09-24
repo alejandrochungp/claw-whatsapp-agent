@@ -96,6 +96,14 @@ Derivamos a un agente humano cuando el cliente necesita confirmación de stock e
 <!-- NOTION_CONTEXT_START -->
 # INFORMACIÓN VIGENTE (desde Notion — se actualiza automáticamente)
 
+## APRENDIZAJES / FAQ APRENDIDAS
+
+**Canjeé mis puntos por un producto sorpresa pero no puedo usarlo en mi pedido, ¿qué hago?**
+U0BU08HNBV1 · 2026-09-24
+
+**¿El protector solar tone-up viene en varios colores?**
+U0BU08HNBV1 · 2026-09-24
+
 ## FAQ VENTAS POR MAYOR
 
 **Envíos de pedido Mayoristas**
