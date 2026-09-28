@@ -21,6 +21,10 @@ module.exports = {
 
   aiHistoryWindow: 100,
 
+  // Memoria durable por cliente (core/client-memory.js)
+  memoryEnabled: true,
+  sessionIdleMinutes: 30, // inactividad para cerrar sesión y generar el documento de memoria
+
   fallbackMessage:  'disculpa, tuve un problema técnico. escribe "humano" para hablar con el equipo.',
   offHoursMessage:  'ahora estamos fuera de horario (lun-vie 10:00-18:00).\n\nte anotamos y apenas abramos te respondemos. si es urgente igual escríbenos.',
 

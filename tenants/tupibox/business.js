@@ -68,7 +68,7 @@ async function quickReply(userText, context, history) {
 /**
  * Construir system prompt enriquecido con datos del cliente.
  */
-function buildSystemPrompt(context) {
+async function buildSystemPrompt(context) {
   let prompt = PROMPT_BASE;
 
   if (context && Object.keys(context).length > 0) {
@@ -130,6 +130,15 @@ function buildSystemPrompt(context) {
       prompt += `El link de pago es por $29.990 (Pack Inicia), no por el plan mensual. Si no tienes todos los datos del perro, pide solo la proteina y manda el link igual.\n`;
     }
 
+  }
+
+  // Memoria durable del cliente (core/client-memory): resumen de sesiones anteriores.
+  // Acotada por bytes y priorizada; si falla, no rompe la respuesta.
+  if (context && context._phone) {
+    try {
+      const memSection = await require('../../core/client-memory').getMemoryPromptSection(context._phone);
+      if (memSection) prompt += memSection;
+    } catch (e) { /* la memoria no debe romper la respuesta */ }
   }
 
   return prompt;

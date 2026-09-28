@@ -28,6 +28,10 @@ module.exports = {
   // IA — ventana de historial
   aiHistoryWindow: 100,
 
+  // Memoria durable por cliente (core/client-memory.js)
+  memoryEnabled: true,
+  sessionIdleMinutes: 30, // inactividad para cerrar sesión y generar el documento de memoria
+
   // Mensaje de fallback cuando IA falla o presupuesto agotado
   fallbackMessage: 'Disculpa, tuve un problema técnico. Escribe "humano" para hablar con el equipo.',
 

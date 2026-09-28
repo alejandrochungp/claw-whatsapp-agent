@@ -19,6 +19,7 @@ const upsell     = require('./upsell');
 const learning   = require('./learning');
 const klaviyo    = require('./klaviyo');
 const carrito    = require('./carrito-abandonado');
+const clientMemory = require('./client-memory');
 
 // Catálogo Shopify en memoria del módulo — se precalienta al arrancar y
 // se actualiza vía /admin/refresh-catalog. Se comparte en todas las llamadas.
@@ -1394,6 +1395,9 @@ async function handleMessage(message, value, config, business) {
       logger.log(`[poop] Error CTA: ${e.message}`);
     }
   }
+  // Memoria durable: registrar actividad y reprogramar el cierre de sesión por inactividad
+  clientMemory.touch(from, config);
+
   let userText = '';
   let isAudio  = false;
 
@@ -1512,7 +1516,7 @@ async function handleMessage(message, value, config, business) {
       try {
         const imageBuf  = await meta.downloadMedia(mediaUrl);
         const imgCtx    = await memory.getContext(from) || {};
-        const sysPrompt = await business.buildSystemPrompt(imgCtx);
+        const sysPrompt = await business.buildSystemPrompt({ ...imgCtx, _phone: from });
         const aiReply   = imageBuf ? await ai.analyzeImage(imageBuf, mimeType, sysPrompt) : null;
         const reply     = aiReply || (caption ? null : 'recibÃ­ tu foto! en quÃ© te puedo ayudar?');
 
@@ -1902,7 +1906,7 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
 
   // 2. Si el tenant pide IA o no hay respuesta rÃ¡pida â†' Claude
   if (!replyText || quickResult?.useAI) {
-    let systemPrompt = await business.buildSystemPrompt(context);
+    let systemPrompt = await business.buildSystemPrompt({ ...context, _phone: from });
     // Inyectar contexto Shopify al system prompt si existe
     if (context?.shopifyContext) {
       systemPrompt = `${systemPrompt}\n\n---\n${context.shopifyContext}`;
@@ -2079,6 +2083,8 @@ async function sendReply(from, userText, config, business, pendingMedia = null) 
 
   if (notifySlack) {
     await slack.notifyHandoff(from, userText, config);
+    // Flujo terminado (derivación a humano) → cerrar sesión y persistir memoria del cliente
+    clientMemory.closeSession(from, config).catch(() => {});
   } else {
     // Para imÃ¡genes, mostrar "ðŸ-¼ï¸ [imagen]" como texto del cliente en Slack
     const slackUserText = pendingMedia ? `${pendingMedia.typeEmoji} [${pendingMedia.type}]${pendingMedia.caption ? ': "' + pendingMedia.caption + '"' : ''}` : userText;
@@ -2320,7 +2326,7 @@ async function handleSocialMessage(event, platform, config, business, catalog) {
 
     // Construir system prompt con contexto de campa\u00f1a
     const context = await memory.getContext(channelKey);
-    let systemPrompt = await business.buildSystemPrompt(context);
+    let systemPrompt = await business.buildSystemPrompt({ ...context, _phone: channelKey });
     if (campaignCtx) {
       if (campaignCtx.productos && campaignCtx.productos.length > 0) {
         const lista = campaignCtx.productos.map(p => '- ' + p.titulo + (p.variante ? ' (' + p.variante + ')' : '') + ' x' + p.cantidad + ' - $' + parseInt(p.precio).toLocaleString('es-CL')).join('\n');
