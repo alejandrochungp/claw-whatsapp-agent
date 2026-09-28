@@ -224,6 +224,9 @@ async function updateUpsellStatus(phone, status) {
   }
 }
 
+// Accessor del cliente Redis (usado por core/client-memory.js para el documento de memoria durable)
+function getRedisClient() { return redisClient; }
+
 // Esperar a que Redis conecte, con timeout
 function waitForRedis(timeoutMs = 5000) {
   if (useRedis) return Promise.resolve(); // ya conectado
@@ -371,5 +374,6 @@ module.exports = {
   incrementNonProductiveCount, resetNonProductiveCount, getNonProductiveCount,
   setSentTemplate, getSentTemplate,
   getActiveConversations, getConversation,
+  getRedisClient,
   get redis() { return redisClient; }
 };
