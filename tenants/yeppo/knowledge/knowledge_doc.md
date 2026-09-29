@@ -98,6 +98,9 @@ Derivamos a un agente humano cuando el cliente necesita confirmación de stock e
 
 ## APRENDIZAJES / FAQ APRENDIDAS
 
+**El cliente quiere revertir un canje de puntos por envío gratis que ya realizó pero aún no ha usado**
+U0BU08HNBV1 · 2026-09-29
+
 **Canjeé mis puntos por un producto sorpresa pero no puedo usarlo en mi pedido, ¿qué hago?**
 U0BU08HNBV1 · 2026-09-24
 
