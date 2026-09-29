@@ -2,3 +2,8 @@ node_modules/
 .env
 *.log
 .env.local
+
+# PII de clientes (dumps de Slack) — nunca commitear
+out/slack_conversaciones_*/
+out/_dryrun_memdir/
+out/index_memory/
