@@ -99,6 +99,15 @@ async function buildSystemPrompt(context) {
     if (context.orderNumber) prompt += `Pedido en seguimiento: #${context.orderNumber}\n`;
   }
 
+  // Memoria durable del cliente (core/client-memory): resumen de sesiones anteriores.
+  // Acotada por bytes y priorizada; si falla, no rompe la respuesta.
+  if (context && context._phone) {
+    try {
+      const memSection = await require('../../core/client-memory').getMemoryPromptSection(context._phone);
+      if (memSection) prompt += memSection;
+    } catch (e) { /* la memoria no debe romper la respuesta */ }
+  }
+
   return prompt;
 }
 
