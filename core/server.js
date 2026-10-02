@@ -20,6 +20,7 @@ const learning   = require('./learning');
 const klaviyo    = require('./klaviyo');
 const carrito    = require('./carrito-abandonado');
 const clientMemory = require('./client-memory');
+const internalMemory = require('./internal-memory');
 
 // Catálogo Shopify en memoria del módulo — se precalienta al arrancar y
 // se actualiza vía /admin/refresh-catalog. Se comparte en todas las llamadas.
@@ -122,6 +123,28 @@ function start(config, business) {
       phone: config.businessPhone,
       uptime: process.uptime()
     });
+  });
+
+  // ── GET /internal/memory — memoria de clienta para el kiosko Sami ──────────
+  // Autorizado con la llave interna compartida (header X-SAMI-Internal-Key).
+  // Devuelve el resumen destilado + un recorte del historial, ya redactados.
+  app.get('/internal/memory', async (req, res) => {
+    const expected = process.env.SAMI_INTERNAL_API_KEY || '';
+    const provided = req.get('X-SAMI-Internal-Key') || '';
+    if (!internalMemory.internalKeyValid(provided, expected)) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    const phone = String(req.query.phone || '').trim();
+    if (!phone || phone.length > 32) {
+      return res.status(400).json({ error: 'phone requerido' });
+    }
+    try {
+      const payload = await internalMemory.getClientMemory(phone);
+      res.json(payload);
+    } catch (err) {
+      logger.log('[internal/memory] error: ' + err.message);
+      res.status(500).json({ error: 'internal_error' });
+    }
   });
 
   // â"€â"€ POST /shopify/order â€" webhook Shopify order_paid â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
