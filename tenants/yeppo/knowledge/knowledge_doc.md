@@ -98,6 +98,57 @@ Derivamos a un agente humano cuando el cliente necesita confirmación de stock e
 
 ## APRENDIZAJES / FAQ APRENDIDAS
 
+**¿Está disponible el Birch Juice Trial Kit de Round Lab en la tienda de Providencia?**
+U0BU08HNBV1 · 2026-10-02
+
+**¿Puedo comprar por la página y retirar al día siguiente en tienda? ¿Cuánto tiempo tengo para retirar?**
+U0BU08HNBV1 · 2026-10-02
+
+**¿El producto Birch Juice Trial Kit de Round Lab sirve para pieles delicadas, con rojeces, rosácea y seca?**
+U0BU08HNBV1 · 2026-10-02
+
+**¿Cómo es el proceso de reembolso después de cancelar mi compra?**
+U0BU08HNBV1 · 2026-10-01
+
+**Quiero cambiar la sucursal de retiro de mi pedido (de una tienda Recoleta a Providencia), ¿es posible?**
+U0BU08HNBV1 · 2026-10-01
+
+**Mi pedido lleva muchos días sin llegar, se está demorando demasiado y lo necesito urgente para una fecha específica**
+U0BU08HNBV1 · 2026-10-01
+
+**El producto básico sorpresa que quería canjear no está disponible y el cliente ya usó sus puntos**
+U0BU08HNBV1 · 2026-10-01
+
+**¿Cuál es el mínimo de compra para mayoristas y con quién me contacto?**
+U0BU08HNBV1 · 2026-09-30
+
+**Mi pedido debería haberse entregado a domicilio pero el courier lo dejó en sucursal y no puedo retirarlo. ¿Qué puedo hacer?**
+U0BU08HNBV1 · 2026-09-30
+
+**Hice un pedido con entrega flash y aún no me lo entregan. ¿Qué pasó?**
+U0BU08HNBV1 · 2026-09-30
+
+**¿En qué sucursales tienen cafetería?**
+U0BU08HNBV1 · 2026-09-30
+
+**Realicé una compra y aún no la recibo. ¿Pueden revisarlo?**
+U0BU08HNBV1 · 2026-09-30
+
+**¿Pueden consultar el stock de un producto en una sucursal específica?**
+U0BU08HNBV1 · 2026-09-29
+
+**El cliente consulta si la tienda está dentro de un edificio y pide el número de conserjería para ir desde región**
+U0BU08HNBV1 · 2026-09-29
+
+**¿El cupón de descuento de $1.000 se puede usar para retiro en tienda?**
+U0BU08HNBV1 · 2026-09-29
+
+**El cliente ya canjeó puntos por el producto sorpresa básico pero está agotado, pide devolución de puntos**
+U0BU08HNBV1 · 2026-09-29
+
+**El cliente quiere saber si puede ir a cambiar un producto equivocado en tienda**
+U0BU08HNBV1 · 2026-09-29
+
 **El cliente quiere revertir un canje de puntos por envío gratis que ya realizó pero aún no ha usado**
 U0BU08HNBV1 · 2026-09-29
 
